@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Risk-Aware Prioritization Framework for Cloud IaC Misconfigurations — Design Overview</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:#fcfcfb; --plane:#f9f9f7;
+    --ink-1:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
+    /* categorical slots — validated: all checks pass, light contrast WARN met by labels + table view */
+    --f1:#2a78d6; --f2:#eb6834; --f3:#1baf7a; --f4:#eda100; --f5:#e87ba4; --f6:#008300;
+    /* status — fixed, never themed; always paired with a visible label */
+    --st-good:#0ca30c; --st-warn:#fab219; --st-serious:#ec835a; --st-critical:#d03b3b;
+    --seq:#2a78d6;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:#1a1a19; --plane:#0d0d0d;
+      --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+      --f1:#3987e5; --f2:#d95926; --f3:#199e70; --f4:#c98500; --f5:#d55181; --f6:#008300;
+      --seq:#3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:#1a1a19; --plane:#0d0d0d;
+    --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-3:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+    --f1:#3987e5; --f2:#d95926; --f3:#199e70; --f4:#c98500; --f5:#d55181; --f6:#008300;
+    --seq:#3987e5;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--plane); color:var(--ink-1);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding:32px 24px 72px; }
+  h1,h2,h3 { line-height:1.25; margin:0; }
+  h1 { font-size:30px; letter-spacing:-.02em; }
+  h2 { font-size:19px; letter-spacing:-.01em; }
+  h3 { font-size:15px; }
+  p { margin:0; }
+  .muted { color:var(--ink-2); }
+  .tiny { font-size:12.5px; color:var(--ink-3); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  section { background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-top:18px; }
+  .sec-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .sec-head .step { font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+  .sec-sub { color:var(--ink-2); font-size:14px; margin-bottom:18px; max-width:78ch; }
+
+  /* header */
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+  .badges { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .badge { font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); color:var(--ink-2); background:var(--surface-1); }
+  .badge.ok { border-color:transparent; background:color-mix(in srgb, var(--st-good) 14%, transparent); color:var(--ink-1); }
+  .badge.ok::before { content:"\2713\00a0"; color:var(--st-good); font-weight:700; }
+  #themeBtn { border:1px solid var(--border); background:var(--surface-1); color:var(--ink-2); border-radius:8px;
+              padding:7px 12px; font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; }
+  #themeBtn:hover { color:var(--ink-1); }
+
+  /* formula */
+  .formula { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:16px; }
+  .formula .eq { font-size:14px; color:var(--ink-2); font-weight:600; }
+  .chip { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--border);
+          border-radius:8px; padding:5px 10px; font-size:13px; background:var(--surface-1); }
+  .sw { width:10px; height:10px; border-radius:3px; flex:none; }
+  .chip .rng { color:var(--ink-3); font-size:12px; font-variant-numeric:tabular-nums; }
+
+  /* pipeline */
+  .pipe { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .stage { border:1px solid var(--border); border-radius:8px; padding:12px; background:var(--surface-1); position:relative; }
+  .stage .cap { height:3px; border-radius:2px; margin-bottom:10px; }
+  .stage .n { font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+  .stage h3 { margin:2px 0 5px; }
+  .stage p { font-size:12.5px; color:var(--ink-2); }
+  .harness { margin-top:12px; border:1px dashed var(--baseline); border-radius:8px; padding:12px 14px;
+             display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .harness strong { font-size:14px; }
+  .harness p { font-size:12.5px; color:var(--ink-2); }
+
+  /* band scale */
+  .scale-wrap { position:relative; margin-top:22px; padding-top:30px; }
+  .scale { display:flex; gap:2px; height:60px; }
+  .band { flex-grow:1; flex-basis:0; border-radius:4px; padding:9px 11px; display:flex; flex-direction:column; justify-content:center;
+          color:#0b0b0b; min-width:0; }
+  .band b { font-size:13.5px; }
+  .band span { font-size:11.5px; opacity:.85; font-variant-numeric:tabular-nums; }
+  .band.low      { background:var(--st-good); }
+  .band.medium   { background:var(--st-warn); }
+  .band.high     { background:var(--st-serious); }
+  .band.critical { background:var(--st-critical); color:#fff; }
+  .marker { position:absolute; top:0; transform:translateX(-50%); text-align:center; }
+  .marker .lbl { font-size:11.5px; color:var(--ink-2); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .marker .stem { width:2px; height:14px; background:var(--ink-1); margin:2px auto 0; border-radius:1px; }
+
+  /* stacked bars */
+  .legend { display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 18px; }
+  .case { margin-top:18px; }
+  .case-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:7px; flex-wrap:wrap; }
+  .case-head .name { font-size:13.5px; font-weight:600; }
+  .case-head .desc { font-size:12.5px; color:var(--ink-2); }
+  .track { background:var(--grid); border-radius:5px; height:34px; padding:0; position:relative; }
+  .bar { display:flex; gap:2px; height:34px; }
+  .seg { min-width:2px; border-radius:2px; }
+  .bar .seg:first-child { border-radius:5px 2px 2px 5px; }
+  .bar .seg:last-child  { border-radius:2px 5px 5px 2px; }
+  .seg:hover, .seg:focus-visible { outline:2px solid var(--ink-1); outline-offset:1px; }
+  .total { position:absolute; top:0; height:34px; display:flex; align-items:center; gap:8px; font-size:13px; padding-left:10px; }
+  .total b { font-variant-numeric:tabular-nums; font-size:15px; }
+  .pill { font-size:11.5px; padding:2px 8px; border-radius:999px; color:#0b0b0b; }
+  .pill.critical { background:var(--st-critical); color:#fff; }
+  .pill.high { background:var(--st-serious); }
+
+  /* review chart */
+  .chart { display:flex; gap:24px; align-items:flex-end; height:190px; padding:18px 0 0; border-bottom:2px solid var(--baseline); position:relative; }
+  .gridline { position:absolute; left:0; right:0; border-top:1px solid var(--grid); }
+  .gridline span { position:absolute; left:-24px; top:-9px; font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+  .col { flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px; position:relative; z-index:1; }
+  .col .v { font-size:13px; font-variant-numeric:tabular-nums; color:var(--ink-1); }
+  .col .rect { width:100%; max-width:96px; background:var(--seq); border-radius:4px 4px 0 0; }
+  .col:hover .rect, .col:focus-visible .rect { outline:2px solid var(--ink-1); outline-offset:1px; }
+  .xaxis { display:flex; gap:24px; margin-top:9px; }
+  .xaxis div { flex:1; text-align:center; font-size:12.5px; }
+  .xaxis .verdict { font-size:11.5px; color:var(--ink-3); display:block; }
+  .xaxis .approved { color:var(--st-good); font-weight:600; }
+
+  /* tiles */
+  .tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:20px; }
+  .tile { border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .tile .big { font-size:26px; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .tile .lbl { font-size:12.5px; color:var(--ink-2); }
+
+  /* cards / lists */
+  .cards { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .card { border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .card h3 { margin-bottom:4px; }
+  .card p { font-size:12.5px; color:var(--ink-2); }
+  ol.steps { margin:0; padding-left:20px; }
+  ol.steps li { margin-bottom:10px; font-size:13.5px; }
+  ol.steps .gate { display:block; font-size:12px; color:var(--ink-3); margin-top:2px; }
+
+  /* tables (the accessible equivalent of every chart above) */
+  details { margin-top:16px; }
+  summary { font-size:12.5px; color:var(--ink-2); cursor:pointer; }
+  summary:hover { color:var(--ink-1); }
+  table { border-collapse:collapse; width:100%; margin-top:10px; font-size:12.5px; }
+  th, td { text-align:left; padding:6px 9px; border-bottom:1px solid var(--grid); }
+  th { color:var(--ink-2); font-weight:600; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+
+  blockquote { margin:18px 0 0; padding:12px 16px; border-left:3px solid var(--st-good);
+               background:color-mix(in srgb, var(--st-good) 7%, transparent); border-radius:0 6px 6px 0; }
+  blockquote p { font-size:13.5px; font-style:italic; }
+  blockquote cite { font-size:12px; color:var(--ink-3); font-style:normal; }
+
+  .notice { margin-top:18px; border:1px solid var(--border); border-left:3px solid var(--st-warn);
+            border-radius:0 6px 6px 0; padding:12px 16px; background:var(--surface-1); }
+  .notice strong { font-size:13px; }
+  .notice p { font-size:12.5px; color:var(--ink-2); margin-top:3px; }
+
+  footer { margin-top:22px; padding:0 4px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+
+  #tip { position:fixed; z-index:50; pointer-events:none; max-width:290px; background:var(--surface-1);
+         border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:12.5px;
+         box-shadow:0 6px 20px rgba(0,0,0,.16); color:var(--ink-1); }
+  #tip[hidden] { display:none; }
+  #tip .t { font-weight:600; display:flex; align-items:center; gap:7px; }
+  #tip .d { color:var(--ink-2); margin-top:3px; }
+
+  @media (max-width:860px) {
+    .pipe, .tiles, .cards { grid-template-columns:1fr 1fr; }
+    .tiles { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width:560px) {
+    .pipe, .cards { grid-template-columns:1fr; }
+  }
+
+  /* texture channel — accessibility / print / forced-colors only, never decorative */
+  @media print, (forced-colors: active) {
+    .band, .seg { background-image:repeating-linear-gradient(45deg, transparent 0 5px, rgba(0,0,0,.22) 5px 7px); }
+    .band.medium, .seg:nth-child(even) { background-image:repeating-linear-gradient(135deg, transparent 0 5px, rgba(0,0,0,.22) 5px 7px); }
+    body { background:#fff; }
+    section { break-inside:avoid; }
+    #themeBtn { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Risk-Aware Prioritization for Cloud IaC Misconfigurations</h1>
+      <p class="muted" style="margin-top:8px; max-width:70ch;">
+        A framework that re-ranks the findings existing scanners already produce &mdash; using cloud context &mdash;
+        so teams remediate what actually matters first.
+      </p>
+      <p class="tiny" style="margin-top:10px;">
+        Jayathissa E.A.T.N. (258243J) &middot; MSc in Computer Science (Cloud Computing) &middot; University of Moratuwa
+      </p>
+      <div class="badges">
+        <span class="badge">Design locked</span>
+        <span class="badge ok">Externally reviewed &mdash; approved at round 4 of 5</span>
+        <span class="badge">Implementation: next phase</span>
+      </div>
+    </div>
+    <button id="themeBtn" type="button" aria-label="Toggle dark mode">&#9789; Theme</button>
+  </header>
+
+  <!-- 1. PROBLEM -->
+  <section>
+    <div class="sec-head"><span class="step">01</span><h2>The problem</h2></div>
+    <p class="sec-sub">
+      Checkov, tfsec and Trivy detect misconfigurations well. What they emit is a flat list of severity labels with no
+      awareness of where a resource sits, what it holds, or who can reach it.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <h3>Alert overload</h3>
+        <p>A publicly-exposed production database holding customer data is presented alongside a cosmetic tagging
+           violation in a sandbox. Both say &ldquo;HIGH&rdquo;.</p>
+      </div>
+      <div class="card">
+        <h3>Severities are not comparable</h3>
+        <p>Each scanner assigns severity by its own convention, so a combined list cannot be ranked meaningfully
+           without normalization.</p>
+      </div>
+      <div class="card">
+        <h3>Duplicate reporting</h3>
+        <p>The same underlying problem is often flagged by several scanners at once, inflating the apparent alert count.</p>
+      </div>
+      <div class="card">
+        <h3>Missing context</h3>
+        <p>Internet reachability, IAM blast radius, data sensitivity, environment criticality and encryption state
+           determine real business risk &mdash; and none of it is in the finding.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. PIPELINE -->
+  <section>
+    <div class="sec-head"><span class="step">02</span><h2>The framework &mdash; a five-layer pipeline</h2></div>
+    <p class="sec-sub">
+      Detection is delegated to the scanners. The contribution is layers 3&ndash;5: context, scoring, and ranked reporting.
+    </p>
+    <div class="pipe">
+      <div class="stage"><div class="cap" style="background:var(--f1)"></div><div class="n">LAYER 1</div>
+        <h3>IaC Input</h3><p>Terraform (HCL) and Kubernetes YAML manifests.</p></div>
+      <div class="stage"><div class="cap" style="background:var(--f2)"></div><div class="n">LAYER 2</div>
+        <h3>Security Scanning</h3><p>Checkov, tfsec, Trivy as subprocesses (pinned) &rarr; one normalized finding record.</p></div>
+      <div class="stage"><div class="cap" style="background:var(--f3)"></div><div class="n">LAYER 3</div>
+        <h3>Context Extraction</h3><p>Five contextual attributes attached &mdash; two declared, three parsed from code.</p></div>
+      <div class="stage"><div class="cap" style="background:var(--f4)"></div><div class="n">LAYER 4</div>
+        <h3>Risk Scoring</h3><p>Explainable weighted-additive model. Not machine learning.</p></div>
+      <div class="stage"><div class="cap" style="background:var(--f5)"></div><div class="n">LAYER 5</div>
+        <h3>Reporting</h3><p>Ranked, banded remediation list &mdash; JSON plus a human report.</p></div>
+    </div>
+    <div class="harness">
+      <strong>Independent evaluation harness</strong>
+      <p>Consumes the JSON output separately, so the framework never grades its own results.</p>
+    </div>
+  </section>
+
+  <!-- 3. SCORING MODEL -->
+  <section>
+    <div class="sec-head"><span class="step">03</span><h2>The scoring model</h2></div>
+    <p class="sec-sub">
+      Five contextual attributes plus scanner severity make six scoring factors. Every factor is inspectable and
+      adjustable, and each score decomposes into named contributions &mdash; so a reviewer can always see <em>why</em>
+      a finding ranked where it did.
+    </p>
+
+    <div class="formula">
+      <span class="eq">Risk Score =</span>
+      <span class="chip"><span class="sw" style="background:var(--f1)"></span>Severity <span class="rng">1&ndash;5</span></span>
+      <span class="eq">+</span>
+      <span class="chip"><span class="sw" style="background:var(--f2)"></span>Exposure <span class="rng">0&ndash;5</span></span>
+      <span class="eq">+</span>
+      <span class="chip"><span class="sw" style="background:var(--f3)"></span>Privilege <span class="rng">0&ndash;5</span></span>
+      <span class="eq">+</span>
+      <span class="chip"><span class="sw" style="background:var(--f4)"></span>Sensitivity <span class="rng">0&ndash;5</span></span>
+      <span class="eq">+</span>
+      <span class="chip"><span class="sw" style="background:var(--f5)"></span>Criticality <span class="rng">0&ndash;5</span></span>
+      <span class="eq">+</span>
+      <span class="chip"><span class="sw" style="background:var(--f6)"></span>Encryption risk <span class="rng">0&ndash;3</span></span>
+    </div>
+    <p class="tiny" style="margin-top:10px;">
+      Range 1&ndash;28. Sensitivity and criticality are <strong>declared</strong> (not reliably derivable from IaC code);
+      the rest are parsed from the scanner output and the resource definition.
+    </p>
+
+    <h3 style="margin-top:26px;">Priority bands</h3>
+    <p class="tiny" style="margin-top:4px;">
+      Bands are defined by remediation semantics first, then mapped onto score intervals &mdash; fixed a priori and
+      frozen before evaluation, never tuned to fit the test data.
+    </p>
+    <div class="scale-wrap">
+      <div class="marker" style="left:64.29%">
+        <div class="lbl">Case B &middot; 19</div><div class="stem"></div>
+      </div>
+      <div class="marker" style="left:75%">
+        <div class="lbl">Case A &middot; 22</div><div class="stem"></div>
+      </div>
+      <div class="scale" role="img" aria-label="Priority bands across the 1 to 28 score range: Low 1-8, Medium 9-15, High 16-21, Critical 22-28.">
+        <div class="band low" style="flex-grow:8" data-tip="&lt;div class='t'&gt;Low&lt;/div&gt;&lt;div class='d'&gt;Score 1&ndash;8. Monitor, document, fix when convenient.&lt;/div&gt;">
+          <b>Low</b><span>1&ndash;8 &middot; monitor</span></div>
+        <div class="band medium" style="flex-grow:7" data-tip="&lt;div class='t'&gt;Medium&lt;/div&gt;&lt;div class='d'&gt;Score 9&ndash;15. Schedule in a normal sprint or backlog.&lt;/div&gt;">
+          <b>Medium</b><span>9&ndash;15 &middot; backlog</span></div>
+        <div class="band high" style="flex-grow:6" data-tip="&lt;div class='t'&gt;High&lt;/div&gt;&lt;div class='d'&gt;Score 16&ndash;21. Fix before production, or require approval.&lt;/div&gt;">
+          <b>High</b><span>16&ndash;21 &middot; fix before prod</span></div>
+        <div class="band critical" style="flex-grow:7" data-tip="&lt;div class='t'&gt;Critical&lt;/div&gt;&lt;div class='d'&gt;Score 22&ndash;28. Block deployment and remediate immediately.&lt;/div&gt;">
+          <b>Critical</b><span>22&ndash;28 &middot; block deploy</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. WORKED EXAMPLE -->
+  <section>
+    <div class="sec-head"><span class="step">04</span><h2>How a score is built &mdash; a contrastive pair</h2></div>
+    <p class="sec-sub">
+      Two configurations identical in every respect but one factor. This is the mechanism the evaluation uses to prove a
+      contextual factor <em>causes</em> a rank change &mdash; here, turning off encryption moves the finding across a band boundary.
+    </p>
+
+    <div class="legend">
+      <span class="chip"><span class="sw" style="background:var(--f1)"></span>Severity</span>
+      <span class="chip"><span class="sw" style="background:var(--f2)"></span>Exposure</span>
+      <span class="chip"><span class="sw" style="background:var(--f3)"></span>Privilege</span>
+      <span class="chip"><span class="sw" style="background:var(--f4)"></span>Sensitivity</span>
+      <span class="chip"><span class="sw" style="background:var(--f5)"></span>Criticality</span>
+      <span class="chip"><span class="sw" style="background:var(--f6)"></span>Encryption risk</span>
+    </div>
+
+    <div class="case">
+      <div class="case-head">
+        <span class="name">Case A</span>
+        <span class="desc">S3 bucket <code>prod-app-data</code> &mdash; public access, customer PII, production, <strong>no encryption</strong></span>
+      </div>
+      <div class="track">
+        <div class="bar" style="width:78.57%">
+          <div class="seg" tabindex="0" style="flex-grow:4; background:var(--f1)" data-tip="&lt;div class='t'&gt;Severity &middot; 4&lt;/div&gt;&lt;div class='d'&gt;Scanner reported HIGH, normalized to 4 on the common 1&ndash;5 scale.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:5; background:var(--f2)" data-tip="&lt;div class='t'&gt;Public exposure &middot; 5&lt;/div&gt;&lt;div class='d'&gt;Bucket is publicly reachable &mdash; a supported exposure pattern (public ACL/policy, public-access-block disabled).&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:1; background:var(--f3)" data-tip="&lt;div class='t'&gt;IAM privilege scope &middot; 1&lt;/div&gt;&lt;div class='d'&gt;Public read is data exposure, not a broad administrative grant.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:4; background:var(--f4)" data-tip="&lt;div class='t'&gt;Resource sensitivity &middot; 4&lt;/div&gt;&lt;div class='d'&gt;Declared: bucket holds customer PII.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:5; background:var(--f5)" data-tip="&lt;div class='t'&gt;Environment criticality &middot; 5&lt;/div&gt;&lt;div class='d'&gt;Declared: production environment.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:3; background:var(--f6)" data-tip="&lt;div class='t'&gt;Encryption risk &middot; 3&lt;/div&gt;&lt;div class='d'&gt;No server-side encryption configured &mdash; maximum on a 0&ndash;3 range.&lt;/div&gt;"></div>
+        </div>
+        <div class="total" style="left:78.57%"><b class="num">22</b><span class="pill critical">Critical &mdash; block deploy</span></div>
+      </div>
+    </div>
+
+    <div class="case">
+      <div class="case-head">
+        <span class="name">Case B</span>
+        <span class="desc">Identical bucket &mdash; <strong>encryption enabled</strong>, everything else unchanged</span>
+      </div>
+      <div class="track">
+        <div class="bar" style="width:67.86%">
+          <div class="seg" tabindex="0" style="flex-grow:4; background:var(--f1)" data-tip="&lt;div class='t'&gt;Severity &middot; 4&lt;/div&gt;&lt;div class='d'&gt;Unchanged from Case A.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:5; background:var(--f2)" data-tip="&lt;div class='t'&gt;Public exposure &middot; 5&lt;/div&gt;&lt;div class='d'&gt;Unchanged from Case A.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:1; background:var(--f3)" data-tip="&lt;div class='t'&gt;IAM privilege scope &middot; 1&lt;/div&gt;&lt;div class='d'&gt;Unchanged from Case A.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:4; background:var(--f4)" data-tip="&lt;div class='t'&gt;Resource sensitivity &middot; 4&lt;/div&gt;&lt;div class='d'&gt;Unchanged from Case A.&lt;/div&gt;"></div>
+          <div class="seg" tabindex="0" style="flex-grow:5; background:var(--f5)" data-tip="&lt;div class='t'&gt;Environment criticality &middot; 5&lt;/div&gt;&lt;div class='d'&gt;Unchanged from Case A.&lt;/div&gt;"></div>
+        </div>
+        <div class="total" style="left:67.86%"><b class="num">19</b><span class="pill high">High &mdash; fix before prod</span></div>
+      </div>
+      <p class="tiny" style="margin-top:8px;">
+        Encryption risk drops 3 &rarr; 0. The single factor change moves the score 22 &rarr; 19 and the band Critical &rarr; High.
+      </p>
+    </div>
+
+    <details>
+      <summary>View as table</summary>
+      <table>
+        <thead><tr>
+          <th>Case</th><th class="n">Severity</th><th class="n">Exposure</th><th class="n">Privilege</th>
+          <th class="n">Sensitivity</th><th class="n">Criticality</th><th class="n">Encryption</th><th class="n">Total</th><th>Band</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>A &mdash; unencrypted</td><td class="n">4</td><td class="n">5</td><td class="n">1</td><td class="n">4</td><td class="n">5</td><td class="n">3</td><td class="n"><strong>22</strong></td><td>Critical</td></tr>
+          <tr><td>B &mdash; encrypted</td><td class="n">4</td><td class="n">5</td><td class="n">1</td><td class="n">4</td><td class="n">5</td><td class="n">0</td><td class="n"><strong>19</strong></td><td>High</td></tr>
+        </tbody>
+      </table>
+    </details>
+
+    <div class="notice">
+      <strong>Illustrative trace &mdash; not an evaluation result.</strong>
+      <p>These inputs are assumed to demonstrate the scoring mechanics. No code has been implemented and no scanners
+         have been run yet. The real evaluation uses a version-controlled corpus with declared context and a
+         pre-registered oracle; results will replace this section once the harness runs.</p>
+    </div>
+  </section>
+
+  <!-- 5. EVALUATION -->
+  <section>
+    <div class="sec-head"><span class="step">05</span><h2>How it will be evaluated</h2></div>
+    <p class="sec-sub">
+      Evaluated on <strong>prioritization quality</strong>, not detection accuracy &mdash; detection is delegated to the
+      scanners. Framed as controlled artifact validation, not generalizable empirical proof.
+    </p>
+    <div class="cards">
+      <div class="card"><h3>Normalization / retention coverage</h3>
+        <p>What fraction of scanner findings the pipeline correctly normalizes and carries through.</p></div>
+      <div class="card"><h3>Prioritization usefulness</h3>
+        <p>Measured against a pre-registered oracle: contrastive-pair pass/fail plus independently-reviewed
+           scenario orderings.</p></div>
+      <div class="card"><h3>Alert reduction</h3>
+        <p>Two separate numbers, never combined &mdash; reduction from deduplication, and reduction in the
+           Critical/High band.</p></div>
+      <div class="card"><h3>Ranking consistency</h3>
+        <p>Two separate measures &mdash; auto-inference agreement (heuristic quality) and model sensitivity under
+           threshold/weight perturbation.</p></div>
+      <div class="card"><h3>Baseline comparison</h3>
+        <p>Rank-change table against a severity-normalized baseline, each change justified by named factors.</p></div>
+      <div class="card"><h3>Corpus</h3>
+        <p>~20&ndash;30 controlled cases across storage, networking, IAM, compute and containers &mdash;
+           TerraGoat/KubeGoat plus hand-crafted contrastive pairs.</p></div>
+    </div>
+    <div class="notice">
+      <strong>Guarding against circularity.</strong>
+      <p>Weights and thresholds are fixed a priori and frozen before evaluation; movement is reported as a sensitivity
+         analysis, never as tuning. Oracle labels are pre-registered before any scoring output exists and independently
+         reviewed, so the rubric author does not also set the answer key.</p>
+    </div>
+  </section>
+
+  <!-- 6. REVIEW -->
+  <section>
+    <div class="sec-head"><span class="step">06</span><h2>Design assurance &mdash; adversarial review</h2></div>
+    <p class="sec-sub">
+      Before locking, the plan was attacked read-only across four rounds by a second AI model (OpenAI Codex, gpt-5.5)
+      instructed to find methodological flaws rather than agree. Every issue and its resolution is logged.
+    </p>
+
+    <div style="padding-left:26px;">
+      <div class="chart" role="img" aria-label="Issues raised per review round: round 1, 20 issues; round 2, 12; round 3, 10; round 4, 4 and approved.">
+        <div class="gridline" style="bottom:100%"><span>20</span></div>
+        <div class="gridline" style="bottom:50%"><span>10</span></div>
+        <div class="col" tabindex="0" data-tip="&lt;div class='t'&gt;Round 1 &mdash; REVISE&lt;/div&gt;&lt;div class='d'&gt;20 issues: evaluation validity, canonical identity, deduplication, taxonomy specification. 19 accepted, 1 contextualised.&lt;/div&gt;">
+          <span class="v num">20</span><div class="rect" style="height:100%"></div></div>
+        <div class="col" tabindex="0" data-tip="&lt;div class='t'&gt;Round 2 &mdash; REVISE&lt;/div&gt;&lt;div class='d'&gt;12 issues, largely documentation drift plus oracle independence and metric splitting. All accepted.&lt;/div&gt;">
+          <span class="v num">12</span><div class="rect" style="height:60%"></div></div>
+        <div class="col" tabindex="0" data-tip="&lt;div class='t'&gt;Round 3 &mdash; REVISE&lt;/div&gt;&lt;div class='d'&gt;10 issues narrowing to correctness detail: exposure attribution, bucket publicness, platform-scanner applicability. All accepted.&lt;/div&gt;">
+          <span class="v num">10</span><div class="rect" style="height:50%"></div></div>
+        <div class="col" tabindex="0" data-tip="&lt;div class='t'&gt;Round 4 &mdash; APPROVED&lt;/div&gt;&lt;div class='d'&gt;4 items, all implementation hygiene rather than architecture blockers. All folded in before freezing.&lt;/div&gt;">
+          <span class="v num">4</span><div class="rect" style="height:20%"></div></div>
+      </div>
+      <div class="xaxis">
+        <div>Round 1<span class="verdict">revise</span></div>
+        <div>Round 2<span class="verdict">revise</span></div>
+        <div>Round 3<span class="verdict">revise</span></div>
+        <div>Round 4<span class="verdict approved">approved</span></div>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><div class="big num">4</div><div class="lbl">review rounds (cap of 5)</div></div>
+      <div class="tile"><div class="big num">46</div><div class="lbl">issues raised</div></div>
+      <div class="tile"><div class="big num">45</div><div class="lbl">accepted &amp; applied</div></div>
+      <div class="tile"><div class="big num">1</div><div class="lbl">contextualised, retained</div></div>
+    </div>
+
+    <blockquote>
+      <p>&ldquo;No viva-fatal blockers remain&hellip; the methodology is now bounded, auditable, and defensible enough
+         for implementation.&rdquo;</p>
+      <cite>&mdash; Reviewing model, round 4 verdict</cite>
+    </blockquote>
+
+    <details>
+      <summary>View as table</summary>
+      <table>
+        <thead><tr><th>Round</th><th class="n">Issues</th><th>Verdict</th><th>Focus</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="n">20</td><td>Revise</td><td>Evaluation validity, identity, dedupe, taxonomy</td></tr>
+          <tr><td>2</td><td class="n">12</td><td>Revise</td><td>Doc drift, oracle independence, metric splitting</td></tr>
+          <tr><td>3</td><td class="n">10</td><td>Revise</td><td>Exposure attribution, bucket publicness, scanner applicability</td></tr>
+          <tr><td>4</td><td class="n">4</td><td><strong>Approved</strong></td><td>Implementation hygiene only</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  <!-- 7. NEXT -->
+  <section>
+    <div class="sec-head"><span class="step">07</span><h2>What happens next</h2></div>
+    <p class="sec-sub">
+      Five specification artifacts come before any code &mdash; every downstream component depends on them. Each carries
+      an acceptance gate so a weak artifact cannot pass silently.
+    </p>
+    <ol class="steps">
+      <li><strong>Issue-class taxonomy + scanner-rule-ID mapping table.</strong>
+        <span class="gate">Gate: every rule ID emitted across the corpus maps to an issue-class or an explicit unmapped entry; all five categories covered.</span></li>
+      <li><strong>Per-factor scoring rubric config</strong> (source-anchored to CVSS, NIST SP 800-30, NSA-CISA, OWASP).
+        <span class="gate">Gate: every score point cites a source; each factor declares its unresolved-handling policy.</span></li>
+      <li><strong>Scanner severity-normalization table.</strong>
+        <span class="gate">Gate: every native severity level mapped to the common 1&ndash;5 scale with a written justification.</span></li>
+      <li><strong>Evaluation ground-truth schema.</strong>
+        <span class="gate">Gate: validates on all corpus cases; the harness rejects ill-formed expected outputs rather than skipping them.</span></li>
+      <li><strong>Canonical-identity specification</strong> (Terraform + Kubernetes).
+        <span class="gate">Gate: defined for every resource shape in the corpus &mdash; modules, for_each/count, namespace/kind.</span></li>
+    </ol>
+    <p class="tiny" style="margin-top:14px;">
+      Then: implement the five-layer pipeline &rarr; build the independent evaluation harness &rarr; run the corpus &rarr;
+      report the five metrics and the sensitivity analysis.
+    </p>
+  </section>
+
+  <footer>
+    <p class="tiny">
+      Design-stage overview &mdash; evaluation results pending.<br>
+      Sources: <code>docs/PLAN.md</code> &middot; <code>PLAN-REVIEW-LOG.md</code> &middot; <code>CONTEXT.md</code>
+    </p>
+    <p class="tiny">Prepared for supervisor review &middot; 3 August 2026</p>
+  </footer>
+
+</div>
+
+<div id="tip" hidden></div>
+
+<script>
+  (function () {
+    // theme toggle — must beat both the OS setting and a previous stamp
+    var btn = document.getElementById('themeBtn');
+    var root = document.documentElement;
+    try {
+      var saved = localStorage.getItem('iac-theme');
+      if (saved) root.setAttribute('data-theme', saved);
+    } catch (e) {}
+    btn.addEventListener('click', function () {
+      var isDark = root.getAttribute('data-theme') === 'dark';
+      var next;
+      if (isDark) {
+        next = 'light';
+      } else {
+        next = 'dark';
+      }
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('iac-theme', next); } catch (e) {}
+    });
+
+    // hover layer — every mark with data-tip gets a tooltip, keyboard reachable too
+    var tip = document.getElementById('tip');
+    function show(el) {
+      tip.innerHTML = el.getAttribute('data-tip');
+      tip.hidden = false;
+    }
+    function place(x, y) {
+      var r = tip.getBoundingClientRect();
+      var left = x + 14, top = y + 16;
+      if (left + r.width > window.innerWidth - 8) left = x - r.width - 14;
+      if (top + r.height > window.innerHeight - 8) top = y - r.height - 16;
+      tip.style.left = Math.max(8, left) + 'px';
+      tip.style.top = Math.max(8, top) + 'px';
+    }
+    function hide() { tip.hidden = true; }
+
+    document.querySelectorAll('[data-tip]').forEach(function (el) {
+      el.addEventListener('mouseenter', function (e) { show(el); place(e.clientX, e.clientY); });
+      el.addEventListener('mousemove', function (e) { place(e.clientX, e.clientY); });
+      el.addEventListener('mouseleave', hide);
+      el.addEventListener('focus', function () {
+        var b = el.getBoundingClientRect();
+        show(el);
+        place(b.left + b.width / 2, b.bottom - 8);
+      });
+      el.addEventListener('blur', hide);
+    });
+    window.addEventListener('scroll', hide, { passive: true });
+  })();
+</script>
+</body>
+</html>

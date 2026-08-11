@@ -1,0 +1,43 @@
+# --- Python toolchain ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Editors ---
+.idea/
+*.swp
+*~
+
+# --- OS noise ---
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# --- Electron/Chromium noise (from opening local HTML previews) ---
+debug.log
+
+# --- Scratch space ---
+scratch/
+tmp/
+*.tmp
+
+# NOTE: evaluation outputs, scanner JSON dumps and expected-output fixtures are
+# deliberately NOT ignored. They are research artifacts — reproducibility of the
+# evaluation depends on them being version-controlled alongside the corpus.
+# Use scratch/ for genuinely throwaway files instead.
