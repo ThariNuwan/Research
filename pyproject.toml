@@ -27,6 +27,14 @@ packages = ["src/iacrisk"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests", "tools", "eval"]
+# ruff formats Python code blocks inside Markdown. *.md holds the plan and spec of
+# record - citable research artifacts whose code blocks specify what to write, not
+# source to be restyled - plus CLAUDE.md's command blocks. corpus/vendor holds
+# subtree copies pinned to upstream commit SHAs (spec §4.6); reformatting them would
+# silently break the recorded-SHA claim. corpus/pairs and corpus/scenarios are
+# first-party and stay governed. Must be extend-exclude: --exclude/exclude replaces
+# ruff's defaults and pulls in ignored directories.
+extend-exclude = ["*.md", "corpus/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "PTH", "RUF"]
