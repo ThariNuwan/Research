@@ -1,0 +1,175 @@
+# S0 — Toolchain & Rule-Inventory Harvest (design)
+
+**Date:** 2026-08-24
+**Project:** Risk-aware IaC misconfiguration prioritization framework (MSc, Univ. of Moratuwa)
+**Status:** Approved for implementation
+**Parent plan:** [`docs/PLAN.md`](../../PLAN.md) — design locked, Codex R4 APPROVED
+**Scope:** Sub-project S0 only. Precedes Phase 1 of `docs/PLAN.md`.
+
+---
+
+## 1. Why S0 exists (amendment to the locked plan)
+
+`docs/PLAN.md` orders implementation as *Phase 1 = five specification artifacts, then Phase 2 = pipeline*. Phase 1 deliverable #1 carries this acceptance gate:
+
+> every rule ID emitted by the pinned scanner versions **across the corpus** maps to an issue-class or an explicit `unmapped:` entry
+
+That gate cannot be evaluated before (a) the scanners are installed and pinned, and (b) a corpus exists to run them over. But Q6 lists the issue-class taxonomy as an input to *corpus design*. The dependency is circular.
+
+**Resolution.** Insert S0 ahead of Phase 1:
+
+1. Pin the toolchain.
+2. Assemble **corpus v0** — the vendored public repos only, which need no taxonomy.
+3. Run the scanners; harvest the observed rule-ID inventory.
+4. **Then** author the taxonomy in Phase 1 against observed reality rather than against the scanners' published rule catalogues.
+
+This does not change any locked design decision. It makes deliverable #1's gate measurable on first attempt instead of deferring it to a reconciliation pass. Corpus v1 (contrastive pairs, scenarios) is authored in S2, *after* the taxonomy — preserving Q6's ordering for the part of the corpus that genuinely depends on it.
+
+**Sub-project decomposition** (each gets its own spec → plan → implement cycle):
+
+| ID | Sub-project | Depends on |
+|---|---|---|
+| **S0** | Toolchain + corpus v0 + rule-inventory harvest | — |
+| S1 | The five Phase-1 specification artifacts | S0 |
+| S2 | Corpus v1 — contrastive pairs + scenarios | S1 |
+| S3 | Pipeline layers 1–3 (input, scan/normalize, context) | S1 |
+| S4 | Pipeline layers 4–5 (scoring, reporting) | S3 |
+| S5 | Independent evaluation harness + metrics | S2, S4 |
+| S6 | Sensitivity analysis + write-up | S5 |
+
+---
+
+## 2. Environment (verified 2026-08-24 on the target machine)
+
+| Present | Absent |
+|---|---|
+| Python 3.13.5 via `py` launcher (bare `python` is the broken MS-Store alias) | Checkov, tfsec, Trivy, Terraform |
+| `uv` 0.11.26 | Docker, Go, pipx, WSL |
+| winget 1.29.280, choco 2.2.2 | |
+
+**Host decision: Windows-native.** No WSL2. Consequence: Checkov's Windows path handling becomes an explicit, tested concern in the canonical-identity spec (S1) rather than an accident. Reproducibility is carried by a pinned-version manifest, not by the OS.
+
+### Pinned versions
+
+| Tool | Version | Channel | Justification |
+|---|---|---|---|
+| Python | 3.12 (uv-managed) | `uv python install` | Checkov 3.3.12's classifiers stop at 3.12; its docs self-contradict on 3.13. Do not gamble the pipeline on an unresolved compatibility claim. System 3.13.5 untouched. |
+| Checkov | 3.3.12 | `uv tool install` (isolated) | Latest on PyPI as of 2026-08-24. |
+| Trivy | 0.74.0 | GitHub release asset | `trivy_0.74.0_windows-64bit.zip`, released 2026-08-14. |
+| tfsec | 1.28.14 | GitHub release asset | `tfsec-windows-amd64.exe`. Last release **2025-05-02 — 15 months stale**. |
+| Terraform | *not installed* | — | Q9 is literals-only with no external module resolution, so `terraform init` is out of scope by design. |
+
+**tfsec staleness is a research finding, not just an install note.** A 15-month-old final release is empirical support for the R1-#19 decision to frame tfsec as legacy/comparative. Cite the release date in the dissertation rather than asserting obsolescence. S0 records it; S1 confirms tfsec's deprecation status against upstream sources before it is cited as such.
+
+**No Terraform — documented consequence.** Some module-heavy TerraGoat findings will be skipped. That is an *expected limitation of the literals-only scope*, recorded in the limitations section, not a defect to fix. Naming it here prevents drift into the full-graph resolution Q9 excludes.
+
+---
+
+## 3. Repository skeleton
+
+```
+d:\Research
+├─ pyproject.toml            # uv project; ruff / mypy / pytest config
+├─ uv.lock                   # committed — exact transitive pins
+├─ .python-version           # 3.12
+├─ src/iacrisk/              # the artifact
+│  ├─ scanners/  model/  context/  scoring/  report/  cli.py
+├─ specs/                    # the five Phase-1 artifacts, as DATA not code
+│  ├─ taxonomy.yaml  rule-mapping.yaml  rubric.yaml
+│  ├─ severity-normalization.yaml  ground-truth.schema.json
+│  └─ canonical-identity.md
+├─ corpus/
+│  ├─ vendor/                # v0 — TerraGoat, KubeGoat @ pinned commits
+│  │  └─ SOURCES.md          # upstream commit SHA + license + attribution
+│  ├─ pairs/  scenarios/     # v1 — authored in S2
+├─ eval/                     # independent harness — may NOT import src/iacrisk/scoring
+├─ artifacts/                # raw scanner JSON, rule inventory, run outputs (committed)
+├─ tools/
+│  ├─ scanners.lock.json     # committed: version + SHA256 + URL per scanner
+│  ├─ resolved.json          # gitignored: absolute resolved exe paths
+│  ├─ bootstrap.ps1  harvest.py
+│  └─ bin/                   # gitignored binaries
+└─ tests/
+```
+
+`artifacts/` and corpus fixtures stay version-controlled per the existing `.gitignore` rationale — they are research artifacts and evaluation reproducibility depends on them. Monitor total size; if raw dumps grow beyond a few MB, revisit.
+
+---
+
+## 4. Design decisions
+
+### 4.1 Checkov is an isolated tool, never a project dependency
+
+Q3 specifies all scanners are subprocess-invoked and JSON-parsed. Installing Checkov via `uv tool install` (its own venv) means its large transitive dependency tree cannot constrain the framework's dependencies, **and the framework cannot `import checkov` even by accident**. This enforces the tool-agnostic seam structurally rather than by convention — the same principle as `eval/` isolation.
+
+### 4.2 Pinned release binaries, checksum-verified
+
+Neither winget nor choco can pin an exact version, and choco's tfsec (1.28.1) is *behind* GitHub's 1.28.14. `tools/scanners.lock.json` records version + SHA256 + URL per scanner; `bootstrap.ps1` **verifies rather than trusts**, and fails loudly on mismatch.
+
+### 4.3 Resolved paths, not `PATH`
+
+`uv tool install` places binaries in `%USERPROFILE%\.local\bin`, which may not be on `PATH`. `bootstrap.ps1` resolves absolute executable paths into `tools/resolved.json` (gitignored — machine-specific); the runner reads that. Removes a class of "works on my machine" failure and makes the executed binary explicit.
+
+### 4.4 Provenance block on every run
+
+Every output JSON carries: resolved scanner paths, verified scanner versions, Python version, `specs/` file hashes, corpus commit SHA, UTC timestamp. Each result becomes self-describing, so any number in the dissertation is reproducible from the artifact alone. Introduced in S0 (the harvest is the first producer) and inherited by S3–S5.
+
+### 4.5 Harvest is a research instrument, not pipeline code
+
+`tools/harvest.py` scope, deliberately narrow:
+
+- for each (scanner × applicable platform × corpus case) → invoke → write raw JSON to `artifacts/raw/<scanner>/<case>.json`;
+- walk each raw JSON for rule ID + native severity; tally into `artifacts/rule-inventory.json`.
+
+It does **not** construct the normalized finding record — that is S3, and it depends on the taxonomy that does not yet exist. Hard boundary: harvest lives in `tools/`, never `src/`, so it cannot silently become a half-built layer 2 that S3 then duplicates.
+
+**Dual purpose.** The raw dumps are (a) the empirical input to S1's taxonomy and severity-normalization specs, and (b) the committed **golden fixtures** for S3's parser tests — which is exactly the mitigation `docs/PLAN.md` names for scanner output-schema drift.
+
+### 4.6 Corpus v0 vendoring
+
+Vendored **subtree copies** at recorded upstream commit SHAs, not git submodules — submodules are fragile on Windows and in archival snapshots, and a dissertation artifact should remain complete when zipped. `corpus/vendor/SOURCES.md` records upstream URL, commit SHA, retrieval date, and license per source. **Licenses must be read and recorded before vendoring**, not assumed.
+
+---
+
+## 5. Facts S0 must establish (not assume)
+
+These are open empirical questions whose answers are load-bearing for S1 and S3:
+
+1. **Each scanner's real JSON schema** — the rule-ID field and native-severity field differ across all three.
+2. **Platform-applicability behavior.** What does tfsec *actually do* when pointed at Kubernetes YAML — silent zero findings, or a nonzero exit? This decides the R3-#3 "fail loudly only for the input platform's required scanners" logic. Guessing wrong yields either false-clean results or spurious hard failures.
+3. **Per-scanner missing/unknown native-severity rate.** R3-#4 requires reporting it; S0 measures it for the first time and thereby sizes the problem.
+4. **Checkov path separators on Windows** — whether output paths are backslash-delimited, which sets a normalization requirement for the S1 canonical-identity spec.
+
+Each answer is recorded in `artifacts/rule-inventory.json` or appended to this spec as observed fact.
+
+---
+
+## 6. Testing
+
+TDD applies unevenly here and is claimed honestly:
+
+- **Test-first:** `harvest.py`'s JSON-walking and tallying logic, driven by small hand-written schema fixtures per scanner; the `eval/`-isolation guard.
+- **Verify-by-execution, not unit-tested:** `pyproject.toml`, `bootstrap.ps1`, vendoring. These are configuration and provisioning; their test is that the documented command runs clean on the target machine and reports the pinned version.
+
+The `eval/`-isolation test is written in S0 even though `eval/` is still a stub — the guardrail should exist *before* there is anything to violate it.
+
+---
+
+## 7. Acceptance gate
+
+S0 is done when all eight hold:
+
+1. `.\tools\bootstrap.ps1 -Verify` passes — all three scanners resolve, report their pinned versions, and SHA256 checksums match `scanners.lock.json`.
+2. Every command written into `CLAUDE.md` has been **executed on this machine** and corrected from observed output. (This closes CLAUDE.md's own standing instruction: *"update this file with the real commands — do not invent them."*)
+3. `artifacts/rule-inventory.json` is non-empty, spans all five tested categories (storage / networking / IAM / compute / containers), and reports per-scanner rule-ID counts.
+4. Raw JSON fixtures committed for at least one case per (scanner × applicable platform).
+5. Platform-applicability behavior recorded as observed fact (§5.2).
+6. Per-scanner missing/unknown-severity rate computed and recorded (§5.3).
+7. `eval/` import-isolation test exists and passes.
+8. `corpus/vendor/SOURCES.md` records upstream commit SHA, retrieval date, and verified license per source.
+
+---
+
+## 8. Out of scope for S0
+
+The normalized finding record; the issue-class taxonomy; any scoring; contrastive pairs and scenario configs; the evaluation harness; the CLI. S0 produces a pinned toolchain and an empirical rule inventory — nothing more.
