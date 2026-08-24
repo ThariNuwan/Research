@@ -24,6 +24,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/iacrisk"]
 
+# The uv cache and this repo sit on different filesystems, so hardlinking fails and
+# uv warns on every `uv run`. Acceptance gate item 2 requires CLAUDE.md commands to
+# carry observed output, and that transcript is dissertation evidence - keep it free
+# of environment noise.
+[tool.uv]
+link-mode = "copy"
+
 [tool.ruff]
 line-length = 100
 src = ["src", "tests", "tools", "eval"]
