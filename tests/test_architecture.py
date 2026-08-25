@@ -72,7 +72,7 @@ def test_harvest_does_not_define_a_normalized_finding() -> None:
     """
     harvest_dir = REPO_ROOT / "tools" / "harvest"
     if not harvest_dir.exists():
-        return  # created in Task 5
+        pytest.skip("tools/harvest/ does not exist yet (created in Task 5)")
 
     banned = {"Finding", "NormalizedFinding", "FindingRecord"}
     offenders = []
