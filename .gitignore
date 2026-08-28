@@ -37,6 +37,11 @@ scratch/
 tmp/
 *.tmp
 
+# --- S0 toolchain (binaries and machine-specific paths are not artifacts) ---
+tools/bin/
+tools/cache/
+tools/resolved.json
+
 # NOTE: evaluation outputs, scanner JSON dumps and expected-output fixtures are
 # deliberately NOT ignored. They are research artifacts — reproducibility of the
 # evaluation depends on them being version-controlled alongside the corpus.
