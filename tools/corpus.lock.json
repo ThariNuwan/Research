@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-08-24",
+  "note": "Corpus v0: vendored public repos only. Contrastive pairs and scenario configs are authored in S2, after the taxonomy exists.",
+  "sources": {
+    "terragoat": {
+      "url": "https://github.com/bridgecrewio/terragoat",
+      "commit": "729f8da62c6a85ce4af5ad3d123de97776d954c4",
+      "ref": "master",
+      "license": "Apache-2.0",
+      "pin_verified_utc": "2026-08-24",
+      "retrieved_utc": "2026-08-31",
+      "subtree": "terraform/aws",
+      "scope_note": "AWS only. alicloud/azure/gcp/oracle omitted - they add rule volume, not category coverage."
+    },
+    "kubernetes-goat": {
+      "url": "https://github.com/madhuakula/kubernetes-goat",
+      "commit": "723a0db478f050d173d23b4ce5044b65bce0bdd0",
+      "ref": "master",
+      "license": "MIT",
+      "pin_verified_utc": "2026-08-24",
+      "retrieved_utc": "2026-08-31",
+      "subtree": "scenarios"
+    }
+  },
+  "cases": [
+    {
+      "id": "tg-aws-s3",
+      "platform": "terraform",
+      "category": "storage",
+      "path": "corpus/vendor/terragoat/terraform/aws/s3.tf"
+    },
+    {
+      "id": "tg-aws-networking",
+      "platform": "terraform",
+      "category": "networking",
+      "path": "corpus/vendor/terragoat/terraform/aws/elb.tf",
+      "note": "Reconciled against upstream at this pin: there is no vpc.tf. elb.tf is the only networking-only file (aws_elb, plain HTTP listener on lb_port 80). The rest of the networking footprint is split across ec2.tf (aws_vpc, aws_subnet x2, aws_internet_gateway, aws_route_table, aws_route, aws_route_table_association x2, aws_network_interface, aws_security_group, aws_flow_log) and db-app.tf (aws_security_group, aws_security_group_rule x2)."
+    },
+    {
+      "id": "tg-aws-iam",
+      "platform": "terraform",
+      "category": "iam",
+      "path": "corpus/vendor/terragoat/terraform/aws/iam.tf"
+    },
+    {
+      "id": "tg-aws-compute",
+      "platform": "terraform",
+      "category": "compute",
+      "path": "corpus/vendor/terragoat/terraform/aws/ec2.tf",
+      "note": "aws_instance, aws_ebs_volume, aws_ebs_snapshot, aws_volume_attachment. Upstream co-locates the VPC, subnet, route-table and security-group resources in this same file instead of a separate vpc.tf, so this file also carries most of the networking footprint."
+    },
+    {
+      "id": "kg-scenarios",
+      "platform": "kubernetes",
+      "category": "containers",
+      "path": "corpus/vendor/kubernetes-goat/scenarios",
+      "note": "A directory, not a file: 24 files across 15 scenario directories. 16 are plain Kubernetes manifests (Deployment, Job, ClusterRole/RoleBinding, Kyverno policy); the other 8 are the metadata-db Helm chart (Chart.yaml, values.yaml, templates/) whose Go template syntax a plain YAML parser cannot read. Helm is in conceptual scope but not the evaluation focus."
+    }
+  ]
+}
