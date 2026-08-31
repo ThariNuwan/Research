@@ -302,11 +302,22 @@ function Install-UvTool($Name, $Entry) {
         if (-not (Test-Path $shimPath)) {
             Die "$Name launcher missing at $shimPath (run bootstrap without -Verify)"
         }
-        # Compared as bytes, not as text: ReadAllText would silently strip an
-        # injected BOM and report a match on a file cmd.exe can no longer parse,
-        # and would normalise nothing else that matters here either.
-        $onDisk = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes($shimPath))
-        if ($onDisk -ne [System.Convert]::ToBase64String($utf8NoBom.GetBytes($expected))) {
+        # Compared as raw bytes, not as text and not via any string form:
+        # ReadAllText would silently strip an injected BOM and report a match on a
+        # file cmd.exe can no longer parse.
+        #
+        # This compared two base64 strings with -ne until it was measured. PS 5.1's
+        # -eq/-ne are case-INSENSITIVE and base64 is case-SIGNIFICANT, so that
+        # comparison called genuinely different bytes equal: 41 42 6F -> "QUJv" and
+        # 41 42 55 -> "QUJV" differ only in case, because base64 indices i and i+26
+        # are the same letter in different cases. Any single byte at an offset
+        # congruent to 2 mod 3 whose low six bits shift by exactly 26 collides that
+        # way, and 'o'/'U' and 'A'/'[' both occur in the paths interpolated above.
+        # A tampered launcher would have passed -Verify as "launcher matches".
+        # SequenceEqual removes the class rather than patching it with -cne: no
+        # encoding round-trip, so no comparison semantics to get wrong.
+        $onDisk = [System.IO.File]::ReadAllBytes($shimPath)
+        if (-not [System.Linq.Enumerable]::SequenceEqual([byte[]]$onDisk, [byte[]]$utf8NoBom.GetBytes($expected))) {
             Die "$Name launcher at $shimPath does not match what the lockfile and the tool venv at $venvScripts imply. -Verify reports this rather than repairing it; re-run bootstrap without -Verify to regenerate."
         }
         Write-Ok "$Name launcher matches $venvPython"
