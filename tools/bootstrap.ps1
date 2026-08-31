@@ -27,7 +27,12 @@ $ResolvedPath = Join-Path $ToolsDir 'resolved.json'
 
 function Write-Step($Message) { Write-Host "==> $Message" -ForegroundColor Cyan }
 function Write-Ok($Message) { Write-Host "    OK   $Message" -ForegroundColor Green }
-function Die($Message) { Write-Host "    FAIL $Message" -ForegroundColor Red; exit 1 }
+# Failures go to stderr, not to the host: Write-Host reaches an interactive
+# console but not a caller capturing stderr, which would see a bare exit 1 with
+# no reason given. Written straight to the error stream rather than via
+# Write-Error so the message stays a single line and does not acquire a
+# PowerShell diagnostic wrapper of its own.
+function Die($Message) { [Console]::Error.WriteLine("    FAIL $Message"); exit 1 }
 
 if (-not (Test-Path $LockPath)) { Die "lockfile not found: $LockPath" }
 $lock = Get-Content $LockPath -Raw | ConvertFrom-Json
@@ -56,6 +61,12 @@ function Invoke-VersionCheck($ExePath, $VersionArgs, $Expected, $Name) {
     # which 272 described bootstrap.ps1's own source, written verbatim into
     # resolved.json's version_output and reading exactly like a crash. Unwrap
     # each record to its message text; 386 clean chars, pin still matched.
+    # The save/restore below is strictly redundant: an assignment inside a
+    # function creates a function-scoped variable, so the script scope's value
+    # was never at risk and the local dies with the call. Kept deliberately.
+    # This is the one function in the file whose scoping subtleties have already
+    # produced a live defect, and trading defensive clarity for two lines here is
+    # a bad bargain.
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
@@ -63,8 +74,24 @@ function Invoke-VersionCheck($ExePath, $VersionArgs, $Expected, $Name) {
             ForEach-Object {
                 if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ }
             } | Out-String
+        # Captured immediately, still inside the try: $LASTEXITCODE is global, so
+        # the next native invocation anywhere in the script overwrites it.
+        $exit = $LASTEXITCODE
     }
     finally { $ErrorActionPreference = $previous }
+
+    # A scanner that prints its pinned version and then crashes is not a verified
+    # scanner: the match below is a substring test over merged stdout+stderr, so
+    # a Go panic or a dying interpreter after the version banner would pass it.
+    # Checked before the match, and with no per-scanner exemption - trivy, tfsec
+    # and the generated checkov.cmd each exit 0 on --version, tfsec while writing
+    # its entire banner to stderr. This also makes the function consistent with
+    # the three other $LASTEXITCODE checks in this file, which is the anomaly
+    # that flagged it: the one native call whose result is the script's actual
+    # verdict was the one left unchecked.
+    if ($exit -ne 0) {
+        Die "$Name --version exited $exit (expected 0). Output: $($raw.Trim())"
+    }
     if ($raw -notmatch [regex]::Escape($Expected)) {
         Die "$Name reports a version not matching pin '$Expected'. Raw output: $($raw.Trim())"
     }
@@ -227,7 +254,18 @@ function Install-UvTool($Name, $Entry) {
     $toolRoot = (& uv tool dir | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) { Die "uv tool dir failed" }
 
-    $venvScripts = Join-Path $toolRoot "$Name\Scripts"
+    # uv names the tool venv after the *package*, not after our lockfile key. The
+    # two coincide today only because the key `checkov` happens to equal the
+    # distribution name; for any tool whose key differed, keying off $Name would
+    # produce a confusing "not installed" on a tool that is installed. Split the
+    # version pin off the package spec instead.
+    $distName = ($Entry.package -split '==')[0]
+
+    # <uv tool dir>/<dist>/Scripts/ is a uv *internal* layout, not a documented
+    # contract, so a uv upgrade could move it. The two existence checks below are
+    # what make relying on it safe: they fail loudly and name the exact path, so a
+    # layout change is reported as itself rather than mistaken for a missing tool.
+    $venvScripts = Join-Path $toolRoot "$distName\Scripts"
     $venvPython = Join-Path $venvScripts 'python.exe'
     $venvScript = Join-Path $venvScripts $Entry.script
 
@@ -240,9 +278,15 @@ function Install-UvTool($Name, $Entry) {
         if (-not (Test-Path $venvScript)) { Die "$Name installed but script not found at $venvScript" }
     }
 
-    # Regenerated on every run, -Verify included: it is our own glue over the
-    # tool venv, not part of the install being verified, and rewriting identical
-    # bytes keeps it from drifting away from the interpreter it wraps.
+    # One source of truth for the content, one branch on mode. This refines
+    # Ruling F25 rather than overturning it: F25 wanted the launcher never to
+    # drift from the interpreter it wraps, and rewriting it blindly does not
+    # achieve that - it *conceals* drift. The one tampering -Verify could
+    # plausibly catch, a launcher repointed at a different interpreter, which
+    # would quietly destroy the isolation the lockfile claims, was being
+    # overwritten before anyone could notice it; and a mode documented as
+    # "re-assert an existing install" was writing to disk. So build the expected
+    # content once, then write it (install) or compare it (verify).
     $shimPath = Join-Path $BinDir $Entry.exe
     $body = @(
         '@echo off',
@@ -251,8 +295,26 @@ function Install-UvTool($Name, $Entry) {
         'exit /b %ERRORLEVEL%'
     ) -join "`r`n"
     # CRLF and no BOM: cmd.exe mis-parses a batch file that opens with a BOM.
-    [System.IO.File]::WriteAllText($shimPath, "$body`r`n", (New-Object System.Text.UTF8Encoding $false))
-    Write-Ok "$Name launcher pinned to $venvPython"
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    $expected = "$body`r`n"
+
+    if ($Verify) {
+        if (-not (Test-Path $shimPath)) {
+            Die "$Name launcher missing at $shimPath (run bootstrap without -Verify)"
+        }
+        # Compared as bytes, not as text: ReadAllText would silently strip an
+        # injected BOM and report a match on a file cmd.exe can no longer parse,
+        # and would normalise nothing else that matters here either.
+        $onDisk = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes($shimPath))
+        if ($onDisk -ne [System.Convert]::ToBase64String($utf8NoBom.GetBytes($expected))) {
+            Die "$Name launcher at $shimPath does not match what the lockfile and the tool venv at $venvScripts imply. -Verify reports this rather than repairing it; re-run bootstrap without -Verify to regenerate."
+        }
+        Write-Ok "$Name launcher matches $venvPython"
+    }
+    else {
+        [System.IO.File]::WriteAllText($shimPath, $expected, $utf8NoBom)
+        Write-Ok "$Name launcher pinned to $venvPython"
+    }
 
     $raw = Invoke-VersionCheck $shimPath $Entry.version_args $Entry.version $Name
     return [ordered]@{ exe = (Resolve-Path $shimPath).Path; version = $Entry.version; version_output = $raw }

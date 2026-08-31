@@ -45,6 +45,12 @@ EXPECTED_EXE_SHA256 = {
     "tfsec": "c177de9da7f75965fdd7b7785ad7d668dfec36b28e6f6b5d62c84a4dfa6374b5",
 }
 
+# The markers Windows PowerShell 5.1 stamps onto a native command's stderr when it
+# wraps it as an ErrorRecord and `Out-String` renders it. A scanner's own
+# `--version` output never contains any of them; a rendered diagnostic always
+# contains at least one.
+PS_DIAGNOSTIC_MARKERS = ("NativeCommandError", "FullyQualifiedErrorId", "CategoryInfo")
+
 
 def _lock() -> dict[str, Any]:
     data: dict[str, Any] = json.loads(LOCK.read_text(encoding="utf-8"))
@@ -119,9 +125,91 @@ def test_platform_matrix_is_data_not_code() -> None:
 
 
 def test_kubernetes_has_at_least_two_applicable_scanners() -> None:
+    """Not redundant with the test above, despite being implied by it today.
+
+    The two encode different propositions. `test_platform_matrix_is_data_not_code`
+    asserts the current *fact* - exactly which scanners cover Kubernetes - and
+    would legitimately be updated the day a fourth scanner is added. This one
+    asserts the *requirement*: Kubernetes coverage must never drop below two
+    scanners. Updating the exact-match test cannot silently remove that floor.
+    """
     scanners = _lock()["scanners"]
     k8s = [n for n, e in scanners.items() if "kubernetes" in e["platforms"]]
     assert len(k8s) >= 2, f"K8s coverage requires Checkov + Trivy, got {k8s}"
+
+
+def test_checkov_entry_declares_the_uv_tool_launcher_contract() -> None:
+    """`Install-UvTool` hard-depends on three fields that nothing asserted.
+
+    It reads `channel` to pick the branch, `script` to locate the file inside the
+    tool venv's `Scripts/` dir, and `exe` to name the launcher it generates into
+    `tools/bin/`. `Set-StrictMode -Version Latest` makes a dropped field throw at
+    runtime rather than pass silently, but it throws on the next machine to
+    bootstrap, not here where it belongs.
+
+    Unconditional: reads the committed lockfile, so it also runs on a fresh clone.
+    """
+    checkov = _lock()["scanners"]["checkov"]
+    assert checkov["channel"] == "uv-tool", (
+        "checkov must stay an isolated uv tool and never become a project "
+        "dependency (PLAN.md Q3)"
+    )
+    for field in ("script", "exe"):
+        assert field in checkov, (
+            f"checkov entry has no {field!r}; Install-UvTool reads it and would "
+            "fail at bootstrap time on the next machine instead of here"
+        )
+    assert checkov["script"], "checkov script (the file in the tool venv's Scripts/) is empty"
+    assert checkov["exe"], "checkov exe (the generated launcher's name) is empty"
+
+
+def _skip_without_resolved() -> None:
+    if not RESOLVED.exists():
+        pytest.skip("tools/resolved.json does not exist yet (written by tools/bootstrap.ps1)")
+
+
+def test_resolved_version_output_is_the_scanners_own_words() -> None:
+    """Regression test for the ErrorRecord pollution in `Invoke-VersionCheck`.
+
+    PowerShell 5.1 wraps a native command's stderr redirected into the pipeline as
+    `ErrorRecord`s, and `Out-String` renders those as their full formatted
+    diagnostic - the source file and line, the caret line, `CategoryInfo`,
+    `FullyQualifiedErrorId`. tfsec writes its whole banner to stderr on
+    `--version`, so before the unwrap in `Invoke-VersionCheck` its
+    `version_output` was 632 characters of which 272 described `bootstrap.ps1`'s
+    own source, written verbatim into the file Task 7 copies into the
+    dissertation's provenance block and reading exactly like a crash.
+
+    No pre-existing assertion could tell fixed from broken: the pin `1.28.14`
+    appears in the polluted text just as happily as in the clean banner. So assert
+    both halves - the pin is present, *and* the output is free of the markers only
+    a rendered PowerShell diagnostic carries.
+
+    Inherits the skip-on-fresh-clone weakness of the test below, because
+    `resolved.json` is generated and gitignored; it guards a bootstrapped host.
+    """
+    _skip_without_resolved()
+    resolved: dict[str, Any] = json.loads(RESOLVED.read_text(encoding="utf-8"))
+    assert set(resolved) == set(EXPECTED), f"resolved.json scanners {sorted(resolved)}"
+
+    for name, entry in resolved.items():
+        output: str = entry["version_output"]
+        assert EXPECTED[name] in output, (
+            f"{name} version_output does not contain its pinned version "
+            f"{EXPECTED[name]!r}: {output!r}"
+        )
+        for marker in PS_DIAGNOSTIC_MARKERS:
+            assert marker not in output, (
+                f"{name} version_output contains the PowerShell diagnostic marker "
+                f"{marker!r}, so bootstrap.ps1 captured a rendered ErrorRecord "
+                f"instead of what the scanner said: {output!r}"
+            )
+        # A rendered diagnostic quotes the source file and line it came from, so
+        # it names this repository. No scanner's --version output ever does.
+        assert str(REPO_ROOT).lower() not in output.lower(), (
+            f"{name} version_output quotes this repository's own path, which only "
+            f"a PowerShell diagnostic does: {output!r}"
+        )
 
 
 def test_resolved_json_is_bom_free_utf8_with_absolute_paths() -> None:
@@ -133,10 +221,10 @@ def test_resolved_json_is_bom_free_utf8_with_absolute_paths() -> None:
     tolerates one - so a BOM here would pass every PowerShell-side check and
     only surface five tasks later as `json.loads` raising "Unexpected UTF-8
     BOM", pointing at a file this task wrote. Assert the Python-side contract
-    where it is produced: BOM-free UTF-8, an absolute `exe`, a real `version`.
+    where it is produced: BOM-free UTF-8, an absolute `exe` that exists, and a
+    `version` equal to the pin rather than merely non-empty.
     """
-    if not RESOLVED.exists():
-        pytest.skip("tools/resolved.json does not exist yet (written by tools/bootstrap.ps1)")
+    _skip_without_resolved()
 
     assert not RESOLVED.read_bytes().startswith(UTF8_BOM), (
         "tools/resolved.json starts with a UTF-8 BOM; write it with "
@@ -149,5 +237,13 @@ def test_resolved_json_is_bom_free_utf8_with_absolute_paths() -> None:
     # test_all_three_scanners_pinned_to_exact_versions already pins to EXPECTED.
     assert set(resolved) == set(EXPECTED), f"resolved.json scanners {sorted(resolved)}"
     for name, entry in resolved.items():
-        assert Path(entry["exe"]).is_absolute(), f"{name} exe is not an absolute path"
-        assert entry["version"], f"{name} version is empty"
+        exe = Path(entry["exe"])
+        assert exe.is_absolute(), f"{name} exe is not an absolute path"
+        # is_absolute() alone is satisfied by an absolute path to a deleted
+        # binary, which does not honour the "one absolute, directly invocable
+        # path per scanner" contract Tasks 7 and 8 depend on.
+        assert exe.exists(), f"{name} exe {exe} does not exist"
+        assert entry["version"] == EXPECTED[name], (
+            f"{name} version is {entry['version']!r}, expected the pin "
+            f"{EXPECTED[name]!r}; a truthiness check would have passed 'wrong'"
+        )
