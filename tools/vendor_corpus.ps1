@@ -184,15 +184,47 @@ foreach ($name in $sourceNames) {
     }
     Write-Ok "$name cache clone is clean at the pin"
 
-    # Resolved and checked BEFORE $dest is removed. The natural writing order is
-    # clear-the-destination then read-the-source, and that is what this loop did
-    # first - but then a lockfile naming a subtree that does not exist upstream
-    # deleted the previously good vendored tree and only afterwards discovered it
-    # had nothing to put back, leaving an empty corpus/vendor/<name> that a later
-    # `git add corpus/` would commit as provenance. Validate, then destroy.
+    # Every guard in this loop runs BEFORE $dest is cleared. The natural writing
+    # order is clear-the-destination then read-the-source, and that is what this
+    # loop did first - but any Die after the clear leaves an empty or partial
+    # corpus/vendor/<name> that a later `git add corpus/` would commit as
+    # provenance. Both halves were measured against the earlier ordering: a
+    # lockfile naming a subtree upstream does not have left the destination at 0
+    # files, and a license search that found nothing left it at 17 files with
+    # `D corpus/vendor/terragoat/LICENSE` in git status - a vendored tree stripped
+    # of the license text this repository redistributes it under. Validate, then
+    # destroy.
     $subtreeSrc = Join-Path $clone ($src.subtree -replace '/', '\')
     if (-not (Test-Path $subtreeSrc)) {
         Die "$name subtree '$($src.subtree)' not found upstream at $subtreeSrc"
+    }
+
+    # Counted over the SOURCE subtree. This check first counted the copy, and had
+    # to be placed before the license was copied into $dest or it could never
+    # reach 0 - measured: an empty upstream subtree still left $dest holding the
+    # copied LICENSE, so the guard read like a live one while being unreachable.
+    # Counting the source refuses the same input one step earlier and leaves the
+    # good tree standing. A post-copy count on top of this one would be the dead
+    # guard instead: Copy-Item runs under $ErrorActionPreference = 'Stop' and
+    # cannot half-succeed silently, so it could only fire in a state this check
+    # has already refused.
+    $subtreeFiles = @(Get-ChildItem -LiteralPath $subtreeSrc -Recurse -File)
+    if ($subtreeFiles.Count -eq 0) {
+        Die "$name subtree '$($src.subtree)' holds no files upstream at $subtreeSrc, so there is nothing to vendor"
+    }
+
+    # Resolved before the clear too, and for the same reason. Enumerated rather
+    # than probed with Test-Path so the name recorded is the one upstream actually
+    # uses. -eq is case-insensitive here and that is deliberate: the match should
+    # be lax, the recorded name exact.
+    $rootFiles = @(Get-ChildItem -LiteralPath $clone -File)
+    $licenseFile = $null
+    foreach ($candidate in $LicenseCandidates) {
+        $licenseFile = $rootFiles | Where-Object { $_.Name -eq $candidate } | Select-Object -First 1
+        if ($null -ne $licenseFile) { break }
+    }
+    if ($null -eq $licenseFile) {
+        Die "no license file found upstream for $name (looked for: $($LicenseCandidates -join ', ')). This repository redistributes $($src.license) code; vendoring a tree without its license text is a licensing failure, not a cosmetic gap."
     }
 
     if (Test-Path $dest) { Remove-Item -LiteralPath $dest -Recurse -Force }
@@ -205,30 +237,6 @@ foreach ($name in $sourceNames) {
     # does, which would nest the subtree one level deeper on every re-run.
     Copy-Item -LiteralPath $subtreeSrc -Destination $subtreeDest -Recurse -Force
 
-    # Counted over $subtreeDest and placed here, before the license file is copied
-    # into $dest. The obvious spot is beside the totals further down, and that is
-    # where this check first lived - but a count taken over $dest after the license
-    # copy can never reach 0, so the guard was dead code that read like a live one.
-    # Constructed and measured: an upstream subtree holding no files at any depth
-    # still left $dest with the copied LICENSE in it. The message claims something
-    # about the subtree, so the count has to be the subtree's.
-    $subtreeFiles = @(Get-ChildItem -LiteralPath $subtreeDest -Recurse -File)
-    if ($subtreeFiles.Count -eq 0) {
-        Die "$name vendored 0 files from subtree '$($src.subtree)'; the copy produced an empty tree"
-    }
-
-    # Enumerated rather than probed with Test-Path so the name recorded is the one
-    # upstream actually uses. -eq is case-insensitive here and that is deliberate:
-    # the match should be lax, the recorded name exact.
-    $rootFiles = @(Get-ChildItem -LiteralPath $clone -File)
-    $licenseFile = $null
-    foreach ($candidate in $LicenseCandidates) {
-        $licenseFile = $rootFiles | Where-Object { $_.Name -eq $candidate } | Select-Object -First 1
-        if ($null -ne $licenseFile) { break }
-    }
-    if ($null -eq $licenseFile) {
-        Die "no license file found upstream for $name (looked for: $($LicenseCandidates -join ', ')). This repository redistributes $($src.license) code; vendoring a tree without its license text is a licensing failure, not a cosmetic gap."
-    }
     Copy-Item -LiteralPath $licenseFile.FullName -Destination (Join-Path $dest $licenseFile.Name) -Force
     Write-Ok "$name license text vendored as $($licenseFile.Name)"
 
