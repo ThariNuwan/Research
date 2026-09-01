@@ -432,11 +432,11 @@ def test_recorded_utc_is_not_earlier_than_the_events_it_records() -> None:
 def test_license_candidates_stay_in_step_with_the_vendor_script() -> None:
     """Content: the duplicated list is tied to its original, not just commented.
 
-    `LICENSE_CANDIDATES` here and `$LicenseCandidates` at
-    `tools/vendor_corpus.ps1:31` are the same five names in the same order, and the
-    order matters - the script takes the first match. Adding `LICENCE` to the
-    script would otherwise leave this file checking a stale list and reporting
-    green.
+    `LICENSE_CANDIDATES` here and `$LicenseCandidates` at `tools/vendor_corpus.ps1:36`
+    (a reader's pointer; the assertion finds it by regex) are the same five names in
+    the same order, and the order matters - the script takes the first match. Adding
+    `LICENCE` to the script would otherwise leave this file checking a stale list and
+    reporting green.
     """
     script = VENDOR_SCRIPT.read_text(encoding="utf-8")
     match = PS_LICENSE_CANDIDATES_RE.search(script)
