@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
-  "recorded_utc": "2026-08-24",
+  "recorded_utc": "2026-09-01",
   "note": "Corpus v0: vendored public repos only. Contrastive pairs and scenario configs are authored in S2, after the taxonomy exists.",
+  "attribution": "How a consumer turns scan output into per-case findings. `scan_root` is the directory a scanner is pointed at; `path` is the file or directory the case is about. Each distinct `scan_root` is scanned exactly once per scanner, never once per case: the four Terraform cases share corpus/vendor/terragoat/terraform/aws, so scanning per case would report the same finding set four times over and inflate both the deduplication count and every per-category total. A finding is attributed to the case whose `path` the scanner's reported file matches - equal to that path, or under it by prefix when the path is a directory. A finding under a `scan_root` that matches no case `path` - that root holds 14 .tf files and only four are named by a case - takes the explicit state `unattributed`: it is counted and reported as such, never dropped and never folded into a default category. `category` is the label of the case a finding was attributed to, not a partition of resources: ec2.tf alone declares compute, networking and storage resources, so a single file's findings can belong to a case labelled with only one of the three.",
   "sources": {
     "terragoat": {
       "url": "https://github.com/bridgecrewio/terragoat",
@@ -28,34 +29,39 @@
       "id": "tg-aws-s3",
       "platform": "terraform",
       "category": "storage",
-      "path": "corpus/vendor/terragoat/terraform/aws/s3.tf"
+      "path": "corpus/vendor/terragoat/terraform/aws/s3.tf",
+      "scan_root": "corpus/vendor/terragoat/terraform/aws"
     },
     {
       "id": "tg-aws-networking",
       "platform": "terraform",
       "category": "networking",
       "path": "corpus/vendor/terragoat/terraform/aws/elb.tf",
+      "scan_root": "corpus/vendor/terragoat/terraform/aws",
       "note": "Reconciled against upstream at this pin: there is no vpc.tf. elb.tf is the only networking-only file (aws_elb, plain HTTP listener on lb_port 80). The rest of the networking footprint is split across ec2.tf (aws_vpc, aws_subnet x2, aws_internet_gateway, aws_route_table, aws_route, aws_route_table_association x2, aws_network_interface, aws_security_group, aws_flow_log) and db-app.tf (aws_security_group, aws_security_group_rule x2)."
     },
     {
       "id": "tg-aws-iam",
       "platform": "terraform",
       "category": "iam",
-      "path": "corpus/vendor/terragoat/terraform/aws/iam.tf"
+      "path": "corpus/vendor/terragoat/terraform/aws/iam.tf",
+      "scan_root": "corpus/vendor/terragoat/terraform/aws"
     },
     {
       "id": "tg-aws-compute",
       "platform": "terraform",
       "category": "compute",
       "path": "corpus/vendor/terragoat/terraform/aws/ec2.tf",
-      "note": "aws_instance, aws_ebs_volume, aws_ebs_snapshot, aws_volume_attachment. Upstream co-locates the VPC, subnet, route-table and security-group resources in this same file instead of a separate vpc.tf, so this file also carries most of the networking footprint."
+      "scan_root": "corpus/vendor/terragoat/terraform/aws",
+      "note": "aws_instance, aws_ebs_volume, aws_ebs_snapshot, aws_volume_attachment. Upstream co-locates the VPC, subnet, route-table and security-group resources in this same file instead of a separate vpc.tf, and it also declares aws_s3_bucket 'flowbucket' as the flow-log target - so this file's 16 resource blocks span three of the five categories (compute, networking, storage). That is the concrete case for the top-level `attribution` rule's last clause: a category is a case label, not a partition of resources."
     },
     {
       "id": "kg-scenarios",
       "platform": "kubernetes",
       "category": "containers",
       "path": "corpus/vendor/kubernetes-goat/scenarios",
-      "note": "A directory, not a file: 24 files across 15 scenario directories. 16 are plain Kubernetes manifests (Deployment, Job, ClusterRole/RoleBinding, Kyverno policy); the other 8 are the metadata-db Helm chart (Chart.yaml, values.yaml, templates/) whose Go template syntax a plain YAML parser cannot read. Helm is in conceptual scope but not the evaluation focus."
+      "scan_root": "corpus/vendor/kubernetes-goat/scenarios",
+      "note": "A directory, not a file: 24 files across 15 scenario directories. 16 are plain Kubernetes manifests (Deployment, Job, ClusterRole/RoleBinding, Kyverno policy); the other 8 are the metadata-db Helm chart. Measured across those 8 rather than assumed: Chart.yaml and values.yaml carry no Go template syntax and parse as plain YAML; 4 are templated YAML manifests a plain YAML parser cannot read (templates/deployment.yaml, templates/ingress.yaml, templates/service.yaml, templates/tests/test-connection.yaml); 2 are not YAML at all (templates/NOTES.txt, templates/_helpers.tpl). A skip list covering all 8 would silently drop two parseable files including the chart metadata. Helm is in conceptual scope but not the evaluation focus."
     }
   ]
 }
