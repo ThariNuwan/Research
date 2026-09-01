@@ -38,6 +38,34 @@ $LicenseCandidates = @('LICENSE', 'LICENSE.md', 'LICENSE.txt', 'COPYING', 'COPYI
 # recoverable and the guard is one line.
 $SourceNameRe = '^[a-z0-9][a-z0-9-]*$'
 
+# The pin's shape, checked before the pin is used for anything at all - including
+# the progress line that takes Substring(0, 12) of it. A short or empty commit
+# there throws a raw ArgumentOutOfRangeException, which is precisely the
+# "RuntimeException instead of the reason" failure the comment at :63-72 argues
+# against. Lower-case hex only: git prints lower case, and an upper-case pin that
+# passed here would fail the -cne comparison after checkout with a message about
+# HEAD rather than about the lockfile.
+$CommitRe = '^[0-9a-f]{40}$'
+
+# `subtree` is joined into the destination path, created with New-Item -Force and
+# written by Copy-Item, so it gets the same one-line guard `name` gets. A segment
+# must start alphanumeric, which rejects '..' and any leading-dot segment; no
+# backslash, no leading or trailing slash, and no drive letter (the colon is
+# outside the class). Mixed case is allowed because upstream directory names are
+# not ours to constrain. This is a create/write hazard rather than a delete one -
+# nothing under a subtree path is deleted - but §A5's reasoning applies: the
+# lockfile is ours, the risk is low, and the guard is one line.
+$SubtreeRe = '^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$'
+
+# Every field this script reads out of a source entry. Checked as a set before any
+# of them is dereferenced: under Set-StrictMode -Version Latest a missing property
+# throws PropertyNotFoundStrict, which names a PowerShell property instead of
+# naming the lockfile field that is absent. `tests/test_corpus_lock.py` asserts the
+# same seven names so CI catches it first, but the script run standalone should
+# still say what is wrong. scope_note is optional and deliberately not listed.
+$RequiredSourceFields = @('url', 'commit', 'ref', 'license', 'retrieved_utc',
+    'pin_verified_utc', 'subtree')
+
 function Write-Step($Message) { Write-Host "==> $Message" -ForegroundColor Cyan }
 function Write-Ok($Message) { Write-Host "    OK   $Message" -ForegroundColor Green }
 # Failures go to stderr, not to the host: Write-Host reaches an interactive
@@ -100,6 +128,21 @@ foreach ($name in $sourceNames) {
     }
 
     $src = $lock.sources.$name
+    # Presence before shape, shape before use. -cnotcontains for the same reason
+    # :66 uses it: -contains is case-insensitive, so a lockfile carrying 'Commit'
+    # would satisfy the presence check and then throw on $src.commit.
+    $srcFields = @($src.PSObject.Properties | ForEach-Object { $_.Name })
+    $missing = @($RequiredSourceFields | Where-Object { $srcFields -cnotcontains $_ })
+    if ($missing.Count -gt 0) {
+        Die "source '$name' is missing lockfile field(s): $($missing -join ', '). This script reads all of $($RequiredSourceFields -join ', ')."
+    }
+    if ($src.commit -cnotmatch $CommitRe) {
+        Die "source '$name' pin '$($src.commit)' is not a full 40-character lower-case commit SHA (expected $CommitRe). Transcribe the pin from upstream; never recompute it from what is on disk."
+    }
+    if ($src.subtree -cnotmatch $SubtreeRe) {
+        Die "source '$name' subtree '$($src.subtree)' is not a safe relative POSIX path (expected $SubtreeRe). Refusing to build a destination path from it: that path is created and written to under corpus\vendor."
+    }
+
     # A normal clone, not a bare one, despite the .git suffix on the name: the
     # working tree is what the subtree is copied from and what the cleanliness
     # check below inspects. --bare would leave nothing to copy.
@@ -152,9 +195,26 @@ foreach ($name in $sourceNames) {
     # still dies at the checkout - but a failed fetch against a stale cache that
     # happens to contain the pin succeeds silently, and the network failure is
     # never learned.
-    & git -C $clone fetch --quiet origin
-    $fetchExit = $LASTEXITCODE
-    if ($fetchExit -ne 0) { Die "git fetch origin failed for $name (exit $fetchExit)" }
+    #
+    # The fetch is skipped when the pin is already an object in the cache clone,
+    # which is what makes a re-vendor possible offline: a pinned corpus that can
+    # only be reproduced with a working network is a weaker reproducibility claim
+    # than one that cannot. This is not the loose "trust the cache" behaviour the
+    # capture above guards against - the probe asks for this exact commit, and the
+    # cleanliness and HEAD checks below still run either way. `^{commit}` makes it
+    # a commit lookup rather than any-object lookup, and --quiet keeps a missing
+    # object silent (exit 1, no stderr) so an absent pin reads as a decision to
+    # fetch rather than as noise.
+    & git -C $clone rev-parse --verify --quiet "$($src.commit)^{commit}" | Out-Null
+    $pinPresentExit = $LASTEXITCODE
+    if ($pinPresentExit -eq 0) {
+        Write-Ok "$name pin is already in the cache clone; skipping fetch (offline re-vendor)"
+    }
+    else {
+        & git -C $clone fetch --quiet origin
+        $fetchExit = $LASTEXITCODE
+        if ($fetchExit -ne 0) { Die "git fetch origin failed for $name (exit $fetchExit)" }
+    }
 
     & git -C $clone checkout --quiet $src.commit
     $checkoutExit = $LASTEXITCODE
@@ -258,7 +318,11 @@ foreach ($name in $sourceNames) {
     $lines.Add("- Retrieved (vendored): $($src.retrieved_utc)")
     $lines.Add("- Vendored subtree: ``$($src.subtree)``")
     $lines.Add("- Vendored tree: ``corpus/vendor/$name/`` ($fileCount files, $byteCount bytes, license text included)")
-    if ($src.PSObject.Properties.Name -contains 'scope_note') {
+    # -ccontains, not -contains: :66 and :126 both use the case-sensitive operator
+    # for this same kind of lookup, and this was the one place the file did not.
+    # The key is ours and lower-case, so nothing changes today; consistency here is
+    # what keeps the convention readable as a convention.
+    if ($src.PSObject.Properties.Name -ccontains 'scope_note') {
         $lines.Add("- Scope: $($src.scope_note)")
     }
     $lines.Add('')
