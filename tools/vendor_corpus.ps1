@@ -11,6 +11,11 @@
     Verifies rather than trusts: the checked-out HEAD must equal the pin, the
     cache clone must be clean before anything is copied, and an upstream tree
     with no license text is a hard failure rather than a warning.
+
+    Writes in two phases. Each subtree is copied into corpus/vendor/<name>.new
+    first and swapped into place with renames only after every source has been
+    staged, so no failure - a bad lockfile, a locked file, a full disk, Ctrl-C -
+    can leave a vendored tree half-replaced.
 #>
 [CmdletBinding()]
 param()
@@ -41,7 +46,7 @@ $SourceNameRe = '^[a-z0-9][a-z0-9-]*$'
 # The pin's shape, checked before the pin is used for anything at all - including
 # the progress line that takes Substring(0, 12) of it. A short or empty commit
 # there throws a raw ArgumentOutOfRangeException, which is precisely the
-# "RuntimeException instead of the reason" failure the comment at :63-72 argues
+# "RuntimeException instead of the reason" failure the comment at :103-112 argues
 # against. Lower-case hex only: git prints lower case, and an upper-case pin that
 # passed here would fail the -cne comparison after checkout with a message about
 # HEAD rather than about the lockfile.
@@ -72,6 +77,21 @@ function Write-Ok($Message) { Write-Host "    OK   $Message" -ForegroundColor Gr
 # console but not a caller capturing stderr, which would see a bare exit 1 with
 # no reason given. Mirrors tools/bootstrap.ps1:30-35.
 function Die($Message) { [Console]::Error.WriteLine("    FAIL $Message"); exit 1 }
+# A condition the operator must see but that does not invalidate the run. stderr for
+# the same reason Die uses it: a caller capturing output should get the warning.
+function Write-Warn($Message) { [Console]::Error.WriteLine("    WARN $Message") }
+
+# A .NET method that throws inside try/catch arrives wrapped in a
+# MethodInvocationException whose own Message reads 'Exception calling "Move" with
+# "2" argument(s): ...'. The inner exception carries the sentence that names the
+# actual problem ('Access to the path ... is denied'), which is the one worth putting
+# in a failure message.
+function Get-FailureMessage($ErrorRecord) {
+    if ($null -ne $ErrorRecord.Exception.InnerException) {
+        return $ErrorRecord.Exception.InnerException.Message
+    }
+    return $ErrorRecord.Exception.Message
+}
 
 if (-not (Test-Path $LockPath)) { Die "lockfile not found: $LockPath" }
 # ReadAllText, not a bare Get-Content: PS 5.1 decodes a BOM-less file as ANSI, so
@@ -119,6 +139,15 @@ $lines.Add('index; for both pins below every upstream blob is already LF, so tha
 $lines.Add('normalization is a no-op and the committed blob ids equal the upstream ones.')
 $lines.Add('')
 
+# The run is two phases. Phase 1 clones, verifies and copies each subtree into a
+# staging sibling `corpus\vendor\<name>.new`, touching no vendored tree. Phase 2
+# swaps each staged tree into place with renames and then writes SOURCES.md. This
+# is what a failure between "the old tree is gone" and "the new tree is complete"
+# used to cost: a locked file or a full disk during the copy left
+# corpus/vendor/<name> empty or subtree-only-without-LICENSE, and a later
+# `git add corpus/` would commit that as provenance.
+$staged = New-Object System.Collections.Generic.List[object]
+
 foreach ($name in $sourceNames) {
     # -cnotmatch, not -notmatch: PS 5.1's -match/-notmatch are case-INSENSITIVE,
     # so 'TerraGoat' satisfies '^[a-z0-9][a-z0-9-]*$' and the guard would pass a
@@ -129,7 +158,7 @@ foreach ($name in $sourceNames) {
 
     $src = $lock.sources.$name
     # Presence before shape, shape before use. -cnotcontains for the same reason
-    # :66 uses it: -contains is case-insensitive, so a lockfile carrying 'Commit'
+    # :114 uses it: -contains is case-insensitive, so a lockfile carrying 'Commit'
     # would satisfy the presence check and then throw on $src.commit.
     $srcFields = @($src.PSObject.Properties | ForEach-Object { $_.Name })
     $missing = @($RequiredSourceFields | Where-Object { $srcFields -cnotcontains $_ })
@@ -244,36 +273,37 @@ foreach ($name in $sourceNames) {
     }
     Write-Ok "$name cache clone is clean at the pin"
 
-    # Every guard in this loop runs BEFORE $dest is cleared. The natural writing
-    # order is clear-the-destination then read-the-source, and that is what this
-    # loop did first - but any Die after the clear leaves an empty or partial
-    # corpus/vendor/<name> that a later `git add corpus/` would commit as
-    # provenance. Both halves were measured against the earlier ordering: a
-    # lockfile naming a subtree upstream does not have left the destination at 0
+    # Every guard in this loop runs before anything is written, and since the write
+    # now goes to a staging sibling, nothing in this loop can leave the vendored
+    # tree in a state it was not already in. The guards are still ordered
+    # validate-then-write rather than relying on the staging alone: an earlier
+    # ordering cleared the destination first, and both halves of that were measured
+    # - a lockfile naming a subtree upstream does not have left the destination at 0
     # files, and a license search that found nothing left it at 17 files with
-    # `D corpus/vendor/terragoat/LICENSE` in git status - a vendored tree stripped
-    # of the license text this repository redistributes it under. Validate, then
-    # destroy.
+    # `D corpus/vendor/terragoat/LICENSE` in git status, a vendored tree stripped of
+    # the license text this repository redistributes it under. Staging closes the
+    # I/O half of that window; the ordering closes the input half, and neither
+    # substitutes for the other.
     $subtreeSrc = Join-Path $clone ($src.subtree -replace '/', '\')
     if (-not (Test-Path $subtreeSrc)) {
         Die "$name subtree '$($src.subtree)' not found upstream at $subtreeSrc"
     }
 
     # Counted over the SOURCE subtree. This check first counted the copy, and had
-    # to be placed before the license was copied into $dest or it could never
-    # reach 0 - measured: an empty upstream subtree still left $dest holding the
-    # copied LICENSE, so the guard read like a live one while being unreachable.
-    # Counting the source refuses the same input one step earlier and leaves the
-    # good tree standing. A post-copy count on top of this one would be the dead
-    # guard instead: Copy-Item runs under $ErrorActionPreference = 'Stop' and
-    # cannot half-succeed silently, so it could only fire in a state this check
+    # to be placed before the license was copied into the destination or it could
+    # never reach 0 - measured: an empty upstream subtree still left the destination
+    # holding the copied LICENSE, so the guard read like a live one while being
+    # unreachable. Counting the source refuses the same input one step earlier and
+    # leaves the good tree standing. A post-copy count on top of this one would be
+    # the dead guard instead: Copy-Item runs under $ErrorActionPreference = 'Stop'
+    # and cannot half-succeed silently, so it could only fire in a state this check
     # has already refused.
     $subtreeFiles = @(Get-ChildItem -LiteralPath $subtreeSrc -Recurse -File)
     if ($subtreeFiles.Count -eq 0) {
         Die "$name subtree '$($src.subtree)' holds no files upstream at $subtreeSrc, so there is nothing to vendor"
     }
 
-    # Resolved before the clear too, and for the same reason. Enumerated rather
+    # Resolved before any write too, and for the same reason. Enumerated rather
     # than probed with Test-Path so the name recorded is the one upstream actually
     # uses. -eq is case-insensitive here and that is deliberate: the match should
     # be lax, the recorded name exact.
@@ -287,38 +317,150 @@ foreach ($name in $sourceNames) {
         Die "no license file found upstream for $name (looked for: $($LicenseCandidates -join ', ')). This repository redistributes $($src.license) code; vendoring a tree without its license text is a licensing failure, not a cosmetic gap."
     }
 
-    if (Test-Path $dest) { Remove-Item -LiteralPath $dest -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    # --- phase 1 ends here: stage the new tree beside the old one, do not touch
+    # the old one. Everything above validated the source; everything below writes
+    # only to corpus\vendor\<name>.new, so no failure in this loop - a Die, a
+    # locked file, a full disk, Ctrl-C - can leave corpus\vendor\<name> in a state
+    # it was not already in. $SourceNameRe forbids '.', so '<name>.new' and
+    # '<name>.old' can never collide with another source's directory.
+    $stage = Join-Path $VendorDir "$name.new"
+    $backup = Join-Path $VendorDir "$name.old"
 
-    $subtreeDest = Join-Path $dest ($src.subtree -replace '/', '\')
+    # A leftover .old means an earlier run stopped between the two renames in phase
+    # 2, or could not delete the backup after a successful swap. The two cases are
+    # distinguishable and only one of them is dangerous: if the vendored tree is
+    # missing, the .old copy may be the only one there is and this script will not
+    # touch it. If the vendored tree is present, the .old is a stale backup and is
+    # removed here - before anything is written, so a removal failure costs nothing.
+    # A leftover .new is always reproducible from upstream, so it goes without
+    # comment.
+    if (Test-Path $backup) {
+        if (-not (Test-Path $dest)) {
+            Die "found a leftover $backup and no vendored tree at $dest. That backup may be the only copy of the vendored $name tree, so this script will not delete or overwrite it. Rename it to corpus/vendor/$name (or restore the committed bytes with git checkout -- corpus) and re-run."
+        }
+        Write-Warn "removing a stale $backup left by an earlier run; corpus/vendor/$name is present, so this copy is redundant"
+        try {
+            Remove-Item -LiteralPath $backup -Recurse -Force
+        }
+        catch {
+            Die "could not remove the stale backup $backup ($(Get-FailureMessage $_)). Nothing has been written yet. Remove it by hand - it would otherwise sit inside corpus/vendor/ and be picked up by a later git add corpus/."
+        }
+    }
+    if (Test-Path $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+    $subtreeDest = Join-Path $stage ($src.subtree -replace '/', '\')
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $subtreeDest) | Out-Null
     # $subtreeDest deliberately does not exist yet: Copy-Item -Recurse copies the
     # source directory *as* a destination that does not exist, but *into* one that
     # does, which would nest the subtree one level deeper on every re-run.
     Copy-Item -LiteralPath $subtreeSrc -Destination $subtreeDest -Recurse -Force
 
-    Copy-Item -LiteralPath $licenseFile.FullName -Destination (Join-Path $dest $licenseFile.Name) -Force
-    Write-Ok "$name license text vendored as $($licenseFile.Name)"
+    Copy-Item -LiteralPath $licenseFile.FullName -Destination (Join-Path $stage $licenseFile.Name) -Force
+    Write-Ok "$name staged at $stage with its $($licenseFile.Name)"
+
+    $staged.Add([pscustomobject]@{
+            Name    = $name
+            Src     = $src
+            Dest    = $dest
+            Stage   = $stage
+            Backup  = $backup
+            License = $licenseFile.Name
+        })
+}
+
+# Phase 2. Nothing above this line modified corpus\vendor\<name>; nothing below it
+# reads upstream. Each source is swapped in with two directory renames rather than a
+# clear followed by a copy, so the destination holds the old bytes or the new bytes
+# and never a mixture.
+#
+# [System.IO.Directory]::Move, not Move-Item, and this is the whole point of the
+# restructure rather than a style preference. Measured on this host, renaming a tree
+# that holds one file with an exclusive handle (FileShare None) three levels down:
+#
+#   Remove-Item -Recurse -Force  throws, and DELETES the rest of the tree (1 of 3
+#                                files left) - the pre-change failure mode
+#   Move-Item                    throws, and SPLITS the tree (1 file left at the
+#                                source, 2 already at the destination)
+#   [IO.Directory]::Move         throws, source complete at 3 files, destination
+#                                not created at all
+#
+# Move-Item recurses per entry and stops where it fails, so swapping with it would
+# have reproduced the same partial-tree defect one level up. Directory.Move is a
+# single rename: it either happens or it does not. Both paths are siblings in
+# corpus\vendor, so this is always a same-volume rename and never a copy.
+#
+# SOURCES.md is still written once, after every swap. That is deliberate and it is
+# also what makes a mid-loop Die safe now: a failure in phase 1 leaves both the
+# vendored trees and their attribution file exactly as the previous successful run
+# left them, so the census in SOURCES.md still describes what is on disk. Under the
+# old single-loop ordering, source #1 was already re-vendored by the time source #2
+# failed and SOURCES.md still described the previous run.
+foreach ($item in $staged) {
+    $name = $item.Name
+    $src = $item.Src
+
+    if (Test-Path $item.Dest) {
+        try {
+            [System.IO.Directory]::Move($item.Dest, $item.Backup)
+        }
+        catch {
+            Die "could not move the existing $name tree aside: $(Get-FailureMessage $_). Nothing was lost - corpus/vendor/$name still holds the previous tree, complete, and the new one is staged at $($item.Stage); delete that stage directory to abandon this run."
+        }
+    }
+    try {
+        [System.IO.Directory]::Move($item.Stage, $item.Dest)
+    }
+    catch {
+        $swapError = Get-FailureMessage $_
+        # Put the old tree back before dying: an absent destination is the one state
+        # this restructure exists to prevent.
+        if ((Test-Path $item.Backup) -and -not (Test-Path $item.Dest)) {
+            try {
+                [System.IO.Directory]::Move($item.Backup, $item.Dest)
+                Die "could not move the staged $name tree into place: $swapError. The previous tree has been restored to corpus/vendor/$name; the staged copy is still at $($item.Stage)."
+            }
+            catch {
+                Die "could not move the staged $name tree into place ($swapError) and could not restore the previous one ($(Get-FailureMessage $_)). corpus/vendor/$name is absent right now: the previous tree is at $($item.Backup) and the new one at $($item.Stage). Rename one of them to corpus/vendor/$name; git checkout -- corpus also restores the committed bytes."
+            }
+        }
+        Die "could not move the staged $name tree into place: $swapError. corpus/vendor/$name is unchanged."
+    }
+    # The swap has happened and corpus/vendor/<name> is the new tree, so a failure to
+    # delete the backup is a leftover directory rather than a broken corpus. Warned
+    # about and carried past, deliberately: dying here would skip the SOURCES.md
+    # write and leave the attribution file describing the previous run, which is the
+    # defect N5 named. The next run removes the leftover in phase 1.
+    if (Test-Path $item.Backup) {
+        try {
+            Remove-Item -LiteralPath $item.Backup -Recurse -Force
+        }
+        catch {
+            Write-Warn "the $name swap succeeded but $($item.Backup) could not be deleted ($(Get-FailureMessage $_)). corpus/vendor/$name is the new tree; remove that leftover directory before committing corpus/."
+        }
+    }
 
     # @() wrapped: an enumeration that yields nothing is $null in PS 5.1, and
     # $null.Count under Set-StrictMode -Version Latest throws
     # PropertyNotFoundStrict instead of reporting 0 - a confusing error in place of
-    # a clear one.
-    $vendored = @(Get-ChildItem -LiteralPath $dest -Recurse -File)
+    # a clear one. Counted after the swap, over the tree that is actually there, so
+    # the census in SOURCES.md is a measurement of the destination rather than of
+    # the staging copy.
+    $vendored = @(Get-ChildItem -LiteralPath $item.Dest -Recurse -File)
     $fileCount = $vendored.Count
     $byteCount = ($vendored | Measure-Object -Property Length -Sum).Sum
-    Write-Ok "$name vendored ($fileCount files, $byteCount bytes)"
+    Write-Ok "$name vendored ($fileCount files, $byteCount bytes, license text $($item.License))"
 
     $lines.Add("## $name")
     $lines.Add('')
     $lines.Add("- Upstream: <$($src.url)>")
     $lines.Add("- Commit: ``$($src.commit)`` (ref ``$($src.ref)``)")
-    $lines.Add("- License: $($src.license), upstream file ``$($licenseFile.Name)`` retained at ``corpus/vendor/$name/$($licenseFile.Name)``")
+    $lines.Add("- License: $($src.license), upstream file ``$($item.License)`` retained at ``corpus/vendor/$name/$($item.License)``")
     $lines.Add("- Pin verified against upstream: $($src.pin_verified_utc)")
     $lines.Add("- Retrieved (vendored): $($src.retrieved_utc)")
     $lines.Add("- Vendored subtree: ``$($src.subtree)``")
     $lines.Add("- Vendored tree: ``corpus/vendor/$name/`` ($fileCount files, $byteCount bytes, license text included)")
-    # -ccontains, not -contains: :66 and :126 both use the case-sensitive operator
+    # -ccontains, not -contains: :114 and :164 both use the case-sensitive operator
     # for this same kind of lookup, and this was the one place the file did not.
     # The key is ours and lower-case, so nothing changes today; consistency here is
     # what keeps the convention readable as a convention.
