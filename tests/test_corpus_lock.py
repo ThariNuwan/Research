@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -410,6 +410,10 @@ def test_recorded_utc_is_not_earlier_than_the_events_it_records() -> None:
     stale value that prompted this (`2026-08-24 >= 2026-08-24`), while
     `recorded_utc >= retrieved_utc` refuses it - a retrieval cannot be recorded
     before it happens.
+
+    Lower bound only. The upper bound is its own test below, named for what it
+    asserts, because a `recorded_utc` of `2099-01-01` satisfies every assertion
+    here.
     """
     lock = _lock()
     recorded = lock["recorded_utc"]
@@ -426,6 +430,30 @@ def test_recorded_utc_is_not_earlier_than_the_events_it_records() -> None:
     # Floor from a literal: an emptied `sources` map satisfies the loop above.
     assert checked == set(EXPECTED_COMMITS), (
         f"checked {sorted(checked)}, expected {sorted(EXPECTED_COMMITS)}"
+    )
+
+
+def test_recorded_utc_is_not_in_the_future() -> None:
+    """Content: the other half of the bound, which `2099-01-01` walked through.
+
+    Its sibling above bounds `recorded_utc` from below - not earlier than the pin
+    verification or the retrieval it records - and nothing bounded it from above,
+    so any date at all in the future satisfied every assertion in this file. A
+    record cannot have been made after the moment it is read.
+
+    The horizon is computed at test time, never a literal that would rot. One day
+    of skew is tolerated deliberately: the field is a UTC calendar date but is
+    written by a human reading a local clock, which sits up to a day either side
+    of UTC on some hosts. That tolerance cannot hide the failure this refuses - a
+    stale or fabricated date is out by months or years, not by hours.
+    """
+    recorded = _lock()["recorded_utc"]
+    assert ISO_DATE_RE.match(recorded), f"recorded_utc {recorded!r} is not an ISO date"
+    horizon = datetime.now(UTC).date() + timedelta(days=1)
+    assert date.fromisoformat(recorded) <= horizon, (
+        f"recorded_utc {recorded} is in the future (UTC today plus one day of "
+        f"timezone skew is {horizon.isoformat()}); the corpus cannot have been "
+        "recorded after the moment this test reads it"
     )
 
 
@@ -467,6 +495,11 @@ def test_each_case_path_matches_the_platform_that_selects_its_scanners() -> None
         platform = case["platform"]
         assert platform in PLATFORM_SUFFIXES, f"{case['id']} unknown platform {platform!r}"
         suffixes = PLATFORM_SUFFIXES[platform]
+        # Refused before it is joined, as at `:286` and `:339`. `REPO_ROOT / ""` is
+        # REPO_ROOT, which `is_dir()` is true of, so the `rglob` below would then
+        # match `.tf` files anywhere in the repository and this test would report
+        # green on precisely the input it exists to reject.
+        assert case["path"], f"{case['id']} declares an empty path"
         target = REPO_ROOT / case["path"]
         if target.is_dir():
             matching = [p for p in target.rglob("*") if p.is_file() and p.suffix in suffixes]

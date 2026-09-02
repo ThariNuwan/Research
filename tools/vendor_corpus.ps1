@@ -405,7 +405,7 @@ foreach ($item in $staged) {
             [System.IO.Directory]::Move($item.Dest, $item.Backup)
         }
         catch {
-            Die "could not move the existing $name tree aside: $(Get-FailureMessage $_). Nothing was lost - corpus/vendor/$name still holds the previous tree, complete, and the new one is staged at $($item.Stage); delete that stage directory to abandon this run."
+            Die "could not move the existing $name tree aside: $(Get-FailureMessage $_). Nothing was lost for $name specifically - corpus/vendor/$name still holds the previous tree, complete, and the new one is staged at $($item.Stage); delete that stage directory to abandon this run. This claim covers $name only: phase 2 swaps the sources one at a time, so every source with an '<name> vendored (...)' line above this message already carries its NEW tree. SOURCES.md is written after the loop and so was not rewritten - its census still describes the previous run. Run git status corpus to see which trees actually changed."
         }
     }
     try {
