@@ -241,8 +241,13 @@ Measured by re-running the capture and diffing against the committed blob:
 
 What *is* stable for checkov, and is what later tasks may rely on: the multiset
 of `(check_id, file_path, file_line_range, resource)` over each bucket is
-identical across runs — 215 failed and 115 passed for the Terraform root, 266
-and 994 for the Kubernetes root, same tuples both times.
+identical across runs — 215 failed and 115 passed in the Terraform root's
+`terraform` framework **block**, 266 and 994 in the Kubernetes root's
+`kubernetes` block, same tuples both times. Those are block counts, not root
+counts: checkov emits one block per framework it detects under a root, so the
+Terraform root totals 221 failed / 117 passed (`terraform` 215/115 +
+`dockerfile` 2/2 + `secrets` 4/0) and the Kubernetes root 268 / 994
+(`kubernetes` 266/994 + `secrets` 2/0) — the numbers §A.3 sums to 489 and 1111.
 
 **Consequence.** A test that asserts on fixture bytes, or on a finding at a
 fixed array index, will be flaky. Task 6's walkers must be tested against
