@@ -225,10 +225,29 @@ distinct IDs overlap neither set. Cross-scanner deduplication therefore needs an
 identity mapping, not string equality, and the `AVD-` prefix is the only
 mechanical part of it.
 
-Trivy's output is **not byte-reproducible**: `ReportID` is a fresh UUID and
-`CreatedAt` a local wall-clock timestamp with offset on every run. `ArtifactName`
-also embeds the absolute scan path. Two runs of the Terraform capture differed by
-one byte for this reason alone.
+**No fixture here is byte-reproducible, and the reasons differ per scanner.**
+Measured by re-running the capture and diffing against the committed blob:
+
+- **trivy** — `ReportID` is a fresh UUID and `CreatedAt` a local wall-clock
+  timestamp with offset on every run; `ArtifactName` embeds the absolute scan
+  path. Two runs of the Terraform capture differed in length by one byte for
+  this reason alone.
+- **checkov** — same byte *length* across runs, different bytes. Two sources:
+  the order of records within `failed_checks` and `passed_checks` varies between
+  runs, and `check_result.evaluated_keys` is a set serialized to a list, so its
+  order varies within a record (observed on the `CKV2_*` graph checks).
+- **tfsec** — no instability observed across runs, but this is one comparison,
+  not a guarantee.
+
+What *is* stable for checkov, and is what later tasks may rely on: the multiset
+of `(check_id, file_path, file_line_range, resource)` over each bucket is
+identical across runs — 215 failed and 115 passed for the Terraform root, 266
+and 994 for the Kubernetes root, same tuples both times.
+
+**Consequence.** A test that asserts on fixture bytes, or on a finding at a
+fixed array index, will be flaky. Task 6's walkers must be tested against
+order-insensitive assertions, and any later re-capture will produce a diff that
+is noise rather than a change in scanner behaviour.
 
 ### A.2 §5.2 — platform-applicability: what tfsec does with Kubernetes YAML
 
