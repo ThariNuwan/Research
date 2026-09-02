@@ -33,7 +33,12 @@ link-mode = "copy"
 
 [tool.ruff]
 line-length = 100
-src = ["src", "tests", "tools", "eval"]
+# "." is here because `tools` and `eval` are packages at the repository root, not
+# under src/. Without it ruff resolves `tools.harvest.model` against each entry as
+# a prefix, finds no `tools/tools/harvest`, and sorts a first-party import into
+# the third-party block - so `tests/harvest/test_model.py` cannot satisfy I001 and
+# be honest about where `tools.harvest` comes from at the same time.
+src = ["src", ".", "tests", "tools", "eval"]
 # ruff formats Python code blocks inside Markdown. *.md holds the plan and spec of
 # record - citable research artifacts whose code blocks specify what to write, not
 # source to be restyled - plus CLAUDE.md's command blocks. corpus/vendor holds
