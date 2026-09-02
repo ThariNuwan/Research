@@ -49,9 +49,22 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "PTH", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "tools", "eval"]
+files = ["src", "tools", "eval", "tests"]
+# `files` names `tools`, and `tools/` holds two directories that are not this
+# project's code: `tools/bin/` (checksum-verified release binaries) and
+# `tools/cache/` (182.8 MB of pinned archives and upstream clones). Both are
+# git-ignored. The cache clone of kubernetes-goat carries two third-party
+# `app.py` files whose module names collide, and mypy answers a duplicate module
+# with `errors prevented further checking` - it aborts having checked *nothing*.
+# Measured: without this exclude, bare `uv run mypy` exits 2 and checks 0 files
+# while `strict = true` believes it is checking everything.
+exclude = "^tools/(bin|cache)/"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+# `-rs` lives here rather than on the command line so the gate is bare. `addopts`
+# already carries `-q`; a second `-q` from the command line reaches verbosity -2,
+# at which pytest drops the `N passed, M skipped` line entirely. A gate with
+# flags to retype is a gate with a way to get it wrong.
+addopts = "-q --strict-markers -rs"
 pythonpath = ["src", "."]
