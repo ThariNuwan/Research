@@ -1,0 +1,254 @@
+{
+    "schema_version":  1,
+    "captured_utc":  "2026-09-02T05:57:33Z",
+    "generated_by":  "tools/capture_fixtures.ps1",
+    "host_os":  "Microsoft Windows NT 10.0.26200.0",
+    "powershell":  "5.1.26100.9168",
+    "note":  "Mechanical record of six scanner runs over the pinned corpus (S0 Task 5). Deliberately scanner-agnostic: it records exit codes, byte counts, stream separation and the top-level JSON shape, and does NOT name where each scanner keeps a rule id or a severity. Those field paths are an interpretation of the fixtures, they belong to the Task 6 walkers, and encoding them in the capture tool would mean the tool and the walker share one assumption instead of the walker being tested against observed bytes. They are written up in the Appendix of docs/superpowers/specs/2026-08-24-implementation-phase0-design.md.",
+    "argv_note":  "Each capture argv is the vector this script passed to the scanner, with one declared substitution: the absolute path of this checkout is replaced by the token \u003crepo\u003e, and the separators after it by forward slashes. Nothing else is rewritten. The scanners were launched with the native absolute path, which is why checkov file_abs_path and tfsec location.filename carry backslashes in the fixtures. To reproduce, substitute the root of your own checkout.",
+    "no_digest_note":  "No fixture digest is recorded here. A hash this script computed from a file it had just written would be self-attested and would verify nothing; git already stores a blob id for every committed fixture. stdout_crlf_pairs is recorded instead, because .gitattributes normalizes these paths to LF and a fixture with CRLF in it would be committed with bytes other than the ones observed.",
+    "scanner_versions":  {
+                             "checkov":  "3.3.12",
+                             "tfsec":  "1.28.14",
+                             "trivy":  "0.74.0"
+                         },
+    "corpus_recorded_utc":  "2026-09-01",
+    "scan_roots":  {
+                       "kubernetes":  {
+                                          "scan_root":  "corpus/vendor/kubernetes-goat/scenarios",
+                                          "case_ids":  [
+                                                           "kg-scenarios"
+                                                       ]
+                                      },
+                       "terraform":  {
+                                         "scan_root":  "corpus/vendor/terragoat/terraform/aws",
+                                         "case_ids":  [
+                                                          "tg-aws-compute",
+                                                          "tg-aws-iam",
+                                                          "tg-aws-networking",
+                                                          "tg-aws-s3"
+                                                      ]
+                                     }
+                   },
+    "captures":  [
+                     {
+                         "scanner":  "checkov",
+                         "scanner_version":  "3.3.12",
+                         "platform":  "terraform",
+                         "off_matrix":  false,
+                         "off_matrix_reason":  null,
+                         "scan_root":  "corpus/vendor/terragoat/terraform/aws",
+                         "case_ids":  [
+                                          "tg-aws-compute",
+                                          "tg-aws-iam",
+                                          "tg-aws-networking",
+                                          "tg-aws-s3"
+                                      ],
+                         "argv":  [
+                                      "--output",
+                                      "json",
+                                      "--compact",
+                                      "--skip-download",
+                                      "--directory",
+                                      "\u003crepo\u003e/corpus/vendor/terragoat/terraform/aws"
+                                  ],
+                         "exit_code":  1,
+                         "duration_s":  8.26,
+                         "fixture":  "tests/harvest/fixtures/checkov-terraform.json",
+                         "stdout_bytes":  1003802,
+                         "stdout_is_json":  true,
+                         "stdout_top_level":  "array",
+                         "stdout_parse_error":  null,
+                         "stdout_has_bom":  false,
+                         "stdout_crlf_pairs":  0,
+                         "stderr_bytes":  0,
+                         "stderr_lines":  0,
+                         "stderr_first_line":  "",
+                         "stderr_head":  [
+
+                                         ]
+                     },
+                     {
+                         "scanner":  "checkov",
+                         "scanner_version":  "3.3.12",
+                         "platform":  "kubernetes",
+                         "off_matrix":  false,
+                         "off_matrix_reason":  null,
+                         "scan_root":  "corpus/vendor/kubernetes-goat/scenarios",
+                         "case_ids":  [
+                                          "kg-scenarios"
+                                      ],
+                         "argv":  [
+                                      "--output",
+                                      "json",
+                                      "--compact",
+                                      "--skip-download",
+                                      "--directory",
+                                      "\u003crepo\u003e/corpus/vendor/kubernetes-goat/scenarios"
+                                  ],
+                         "exit_code":  1,
+                         "duration_s":  8.12,
+                         "fixture":  "tests/harvest/fixtures/checkov-kubernetes.json",
+                         "stdout_bytes":  2249315,
+                         "stdout_is_json":  true,
+                         "stdout_top_level":  "array",
+                         "stdout_parse_error":  null,
+                         "stdout_has_bom":  false,
+                         "stdout_crlf_pairs":  0,
+                         "stderr_bytes":  0,
+                         "stderr_lines":  0,
+                         "stderr_first_line":  "",
+                         "stderr_head":  [
+
+                                         ]
+                     },
+                     {
+                         "scanner":  "trivy",
+                         "scanner_version":  "0.74.0",
+                         "platform":  "terraform",
+                         "off_matrix":  false,
+                         "off_matrix_reason":  null,
+                         "scan_root":  "corpus/vendor/terragoat/terraform/aws",
+                         "case_ids":  [
+                                          "tg-aws-compute",
+                                          "tg-aws-iam",
+                                          "tg-aws-networking",
+                                          "tg-aws-s3"
+                                      ],
+                         "argv":  [
+                                      "config",
+                                      "--format",
+                                      "json",
+                                      "--quiet",
+                                      "--disable-telemetry",
+                                      "--skip-check-update",
+                                      "\u003crepo\u003e/corpus/vendor/terragoat/terraform/aws"
+                                  ],
+                         "exit_code":  0,
+                         "duration_s":  2.04,
+                         "fixture":  "tests/harvest/fixtures/trivy-terraform.json",
+                         "stdout_bytes":  600285,
+                         "stdout_is_json":  true,
+                         "stdout_top_level":  "object",
+                         "stdout_parse_error":  null,
+                         "stdout_has_bom":  false,
+                         "stdout_crlf_pairs":  0,
+                         "stderr_bytes":  0,
+                         "stderr_lines":  0,
+                         "stderr_first_line":  "",
+                         "stderr_head":  [
+
+                                         ]
+                     },
+                     {
+                         "scanner":  "trivy",
+                         "scanner_version":  "0.74.0",
+                         "platform":  "kubernetes",
+                         "off_matrix":  false,
+                         "off_matrix_reason":  null,
+                         "scan_root":  "corpus/vendor/kubernetes-goat/scenarios",
+                         "case_ids":  [
+                                          "kg-scenarios"
+                                      ],
+                         "argv":  [
+                                      "config",
+                                      "--format",
+                                      "json",
+                                      "--quiet",
+                                      "--disable-telemetry",
+                                      "--skip-check-update",
+                                      "\u003crepo\u003e/corpus/vendor/kubernetes-goat/scenarios"
+                                  ],
+                         "exit_code":  0,
+                         "duration_s":  2.04,
+                         "fixture":  "tests/harvest/fixtures/trivy-kubernetes.json",
+                         "stdout_bytes":  1481908,
+                         "stdout_is_json":  true,
+                         "stdout_top_level":  "object",
+                         "stdout_parse_error":  null,
+                         "stdout_has_bom":  false,
+                         "stdout_crlf_pairs":  0,
+                         "stderr_bytes":  0,
+                         "stderr_lines":  0,
+                         "stderr_first_line":  "",
+                         "stderr_head":  [
+
+                                         ]
+                     },
+                     {
+                         "scanner":  "tfsec",
+                         "scanner_version":  "1.28.14",
+                         "platform":  "terraform",
+                         "off_matrix":  false,
+                         "off_matrix_reason":  null,
+                         "scan_root":  "corpus/vendor/terragoat/terraform/aws",
+                         "case_ids":  [
+                                          "tg-aws-compute",
+                                          "tg-aws-iam",
+                                          "tg-aws-networking",
+                                          "tg-aws-s3"
+                                      ],
+                         "argv":  [
+                                      "--format",
+                                      "json",
+                                      "--no-colour",
+                                      "--no-module-downloads",
+                                      "\u003crepo\u003e/corpus/vendor/terragoat/terraform/aws"
+                                  ],
+                         "exit_code":  1,
+                         "duration_s":  2.06,
+                         "fixture":  "tests/harvest/fixtures/tfsec-terraform.json",
+                         "stdout_bytes":  110338,
+                         "stdout_is_json":  true,
+                         "stdout_top_level":  "object",
+                         "stdout_parse_error":  null,
+                         "stdout_has_bom":  false,
+                         "stdout_crlf_pairs":  0,
+                         "stderr_bytes":  365,
+                         "stderr_lines":  12,
+                         "stderr_first_line":  "",
+                         "stderr_head":  [
+                                             "",
+                                             "======================================================",
+                                             "tfsec is joining the Trivy family",
+                                             ""
+                                         ]
+                     },
+                     {
+                         "scanner":  "tfsec",
+                         "scanner_version":  "1.28.14",
+                         "platform":  "kubernetes",
+                         "off_matrix":  true,
+                         "off_matrix_reason":  "tools/scanners.lock.json pins tfsec as terraform-only. This run exists to record what a Terraform-only scanner does with a Kubernetes manifest directory (spec section 5 item 2) instead of assuming it refuses, so a usage message or empty output on stdout is a result rather than a failure.",
+                         "scan_root":  "corpus/vendor/kubernetes-goat/scenarios",
+                         "case_ids":  [
+                                          "kg-scenarios"
+                                      ],
+                         "argv":  [
+                                      "--format",
+                                      "json",
+                                      "--no-colour",
+                                      "--no-module-downloads",
+                                      "\u003crepo\u003e/corpus/vendor/kubernetes-goat/scenarios"
+                                  ],
+                         "exit_code":  0,
+                         "duration_s":  1.03,
+                         "fixture":  "tests/harvest/fixtures/tfsec-kubernetes.json",
+                         "stdout_bytes":  19,
+                         "stdout_is_json":  true,
+                         "stdout_top_level":  "object",
+                         "stdout_parse_error":  null,
+                         "stdout_has_bom":  false,
+                         "stdout_crlf_pairs":  0,
+                         "stderr_bytes":  365,
+                         "stderr_lines":  12,
+                         "stderr_first_line":  "",
+                         "stderr_head":  [
+                                             "",
+                                             "======================================================",
+                                             "tfsec is joining the Trivy family",
+                                             ""
+                                         ]
+                     }
+                 ]
+}
