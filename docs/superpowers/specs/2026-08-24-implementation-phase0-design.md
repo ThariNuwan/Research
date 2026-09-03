@@ -279,6 +279,15 @@ findings. So the exit code carries *findings / no findings*, and
 `0` is indistinguishable from *this scanner cannot analyse this input at all*.
 The 365-byte banner is emitted on **every** invocation, including `--help` and
 including the successful Terraform run, so its presence carries no signal either.
+Measured directly rather than inferred: the stderr of the two runs above is
+byte-identical, SHA-256
+`b2e50e31e1699ac05a6281257f69869778b70200aa80367847f6e686170c3eba` for both --
+365 bytes, 12 LF-terminated lines, the first of them blank. `stderr_head` in
+`artifacts/scanner-behavior.json` is the field that records it: `stderr_bytes` and
+`stderr_lines` agree across the two runs, but only `stderr_head` shows the text
+itself is the same. `stderr_first_line` is `''` for both because the banner's
+literal first line is empty, which is why the manifest also carries
+`stderr_first_text` -- read on its own, either field misleads.
 
 **Consequence for R3-#3.** The 'fail loudly only for the input platform's
 required scanners' rule cannot be implemented by inspecting what the scanner
