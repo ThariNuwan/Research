@@ -225,6 +225,17 @@ foreach ($pair in @(@{ Obj = $scanners; Name = 'tools/scanners.lock.json'; Field
     }
 }
 
+# recorded_utc is read at the very end of the run, into the manifest, and nowhere
+# before it. Confirmed here so a lockfile missing it stops the run in the second
+# before the first scanner starts instead of throwing PropertyNotFoundStrict in
+# the minute after all six have finished and their bytes are staged.
+# tests/test_corpus_lock.py covers the same field, including that it is not in
+# the future.
+if ((Get-PropertyNames $corpus) -cnotcontains 'recorded_utc' -or
+    [string]::IsNullOrWhiteSpace($corpus.recorded_utc)) {
+    Die "tools/corpus.lock.json has no usable 'recorded_utc', which every manifest records as corpus_recorded_utc to say which corpus these fixtures describe. Run tools/vendor_corpus.ps1."
+}
+
 $ScannerNames = @(Get-PropertyNames $scanners.scanners | Sort-Object)
 if (@($ScannerNames).Count -eq 0) {
     Die "tools/scanners.lock.json declares zero scanners, so this run would write an empty fixture set and report success. Refusing. Run tools/bootstrap.ps1."
@@ -257,7 +268,22 @@ foreach ($name in $ScannerNames) {
     # Both sides are read from disk; nothing is recomputed. A resolved build that
     # is not the pinned build would produce fixtures that quietly describe a
     # different scanner version than the dissertation claims.
-    $pinned = $scanners.scanners.$name.version
+    #
+    # 'platforms' is confirmed here although it is read further down, by the
+    # platform-coverage loop ($declared = ...). Both loops walk $ScannerNames, so
+    # this is the first pass over the same entries; checking it there instead
+    # would leave one field of this object read unguarded, which is the exact
+    # thing the comment at :84 promises does not happen.
+    $lockEntry = $scanners.scanners.$name
+    foreach ($field in @('version', 'platforms')) {
+        if ((Get-PropertyNames $lockEntry) -cnotcontains $field) {
+            Die "tools/scanners.lock.json entry for '$name' has no '$field' key. tests/test_scanners_lock.py asserts the same fields; run uv run pytest for the full picture."
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($lockEntry.version)) {
+        Die "tools/scanners.lock.json entry for '$name' declares an empty 'version', so nothing would pin the build these fixtures describe. Run tools/bootstrap.ps1."
+    }
+    $pinned = $lockEntry.version
     if ($entry.version -cne $pinned) {
         Die "'$name' resolves to version $($entry.version) but tools/scanners.lock.json pins $pinned. Fixtures captured now would describe the wrong build. Run tools/bootstrap.ps1."
     }
@@ -318,11 +344,21 @@ foreach ($platformName in @($cases | ForEach-Object { $_.platform } | Sort-Objec
     }
     # The lockfile is ours, but the resolved path is handed to a scanner as a
     # directory to walk; a '..' segment would point the scan outside the repo and
-    # a fixture would then describe files that are not corpus. One-line guard,
-    # same reasoning as tools/vendor_corpus.ps1:52-59.
-    $full = [IO.Path]::GetFullPath($abs)
-    if (-not $full.StartsWith([IO.Path]::GetFullPath($RepoRoot), [StringComparison]::Ordinal)) {
-        Die "scan root '$($platformRoots[0])' resolves to $full, outside the repository at $RepoRoot. Refusing to scan it."
+    # a fixture would then describe files that are not corpus.
+    # tools/vendor_corpus.ps1:53-63 refuses the same class of path by a different
+    # mechanism - a regex over the declared string, applied before anything is
+    # resolved. This one tests the resolved path, so it also catches a symlink or
+    # a junction, which no regex over the lockfile text can see.
+    #
+    # Compared on a directory boundary, not as a string prefix: 'D:\Research' is a
+    # string prefix of 'D:\Research-scratch', which is a sibling directory and not
+    # inside the repository at all. Equality is allowed deliberately - a scan root
+    # that IS the repository root is inside it.
+    $full     = [IO.Path]::GetFullPath($abs).TrimEnd([IO.Path]::DirectorySeparatorChar)
+    $repoFull = [IO.Path]::GetFullPath($RepoRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
+    if ($full -cne $repoFull -and -not $full.StartsWith(
+            $repoFull + [IO.Path]::DirectorySeparatorChar, [StringComparison]::Ordinal)) {
+        Die "scan root '$($platformRoots[0])' resolves to $full, outside the repository at $repoFull. Refusing to scan it."
     }
     $Roots[$platformName] = [ordered]@{
         Relative = $platformRoots[0]
@@ -472,11 +508,24 @@ function Invoke-Capture {
     # Replacing CRLF with LF removes exactly one character per occurrence.
     $crlf = $outText.Length - $outText.Replace("`r`n", "`n").Length
 
+    # Split on either ending so the line count is right on any host. Measured on
+    # this one: tfsec's banner is LF-only - 365 bytes, 12 lines, zero CRLF pairs.
     $errLines = @()
     if ($errText.Length -gt 0) {
         $errLines = @($errText -split "`r?`n")
     }
+    # The literal first line AND the first line carrying text, deliberately both.
+    # $errFirst alone misleads on a stream that opens blank, and tfsec's banner
+    # does: stderr_first_line is '' on a capture that produced 365 bytes over 12
+    # lines, so a reader checking that one field concludes stderr was silent.
+    # stderr_first_line is not redefined to paper over it - it is the literal
+    # first line and is still the honest answer to that question - the value a
+    # reader actually wants is recorded beside it instead.
     $errFirst = if (@($errLines).Count -gt 0) { $errLines[0] } else { '' }
+    $errFirstText = ''
+    foreach ($line in $errLines) {
+        if ($line.Trim().Length -gt 0) { $errFirstText = $line; break }
+    }
 
     $probe = Test-JsonFile $stagedOut
     # MayBeNonJson is set for exactly one capture, tfsec x kubernetes, and the
@@ -545,6 +594,7 @@ function Invoke-Capture {
         stderr_bytes       = $errBytes.Length
         stderr_lines       = @($errLines).Count
         stderr_first_line  = $errFirst
+        stderr_first_text  = $errFirstText
         stderr_head        = @($errLines | Select-Object -First 4)
     })
 }
@@ -645,6 +695,7 @@ $manifest = [ordered]@{
     note           = 'Mechanical record of six scanner runs over the pinned corpus (S0 Task 5). Deliberately scanner-agnostic: it records exit codes, byte counts, stream separation and the top-level JSON shape, and does NOT name where each scanner keeps a rule id or a severity. Those field paths are an interpretation of the fixtures, they belong to the Task 6 walkers, and encoding them in the capture tool would mean the tool and the walker share one assumption instead of the walker being tested against observed bytes. They are written up in the Appendix of docs/superpowers/specs/2026-08-24-implementation-phase0-design.md.'
     argv_note      = 'Each capture argv is the vector this script passed to the scanner, with one declared substitution: the absolute path of this checkout is replaced by the token <repo>, and the separators after it by forward slashes. Nothing else is rewritten. The scanners were launched with the native absolute path, which is why checkov file_abs_path and tfsec location.filename carry backslashes in the fixtures. To reproduce, substitute the root of your own checkout.'
     no_digest_note = 'No fixture digest is recorded here. A hash this script computed from a file it had just written would be self-attested and would verify nothing; git already stores a blob id for every committed fixture. stdout_crlf_pairs is recorded instead, because .gitattributes normalizes these paths to LF and a fixture with CRLF in it would be committed with bytes other than the ones observed.'
+    stderr_note    = 'Three stderr fields, because one is not enough. stderr_first_line is the literal first line of the stream. stderr_first_text is the first line carrying non-whitespace. They differ: tfsec opens its 365-byte deprecation banner with a blank line, so stderr_first_line is the empty string on a capture that produced 12 lines, and either field read on its own can mislead - for tfsec the first line with text on it is a rule of equals signs. stderr_head therefore carries the first four lines verbatim, and it is stderr_head that shows the two tfsec runs emitting the same banner whether the run found 119 results or none: the observation behind the finding that the banner carries no signal about whether tfsec did any work.'
     scanner_versions = $Versions
     corpus_recorded_utc = $corpus.recorded_utc
     scan_roots     = $rootSummary
