@@ -337,6 +337,17 @@ foreach ($case in $cases) {
 # case pass the coverage check below and then be looked up, later, under a key that
 # is not in the dictionary. The lockfile is lowercase and $NameRe enforces it; this
 # makes the dictionary agree instead of quietly forgiving.
+# Unreachable from the current schema, and that is worth saying out loud:
+# $NameRe is '^[a-z0-9][a-z0-9-]*$' and is applied with -cnotmatch to both sides
+# of every comparison this dictionary makes - the case platforms that become its
+# keys (:327) and the scanner-declared platforms that look them up - so no
+# lockfile that passes those two guards can hold two names differing only in
+# case, and the six Invoke-Capture calls pass lowercase literals. The N4a probe
+# could change a verdict only by calling Contains directly on a dictionary built
+# each way. Kept anyway, for one constructor argument, because it is the
+# assumption $NameRe is carrying: admit uppercase to that regex and this comparer
+# is the only thing between a mis-cased platform and a lookup that misses in
+# silence.
 $Roots = New-Object System.Collections.Specialized.OrderedDictionary([StringComparer]::Ordinal)
 foreach ($platformName in @($cases | ForEach-Object { $_.platform } | Sort-Object -Unique)) {
     $matched = @($cases | Where-Object { $_.platform -ceq $platformName })
