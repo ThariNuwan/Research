@@ -143,9 +143,10 @@ EXPECTED_ID_PREFIXES: dict[str, set[str]] = {
 # {neither: 113, forward-only: 2} and `trivy-kubernetes.json` is {forward-only: 332},
 # so **all 447 trivy rows sit in the two fixed-point kinds**: a `Path(t).as_posix()`
 # planted in `walk_trivy` moves no target, no count, no severity and no kind here. It
-# holds checkov's 489 rows and tfsec's 119 to a verbatim `target`; against the very
-# normalization this comment names, it holds trivy to nothing. The only assertion in
-# the module that would notice is
+# holds tfsec's 119 rows and 485 of checkov's 489 to a verbatim `target` - the other 4
+# are `forward-only`, so fixed points as well - but against the very normalization this
+# comment names, it holds trivy to nothing. What makes the hole trivy-shaped is that for
+# trivy it is *every* row. The only assertion in the module that would notice is
 # `test_an_absent_path_key_becomes_an_empty_target_for_every_walker`, and only via
 # `Path("").as_posix() == "."` - not through any row a fixture produces. Worth stating
 # because trivy is the scanner whose paths a reader is likeliest to assume are already
@@ -779,12 +780,23 @@ def test_walker_handles_the_real_captured_output(capture: dict[str, Any]) -> Non
     produces - so an unasserted count would have made this test green on the drift it
     was written for.
 
-    Three golden tables are checked per fixture, and each can fail while the other two
-    hold: the row count; the severity **distribution**, a `Counter` rather than a
-    vocabulary set, so a level moving from one id to another inside the same vocabulary
-    still fails; and the number of distinct rule ids, which moves when ids merge or split
-    under an unchanged row count. `test_the_rule_id_namespaces_each_scanner_emits` adds
-    the fourth, on the prefix vocabulary.
+    Three golden tables are checked per fixture: the row count; the severity
+    **distribution**, a `Counter` rather than a vocabulary set, so a level moving from one
+    id to another inside the same vocabulary still fails; and the number of distinct rule
+    ids, which moves when ids merge or split under an unchanged row count.
+    `test_the_rule_id_namespaces_each_scanner_emits` adds a fourth, on the prefix
+    vocabulary.
+
+    They are not three independent tripwires, and this docstring used to say they were.
+    `Counter(row.native_severity for row in rows)` totals `len(rows)` by construction, and
+    the pinned counts sum to the pinned row count in all six fixtures, so the severity
+    table **implies** the row count: nothing can move the count and still leave the
+    `Counter` matching. The row count is kept because it is asserted first and names that
+    drift in one number instead of in a diff of four levels. The other two pairings are
+    independent, measured on `trivy-terraform.json`: re-rating one rule (`AWS-0079`, 9
+    rows, HIGH -> MEDIUM) moves only the `Counter` (HIGH 61 -> 52, MEDIUM 26 -> 35), and
+    folding one id into another (`AWS-0026` -> `AWS-0028`) moves only the distinct-id
+    count (49 -> 48).
     """
     name = Path(capture["fixture"]).name
     case_id = Path(capture["fixture"]).stem
@@ -829,9 +841,15 @@ def test_walker_handles_the_real_captured_output(capture: dict[str, Any]) -> Non
     )
 
 
-@pytest.mark.parametrize("scanner", sorted(EXPECTED_ID_PREFIXES))
+@pytest.mark.parametrize("scanner", sorted(WALKERS))
 def test_the_rule_id_namespaces_each_scanner_emits(scanner: str) -> None:
     """The id-namespace vocabulary per scanner, read off both of that scanner's captures.
+
+    Parametrized over the **registry**, like the two absent-key tests above, not over
+    `EXPECTED_ID_PREFIXES`. Over the table it would have produced no case at all for a
+    fourth walker - a guardrail vanishing exactly when a new scanner arrives; over
+    `WALKERS` a missing table entry is a `KeyError` in the body instead. The two sets are
+    equal today (`['checkov', 'tfsec', 'trivy']`), so this pins the same three cases.
 
     The rule id is the join key every later stage matches on, and nothing else in this
     file constrains its *shape*: `EXPECTED_ROWS` counts rows and
@@ -882,8 +900,15 @@ def test_no_walker_normalizes_the_target_it_records(capture: dict[str, Any]) -> 
     on this host - measured, that moves **604 of the 1055 rows** the six fixtures
     produce: checkov's 217 backslash-or-mixed terraform rows, its 268 kubernetes rows,
     and tfsec's 119 absolute-native ones. The remaining 451 are `as_posix()` fixed
-    points, all of them trivy's, which is why the table above says this test cannot
-    vouch for that walker.
+    points, and they are not all trivy's: trivy's 447 - **every row that walker
+    produces** - plus 4 of checkov's. Those 4 are the `forward-only` rows the clause
+    above leaves out of `checkov-terraform.json`'s 221, recorded in
+    `EXPECTED_TARGET_KINDS` as `forward-only: 4`; they come from checkov's secrets
+    framework block, which spells its paths `/ec2.tf` where the same document's terraform
+    block spells them `\\ec2.tf`. The consequence stays attached to trivy, because it
+    follows from *all* of a walker's rows being fixed points and not from a handful:
+    this table cannot vouch for `walk_trivy` at all, which is what the comment above it
+    says, while checkov's 4 cost it nothing - the other 217 hold that walker.
 
     Not the only test such a change fails, and this docstring used to claim it was.
     Measured by planting `Path(...).as_posix()` on `walk_checkov`'s `target` and running
