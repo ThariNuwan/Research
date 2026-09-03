@@ -242,11 +242,24 @@ Measured by re-running the capture and diffing against the committed blob:
   `aws_eks_cluster.eks_cluster` (`eks.tf:118`) had permuted their `description`
   strings among themselves — same five values, four of them in different slots.
   So the earlier "no instability observed" was an artefact of comparing two runs.
-  Load-bearing beyond reproducibility: those five findings differ in nothing but
-  `description`, and 119 tfsec findings collapse to 110 distinct
-  `(rule_id, filename, start_line, resource)` keys — three keys collide
-  (`AVD-AWS-0038` x5, `AVD-AWS-0057` x4 and x3). A deduplication key without
-  `description` discards real findings; one with it is order-dependent.
+  Load-bearing beyond reproducibility, and re-measured over the committed
+  fixture: 119 tfsec findings collapse to 110 distinct
+  `(rule_id, filename, start_line, resource)` keys — three keys collide, in two
+  different ways. `AVD-AWS-0038` at `eks.tf:118` (x5) is five **genuinely
+  distinct findings** — API server, scheduler, controller-manager, authenticator
+  and audit logging each not enabled — separated by `description` alone.
+  `AVD-AWS-0057` at `iam.tf:34` (x4) and at `db-app.tf:215` (x3) are **exact
+  duplicates in every field tfsec emits**, `description` included. So the 9
+  records the 4-field key drops are 4 real findings destroyed plus 5 true
+  duplicates correctly collapsed, and adding `description` gives **114** keys
+  (110 - 1 + 5): it rescues all four real findings and still collapses both
+  duplicate groups, which is what makes it the minimal correct key and not just
+  a less wrong one. It is also order-*in*dependent: a key-based dedup is a set
+  operation, set membership does not depend on record order, and the permutation
+  above is among those same five `description` values — so the multiset of
+  `(key, description)` tuples is unchanged across runs, and the deduplicated set
+  with it. What the permutation breaks is per-record stability: no claim that a
+  particular finding keeps a particular `description` across runs survives it.
 
 What *is* stable for checkov, and is what later tasks may rely on: the multiset
 of `(check_id, file_path, file_line_range, resource)` over each bucket is
