@@ -7,9 +7,12 @@ failure that matters is silent: a fixture truncated by a bad merge, given CRLF b
 checkout on a host that ignored `.gitattributes`, or given a UTF-8 BOM by an editor,
 still looks like a JSON file to a reader and still passes every other test here.
 
-Assertions are labelled shape or content. Shape: the file is a JSON document at all,
-and of the type the manifest recorded. Content: the specific bytes on disk agree with
-the specific numbers the manifest wrote down.
+Every assertion here is content, in the §G1 sense `tests/test_corpus_lock.py` uses:
+each one compares bytes on disk against a specific value the manifest or a lockfile
+wrote down. There is no shape assertion in this module, and the absence is deliberate
+rather than an oversight - shape would mean checking that the manifest carries the
+fields these tests read, and a manifest missing one of them fails at collection,
+naming the field, before any assertion runs.
 
 Deliberately absent: any assertion that a fixture equals a stored copy of itself, and
 any assertion that a finding sits at a given index. The fixtures are not
@@ -75,7 +78,7 @@ CAPTURE_IDS = [f"{c['scanner']}-{c['platform']}" for c in CAPTURES]
 
 @pytest.mark.parametrize("capture", CAPTURES, ids=CAPTURE_IDS)
 def test_every_fixture_parses_under_strict_json_load(capture: dict[str, Any]) -> None:
-    """Shape: Python's parser, not the capture script's, decides these are JSON.
+    """Content: Python's parser, not the capture script's, decides these are JSON.
 
     The manifest's `stdout_is_json` was decided at capture time by a validator the
     capture script launched. This is the independent second opinion, and it is the
@@ -97,7 +100,7 @@ def test_every_fixture_parses_under_strict_json_load(capture: dict[str, Any]) ->
 
 @pytest.mark.parametrize("capture", CAPTURES, ids=CAPTURE_IDS)
 def test_no_fixture_carries_a_utf8_bom(capture: dict[str, Any]) -> None:
-    """Shape guard, stated separately from parsing because the cause is specific.
+    """Content, stated separately from parsing because the cause is specific.
 
     `json.load` rejects a leading BOM, an editor that saves as "UTF-8" on Windows
     adds one, and the file looks unchanged in that editor afterwards. The manifest
@@ -212,7 +215,7 @@ def test_off_platform_capture_is_empty_exit_zero_and_undeclared() -> None:
     the exact conclusion A.2 exists to refuse.
 
     The emptiness is asserted against the same key in the on-matrix sibling, which
-    holds 119 results. Without that contrast, "the result list is empty" would also be
+    holds 119 of them at this pin. Without that contrast, "the result list is empty" would also be
     satisfied by reading a key that does not exist the way this test thinks it does.
     """
     off = [c for c in CAPTURES if c["fixture"].endswith(OFF_MATRIX_FIXTURE)]
