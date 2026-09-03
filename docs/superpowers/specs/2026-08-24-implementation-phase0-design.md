@@ -286,8 +286,12 @@ byte-identical, SHA-256
 `artifacts/scanner-behavior.json` is the field that records it: `stderr_bytes` and
 `stderr_lines` agree across the two runs, but only `stderr_head` shows the text
 itself is the same. `stderr_first_line` is `''` for both because the banner's
-literal first line is empty, which is why the manifest also carries
-`stderr_first_text` -- read on its own, either field misleads.
+literal first line is empty, so on its own that field misleads; the byte-identity
+of the two streams is established by `stderr_head` in the committed manifest
+together with the measurement recorded earlier in this section. The capture script
+**now also records** `stderr_first_text`, the first line carrying non-whitespace --
+a field the committed manifest predates (its `captures` records carry 21 fields and
+this is not one of them), and one a future re-capture will include.
 
 **Consequence for R3-#3.** The 'fail loudly only for the input platform's
 required scanners' rule cannot be implemented by inspecting what the scanner
