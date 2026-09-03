@@ -8,12 +8,20 @@ schema change: a renamed or moved field changes a count, and a changed count
 fails.
 
 `target` is recorded **verbatim** - whatever string the scanner put in its path
-field, byte for byte. No `Path()` round-trip, no separator folding, no stripping
-of a leading separator. The three scanners disagree with each other, and checkov
-disagrees with itself: measured on `checkov-terraform.json`, its `terraform`
-block spells one file `\\ec2.tf` while the `secrets` block of the *same run*
-spells it `/ec2.tf`; trivy reports scan-root-relative forward slashes
-(`resources/Dockerfile`); tfsec reports an absolute native path
+field, byte for byte - whenever the scanner put something there. No `Path()`
+round-trip, no separator folding, no stripping of a leading separator. Absence is
+the single exception, and the only substitution these walkers make: when the path
+key is missing, null or blank, `target` is `""`. Unobserved: the key is present
+and non-empty on every row-producing record - checkov `file_path` 489/489, trivy
+`Target` on all 32 `Results` entries, tfsec `location.filename` 119/119 - so no
+row any fixture produces takes that branch, and each of the four sites carries
+that measurement at the line.
+
+The three scanners disagree with each other, and checkov disagrees with itself:
+measured on `checkov-terraform.json`, its `terraform` block spells one file
+`\\ec2.tf` while the `secrets` block of the *same run* spells it `/ec2.tf`;
+trivy reports scan-root-relative forward slashes (`resources/Dockerfile`); tfsec
+reports an absolute native path
 (`D:\\Research\\corpus\\vendor\\terragoat\\terraform\\aws\\db-app.tf`). A walker
 that normalized would destroy the evidence that they disagree. Canonical
 identity is S1's spec to write with these fixtures in hand, not a decision to
@@ -89,10 +97,14 @@ def walk_checkov(doc: Any, case_id: str) -> list[InventoryRow]:
     documents: Iterable[Any] = doc if isinstance(doc, list) else [doc]
     rows: list[InventoryRow] = []
     for document in documents:
-        # Unobserved: every element of both arrays is a JSON object.
+        # Unobserved: every element of both arrays is a JSON object (3 + 2 = 5).
         if not isinstance(document, dict):
             continue
+        # Unobserved: `results` is present and truthy on all five framework blocks
+        # (3 in the terraform capture, 2 in the kubernetes one), so `or {}` never fires.
         results = document.get("results") or {}
+        # Unobserved: `failed_checks` is present and non-empty on all five blocks
+        # (215 + 2 + 4 + 266 + 2 = 489), so `or []` never fires.
         for check in results.get("failed_checks") or []:
             rule_id = check.get("check_id")
             # Unobserved: `check_id` is present and non-empty on all 489 failed
@@ -109,6 +121,11 @@ def walk_checkov(doc: Any, case_id: str) -> list[InventoryRow]:
                     # Verbatim. `file_path` is scan-root-relative with a leading
                     # separator, and mixes separators - `/batch-check\job.yaml`
                     # on 1262 of 1262 kubernetes checks. See the module docstring.
+                    # Unobserved: `file_path` is present and non-empty on all 489
+                    # failed checks, so `or ""` never fires and no row a fixture
+                    # produces carries `target == ""`. Not widened to `str | None`
+                    # and not raised on, by ruling: the state exists in no capture,
+                    # and a raise would contradict the per-element skips above.
                     target=str(check.get("file_path") or ""),
                     case_id=case_id,
                 )
@@ -145,10 +162,13 @@ def walk_trivy(doc: Any, case_id: str) -> list[InventoryRow]:
     # covers the null shape, which this corpus never produced - so nothing here
     # claims to know what trivy emits when it finds nothing scannable.
     for result in doc.get("Results") or []:
+        # Unobserved: every one of the 32 `Results` entries (14 + 18) is a JSON object.
         if not isinstance(result, dict):
             continue
         # Verbatim: scan-root-relative, forward slashes only, no leading
         # separator - `db-app.tf`, `resources/Dockerfile`.
+        # Unobserved: `Target` is present and non-empty on all 32 `Results` entries,
+        # so `or ""` never fires. Same ruling as checkov's `file_path`.
         target = str(result.get("Target") or "")
         for misconf in result.get("Misconfigurations") or []:
             rule_id = misconf.get("ID")
@@ -192,22 +212,29 @@ def walk_tfsec(doc: Any, case_id: str) -> list[InventoryRow]:
     # Unobserved: both tfsec fixtures parse to an object.
     if not isinstance(doc, dict):
         return rows
-    # `or []` also covers `"results": null`, a shape this corpus never produced -
-    # the kubernetes capture emitted an empty array. Defensive, and not evidence
-    # of anything about how tfsec reports a clean or unreadable target.
+    # Unobserved: `"results": null`. `or []` covers that shape, which this corpus
+    # never produced - the kubernetes capture emitted an empty array, which reaches
+    # the same fallback harmlessly. Defensive, and not evidence of anything about
+    # how tfsec reports a clean or unreadable target.
     for result in doc.get("results") or []:
+        # Unobserved: every one of the 119 tfsec results is a JSON object.
         if not isinstance(result, dict):
             continue
         rule_id = result.get("rule_id")
         # Unobserved: `rule_id` is present and non-empty on all 119 results.
         if not rule_id:
             continue
+        # Unobserved: `location` is present and non-empty on all 119 results, so
+        # `or {}` never fires.
         location = result.get("location") or {}
         rows.append(
             InventoryRow(
                 scanner="tfsec",
                 rule_id=str(rule_id),
                 native_severity=_clean(result.get("severity")),
+                # Unobserved: `filename` is present and non-empty on all 119
+                # locations, so `or ""` never fires. Same ruling as checkov's
+                # `file_path`: `""` stays the one substituted value, unwidened.
                 target=str(location.get("filename") or ""),
                 case_id=case_id,
             )

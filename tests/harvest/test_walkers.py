@@ -6,12 +6,19 @@ drift between pinned versions is caught (PLAN.md risk: scanner schema drift).
 
 Every number and every literal in the golden tables below was measured from
 `tests/harvest/fixtures/` and from nothing else; the command that measured them is
-named above each table. Where a hand-written document exercises a shape the corpus
-does **not** contain, the test says so - `Unobserved:` in its docstring is the
-marker - because a test that reads like observed scanner behaviour and is not is
-the defect class this module exists to refuse. The four such cases here are
-trivy's null `Results`, tfsec's null `results`, checkov's single-object document,
-and the `UNKNOWN` / `NONE` / `NULL` severity strings.
+named above each table. Where a hand-written document exercises a shape or a value
+the corpus does **not** contain, the test says so - `Unobserved:` in its docstring
+or beside the literal is the marker - because a test that reads like observed
+scanner behaviour and is not is the defect class this module exists to refuse.
+**The markers themselves are the index of those cases, not this paragraph.** Grep
+for `Unobserved` rather than trusting an enumeration here: a count is one edit away
+from being false, which is the same defect in the record that the marker exists to
+prevent in the tests. They run from whole document shapes (trivy's null `Results`,
+tfsec's null `results`, checkov's single-object document) through single values
+(the `UNKNOWN` / `NONE` / `NULL` / `""` / `"   "` severity strings, the `"HIGH"` on
+a checkov check, one scanner's id namespace on another's target) to absent keys (a
+finding with no severity key, a finding with no path key, a tfsec result with no
+`location` object).
 
 Deliberately not asserted here: the manifest-to-fixture correspondence, the byte
 sizes, the BOM, and the capture count. `tests/harvest/test_fixtures.py` owns those
@@ -23,6 +30,7 @@ only to drive its parametrization and to quote `stdout_is_json` /
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -44,16 +52,21 @@ def _load(path: Path) -> Any:
 CAPTURES: tuple[dict[str, Any], ...] = tuple(_load(MANIFEST)["captures"])
 CAPTURE_IDS = [f"{c['scanner']}-{c['platform']}" for c in CAPTURES]
 
-# The three golden tables were measured over the committed fixtures, with the
-# walkers under test, by:
+# Four of the five golden tables below - `EXPECTED_ROWS`, `EXPECTED_SEVERITIES`,
+# `EXPECTED_DISTINCT_RULE_IDS` and `EXPECTED_ID_PREFIXES` - were measured over the
+# committed fixtures, with the walkers under test, by:
 #
 #   uv run python -c "import collections, json, pathlib; \
 #     from tools.harvest.walkers import walk; \
 #     [print(p.name, len(r := walk(p.stem.split('-')[0], json.loads(p.read_bytes()), p.stem)), \
-#     sorted({x.native_severity for x in r}, key=str)) \
+#     collections.Counter(x.native_severity for x in r), len({x.rule_id for x in r}), \
+#     collections.Counter(x.rule_id.rstrip('0123456789') for x in r)) \
 #     for p in sorted(pathlib.Path('tests/harvest/fixtures').iterdir())]"
 #
-# Re-run it after touching any walker: a moved field path moves a count.
+# `EXPECTED_ID_PREFIXES` is keyed by scanner, so it is the union of that scanner's two
+# lines. `EXPECTED_TARGET_KINDS` comes from the same walk through `_separator_kind`
+# and carries its own note. Re-run the command after touching any walker: a moved
+# field path moves a count.
 
 # How many InventoryRows each fixture's bytes produce. Exact counts, not a
 # lower bound, and not `assert rows` - a walker that returned [] would satisfy the
@@ -69,27 +82,77 @@ EXPECTED_ROWS: dict[str, int] = {
     "tfsec-kubernetes.json": 0,
 }
 
-# The complete `native_severity` vocabulary each fixture yields. Set equality, so a
-# value arriving that is not listed fails - which is what makes "no fixture contains
-# UNKNOWN" a mechanically enforced fact instead of a note in a docstring. `None` is
-# checkov's only entry because checkov emitted null on all 1600 of its checks; a
-# walker that defaulted an absent severity to a level would fail here on 489 rows.
-EXPECTED_SEVERITIES: dict[str, set[str | None]] = {
-    "checkov-terraform.json": {None},
-    "checkov-kubernetes.json": {None},
-    "trivy-terraform.json": {"CRITICAL", "HIGH", "MEDIUM", "LOW"},
-    "trivy-kubernetes.json": {"CRITICAL", "HIGH", "MEDIUM", "LOW"},
-    "tfsec-terraform.json": {"CRITICAL", "HIGH", "MEDIUM", "LOW"},
-    "tfsec-kubernetes.json": set(),
+# The exact `native_severity` **distribution** each fixture yields - counts, not just
+# the vocabulary. A set comparison was the earlier form and it was too weak to be the
+# tripwire this file claims: a pin bump that re-rated 30 trivy rules from HIGH to
+# MEDIUM moves no row count, no separator kind and no vocabulary, so it passed. The
+# distribution is what S0 exists to hand S3 (PLAN.md R3-#4 makes the missing-severity
+# *rate* a reported metric), so the counts are what is pinned. Equality still enforces
+# the vocabulary as a side effect - "no fixture contains UNKNOWN" fails here the moment
+# one does. `None` is checkov's entire column, 221 + 268 = 489 rows, because checkov
+# emitted null on all 1600 of its checks; a walker that defaulted an absent severity to
+# a level fails here on both checkov fixtures.
+EXPECTED_SEVERITIES: dict[str, Counter[str | None]] = {
+    "checkov-terraform.json": Counter({None: 221}),
+    "checkov-kubernetes.json": Counter({None: 268}),
+    "trivy-terraform.json": Counter({"HIGH": 61, "MEDIUM": 26, "LOW": 22, "CRITICAL": 6}),
+    "trivy-kubernetes.json": Counter({"LOW": 168, "MEDIUM": 100, "HIGH": 63, "CRITICAL": 1}),
+    "tfsec-terraform.json": Counter({"HIGH": 72, "MEDIUM": 21, "LOW": 17, "CRITICAL": 9}),
+    "tfsec-kubernetes.json": Counter(),
 }
 
-# How many rows' `target` carry which separators. This is the table that fails if a
-# walker ever starts normalizing a path: on Windows `Path(t).as_posix()` turns
-# `\ec2.tf` into `/ec2.tf` and `/batch-check\job.yaml` into `/batch-check/job.yaml`,
-# so `backslash-only` and `mixed` both collapse into `forward-only` and `neither`
-# (a bare filename) is the only kind a round-trip leaves alone. The three scanners
-# disagree three ways over the same two scan roots, which is the whole argument for
-# recording `target` verbatim.
+# How many *distinct* rule ids each fixture's rows carry. One integer per fixture, and
+# the cheapest thing that notices rule-id membership drift at all: nothing else in this
+# module derives an id from fixture bytes, so a re-captured fixture that merged two
+# rules, split one in two, or renamed one into an id already present would move no row
+# count, no severity count and no separator kind. It moves these. What it still cannot
+# see is a change that preserves the count - two rules swapping ids, or a merge and a
+# split that net to zero - and, deliberately, no id table is held here: 255 literals
+# would couple this suite to bytes Task 8 re-derives for a rule inventory anyway.
+EXPECTED_DISTINCT_RULE_IDS: dict[str, int] = {
+    "checkov-terraform.json": 98,
+    "checkov-kubernetes.json": 30,
+    "trivy-terraform.json": 49,
+    "trivy-kubernetes.json": 30,
+    "tfsec-terraform.json": 48,
+    "tfsec-kubernetes.json": 0,
+}
+
+# The id-prefix vocabulary each scanner's rows carry, over both of that scanner's
+# captures: a rule id with its trailing digit run removed (`_id_prefix`). This is the
+# guard for a **re-prefixing**, the most likely id drift here and the one a distinct-id
+# count cannot see: `walk_trivy` records that at this pin trivy's ids are *not*
+# AVD-prefixed, so if a later pin restores it, all 447 trivy ids change while every
+# count in this module holds. Measured, no id in any fixture lacks a trailing digit and
+# none is all digits, so every prefix below is a non-empty namespace label.
+EXPECTED_ID_PREFIXES: dict[str, set[str]] = {
+    "checkov": {"CKV_AWS_", "CKV2_AWS_", "CKV_K8S_", "CKV2_K8S_", "CKV_SECRET_", "CKV_DOCKER_"},
+    "trivy": {"AWS-", "DS-", "KSV-"},
+    "tfsec": {"AVD-AWS-"},
+}
+
+# How many rows' `target` carry which separators, and the table that fails if a walker
+# ever starts normalizing a path. Measured on this host: `Path(t).as_posix()` turns
+# `\ec2.tf` into `/ec2.tf` and `/batch-check\job.yaml` into `/batch-check/job.yaml`, so
+# `backslash-only` and `mixed` collapse into `forward-only` - but **two of the four
+# kinds are fixed points, not one**: `forward-only` and `neither` both come back
+# byte-identical (`batch-check/job.yaml` and `ec2.tf` do), the empty string being the
+# one `neither` value it rewrites, to `.`, and no fixture produces one.
+#
+# That is a hole in this table, and it is trivy-shaped. `trivy-terraform.json` is
+# {neither: 113, forward-only: 2} and `trivy-kubernetes.json` is {forward-only: 332},
+# so **all 447 trivy rows sit in the two fixed-point kinds**: a `Path(t).as_posix()`
+# planted in `walk_trivy` moves no target, no count, no severity and no kind here. It
+# holds checkov's 489 rows and tfsec's 119 to a verbatim `target`; against the very
+# normalization this comment names, it holds trivy to nothing. The only assertion in
+# the module that would notice is
+# `test_an_absent_path_key_becomes_an_empty_target_for_every_walker`, and only via
+# `Path("").as_posix() == "."` - not through any row a fixture produces. Worth stating
+# because trivy is the scanner whose paths a reader is likeliest to assume are already
+# normalized: they are, and that is exactly why this table cannot vouch for them.
+#
+# The three scanners disagree three ways over the same two scan roots, which is the
+# whole argument for recording `target` verbatim.
 EXPECTED_TARGET_KINDS: dict[str, dict[str, int]] = {
     "checkov-terraform.json": {"backslash-only": 215, "mixed": 2, "forward-only": 4},
     "checkov-kubernetes.json": {"mixed": 268},
@@ -115,6 +178,23 @@ def _separator_kind(target: str) -> str:
     if has_slash:
         return "forward-only"
     return "neither"
+
+
+def _id_prefix(rule_id: str) -> str:
+    """The namespace label of a rule id: the id with its trailing digit run removed.
+
+    `CKV_AWS_18` -> `CKV_AWS_`, `CKV2_K8S_6` -> `CKV2_K8S_`, `AWS-0026` -> `AWS-`,
+    `AVD-AWS-0099` -> `AVD-AWS-`. Measured over all 1055 rows: every id ends in a
+    digit and none is all digits, so this never returns the whole id and never returns
+    `""`. Digits inside an id are safe - the `2` in `CKV2_` and the `8` in `K8S_` are
+    followed by a non-digit, so the strip stops before them.
+    """
+    return rule_id.rstrip("0123456789")
+
+
+def _levels(counts: Counter[str | None]) -> list[tuple[str | None, int]]:
+    """Severity counts ordered by level name, so two failure messages line up by eye."""
+    return sorted(counts.items(), key=lambda item: str(item[0]))
 
 
 def test_unknown_scanner_raises() -> None:
@@ -322,10 +402,19 @@ def test_checkov_also_accepts_a_bare_object_document() -> None:
 def test_trivy_misconfigurations_become_rows() -> None:
     """`Results[].Misconfigurations[].ID`, and a `Results` entry with no findings key.
 
-    The ids are the observed ones. **At this pin trivy's `ID` is not AVD-prefixed**:
-    measured, the literal `AVD-` appears zero times in either trivy fixture and no
-    `AVDID` key appears on any of the 447 records. `AWS-0028` is a real terraform id;
-    `KSV-0001` is the kubernetes form.
+    The ids are the observed ones, and so is each one's severity. **At this pin trivy's
+    `ID` is not AVD-prefixed**: measured, the literal `AVD-` appears zero times in
+    either trivy fixture and no `AVDID` key appears on any of the 447 records.
+    `AWS-0028` occurs twice in `trivy-terraform.json`, on `db-app.tf` and `ec2.tf`,
+    both at `HIGH`; `AWS-0026` occurs once, on `ec2.tf`, at `HIGH`; `KSV-0001` occurs
+    18 times in `trivy-kubernetes.json`, every one at `MEDIUM`.
+
+    **Unobserved:** this one document merges two captures' namespaces. `AWS-` and
+    `KSV-` ids never share a document in the corpus - `trivy-terraform.json` carries
+    `AWS-` and `DS-`, `trivy-kubernetes.json` carries `KSV-` and nothing else - and the
+    real ids on `resources/Dockerfile` are `DS-0002` and `DS-0026`, not a `KSV-` id.
+    The merge is here so one document covers both id shapes; nothing about it is a
+    record of what trivy emitted.
 
     The second `Results` entry - `"Target": "."` with no `Misconfigurations` key at
     all - is observed, not invented: it is the per-directory summary entry, and its
@@ -342,7 +431,7 @@ def test_trivy_misconfigurations_become_rows() -> None:
                 "Target": "ec2.tf",
                 "Misconfigurations": [
                     {"ID": "AWS-0028", "Severity": "HIGH", "Status": "FAIL"},
-                    {"ID": "AWS-0026", "Severity": "LOW", "Status": "FAIL"},
+                    {"ID": "AWS-0026", "Severity": "HIGH", "Status": "FAIL"},
                 ],
             },
             {"Target": ".", "MisconfSummary": {"Successes": 66, "Failures": 0}},
@@ -357,7 +446,7 @@ def test_trivy_misconfigurations_become_rows() -> None:
     assert [r.rule_id for r in rows] == ["AWS-0028", "AWS-0026", "KSV-0001"], (
         "a Results entry carrying no Misconfigurations key contributes no rows"
     )
-    assert [r.native_severity for r in rows] == ["HIGH", "LOW", "MEDIUM"]
+    assert [r.native_severity for r in rows] == ["HIGH", "HIGH", "MEDIUM"]
     assert rows[0].target == "ec2.tf"
     assert rows[2].target == "resources/Dockerfile"
     assert all(r.scanner == "trivy" and r.case_id == "tg-aws-s3" for r in rows)
@@ -464,7 +553,7 @@ _ABSENT = object()
 TFSEC_FILENAME = "D:\\Research\\corpus\\vendor\\terragoat\\terraform\\aws\\db-app.tf"
 
 
-def _one_finding(scanner: str, severity: Any) -> Any:
+def _one_finding(scanner: str, severity: Any, *, omit_path: bool = False) -> Any:
     """A one-finding document for `scanner`; `_ABSENT` omits the severity key entirely.
 
     Each shape is the minimum the corresponding walker reads, in that scanner's own
@@ -472,9 +561,19 @@ def _one_finding(scanner: str, severity: Any) -> Any:
     `Misconfigurations`, tfsec's flat `results`. An unrecognized scanner raises
     rather than returning something walkable, so adding a fourth walker without
     adding its document fails loudly instead of silently skipping the matrix.
+
+    `omit_path=True` drops the path key that walker reads - checkov's `file_path`,
+    trivy's `Target`, tfsec's `location.filename` - which is the same absent-key
+    distinction `_ABSENT` draws for severity, on the other recorded column. In tfsec's
+    case the `location` object then keeps the real sibling keys `start_line` and
+    `end_line` from the first record of `tfsec-terraform.json`, so it stays present and
+    truthy: that isolates the `filename` fallback from the `location` fallback, which
+    `test_tfsec_target_is_empty_when_the_location_object_is_absent` covers on its own.
     """
     if scanner == "checkov":
-        check: dict[str, Any] = {"check_id": "CKV_AWS_18", "file_path": "\\s3.tf"}
+        check: dict[str, Any] = {"check_id": "CKV_AWS_18"}
+        if not omit_path:
+            check["file_path"] = "\\s3.tf"
         if severity is not _ABSENT:
             check["severity"] = severity
         return [{"check_type": "terraform", "results": {"failed_checks": [check]}}]
@@ -482,12 +581,15 @@ def _one_finding(scanner: str, severity: Any) -> Any:
         misconf: dict[str, Any] = {"ID": "AWS-0028", "Status": "FAIL"}
         if severity is not _ABSENT:
             misconf["Severity"] = severity
-        return {"Results": [{"Target": "ec2.tf", "Misconfigurations": [misconf]}]}
+        entry: dict[str, Any] = {"Misconfigurations": [misconf]}
+        if not omit_path:
+            entry["Target"] = "ec2.tf"
+        return {"Results": [entry]}
     if scanner == "tfsec":
-        result: dict[str, Any] = {
-            "rule_id": "AVD-AWS-0099",
-            "location": {"filename": TFSEC_FILENAME},
-        }
+        location: dict[str, Any] = {"start_line": 117, "end_line": 134}
+        if not omit_path:
+            location = {"filename": TFSEC_FILENAME}
+        result: dict[str, Any] = {"rule_id": "AVD-AWS-0099", "location": location}
         if severity is not _ABSENT:
             result["severity"] = severity
         return {"results": [result]}
@@ -508,6 +610,48 @@ def test_an_absent_severity_key_becomes_none_for_every_walker(scanner: str) -> N
         f"{scanner} substituted {rows[0].native_severity!r} for a severity key that "
         "was not in the document"
     )
+
+
+@pytest.mark.parametrize("scanner", sorted(WALKERS))
+def test_an_absent_path_key_becomes_an_empty_target_for_every_walker(scanner: str) -> None:
+    """Unobserved: the path key is present and non-empty on every record in the corpus.
+
+    checkov `file_path` 489/489, trivy `Target` on all 32 `Results` entries, tfsec
+    `location.filename` 119/119 - so the `or ""` at each of the four sites in
+    `walkers.py` fires on no fixture, and `target == ""` is a state no committed byte
+    produces. This is the counterpart of the absent-severity test above: `target` folds
+    three document states - key absent, JSON null, blank string - onto `""` exactly as
+    `_clean` folds them onto `None`, and until this test existed nothing held the
+    walkers to folding them at all.
+
+    `""` rather than `None` and rather than a raise, by ruling: no scanner in this
+    corpus has emitted the state, so widening `InventoryRow.target` would push a new
+    state through two unwritten tasks to carry it, and a raise would contradict the
+    per-element skips the same walkers already use. What this pins is that the row still
+    arrives - a walker that dropped the finding, or raised, would be inventing the error
+    policy Task 6 deliberately does not have.
+    """
+    rows = walk(scanner, _one_finding(scanner, None, omit_path=True), "tg-aws-s3")
+    assert len(rows) == 1, f"{scanner} dropped a finding that carried no path key"
+    assert rows[0].target == "", (
+        f"{scanner} turned a path key that was not in the document into {rows[0].target!r}, not ''"
+    )
+
+
+def test_tfsec_target_is_empty_when_the_location_object_is_absent() -> None:
+    """Unobserved: `location` is present and non-empty on all 119 tfsec results.
+
+    tfsec is the one walker reading a path two levels down, so it has two fallbacks
+    where checkov and trivy have one - `location or {}`, then `filename or ""`. The
+    object going missing is therefore a different branch from the filename going
+    missing, which the parametrized test above covers for tfsec. Same ruling, same two
+    assertions: the result still becomes a row, and its target is `""`.
+    """
+    doc = {"results": [{"rule_id": "AVD-AWS-0099", "severity": "LOW"}]}
+    rows = walk("tfsec", doc, "tg-aws-s3")
+    assert len(rows) == 1, "tfsec dropped a result that carried no location object"
+    assert rows[0].target == "", f"tfsec invented {rows[0].target!r} for an absent location"
+    assert rows[0].rule_id == "AVD-AWS-0099", "the row lost the id the document carried"
 
 
 # (severity as it appears in the document, what `native_severity` must become).
@@ -634,6 +778,13 @@ def test_walker_handles_the_real_captured_output(capture: dict[str, Any]) -> Non
     passes vacuously over an empty list, which is exactly what a moved field path
     produces - so an unasserted count would have made this test green on the drift it
     was written for.
+
+    Three golden tables are checked per fixture, and each can fail while the other two
+    hold: the row count; the severity **distribution**, a `Counter` rather than a
+    vocabulary set, so a level moving from one id to another inside the same vocabulary
+    still fails; and the number of distinct rule ids, which moves when ids merge or split
+    under an unchanged row count. `test_the_rule_id_namespaces_each_scanner_emits` adds
+    the fourth, on the prefix vocabulary.
     """
     name = Path(capture["fixture"]).name
     case_id = Path(capture["fixture"]).stem
@@ -665,10 +816,59 @@ def test_walker_handles_the_real_captured_output(capture: dict[str, Any]) -> Non
         assert row.rule_id, f"empty rule_id in {name}"
         assert row.scanner == scanner
         assert row.case_id == case_id
-    assert {row.native_severity for row in rows} == EXPECTED_SEVERITIES[name], (
-        f"{name} yields severities "
-        f"{sorted({row.native_severity for row in rows}, key=str)}, not the measured "
-        f"{sorted(EXPECTED_SEVERITIES[name], key=str)}"
+    observed = Counter(row.native_severity for row in rows)
+    assert observed == EXPECTED_SEVERITIES[name], (
+        f"{name} yields severity counts {_levels(observed)}, not the measured "
+        f"{_levels(EXPECTED_SEVERITIES[name])}"
+    )
+    distinct = {row.rule_id for row in rows}
+    assert len(distinct) == EXPECTED_DISTINCT_RULE_IDS[name], (
+        f"{name} yields {len(distinct)} distinct rule ids across {len(rows)} rows, not the "
+        f"{EXPECTED_DISTINCT_RULE_IDS[name]} measured at this pin - two ids merging into one, "
+        "or one splitting into two, leaves the row count exactly where it was"
+    )
+
+
+@pytest.mark.parametrize("scanner", sorted(EXPECTED_ID_PREFIXES))
+def test_the_rule_id_namespaces_each_scanner_emits(scanner: str) -> None:
+    """The id-namespace vocabulary per scanner, read off both of that scanner's captures.
+
+    The rule id is the join key every later stage matches on, and nothing else in this
+    file constrains its *shape*: `EXPECTED_ROWS` counts rows and
+    `EXPECTED_DISTINCT_RULE_IDS` counts ids, so a walker that read a different id field,
+    or re-prefixed every id it read, moves neither number. Two such changes are one
+    rename away in this schema - `long_id` sits beside `rule_id` on all 119 tfsec results
+    carrying an identifier from a different namespace
+    (`aws-ec2-add-description-to-security-group`), and prefixing trivy's ids with the
+    `AVD-` that appears 0 times in either trivy fixture would look like a fix - and both
+    land here as a changed prefix set.
+
+    Scanner-wide rather than per-fixture, because `CKV_K8S_` appears in one checkov
+    capture and not the other: a per-fixture table would pin which platform was scanned,
+    not which namespaces the scanner emits.
+
+    What this cannot see is a swap *within* one namespace. Rewriting `AWS-0026` to
+    `AWS-0028` in `walk_trivy` leaves this prefix set and the row count untouched: of the
+    golden tables only `EXPECTED_DISTINCT_RULE_IDS` moves (trivy-terraform 49 -> 48), and
+    `test_trivy_misconfigurations_become_rows` catches it too only because this file
+    happens to hand-write both ids. A pure two-way *exchange* is caught by nothing here -
+    measured, swapping `AWS-0030` and `AWS-0042` inside `walk_trivy` fails no test in the
+    suite: row count, severity counts, distinct-id count and prefix set all hold. That is
+    the acknowledged edge of this tripwire, not an oversight.
+    """
+    prefixes: set[str] = set()
+    seen = 0
+    for capture in CAPTURES:
+        if capture["scanner"] != scanner:
+            continue
+        fixture = REPO_ROOT / capture["fixture"]
+        rows = walk(scanner, _load(fixture), fixture.stem)
+        prefixes.update(_id_prefix(row.rule_id) for row in rows)
+        seen += len(rows)
+    assert seen, f"no {scanner} rows to read ids from; the captures are {CAPTURE_IDS}"
+    assert prefixes == EXPECTED_ID_PREFIXES[scanner], (
+        f"{scanner} emits id namespaces {sorted(prefixes)} across {seen} rows, not the "
+        f"measured {sorted(EXPECTED_ID_PREFIXES[scanner])}"
     )
 
 
@@ -678,10 +878,24 @@ def test_no_walker_normalizes_the_target_it_records(capture: dict[str, Any]) -> 
 
     `target` is a verbatim record of what the scanner said, and this is the assertion
     that holds a walker to it. One `Path(t).as_posix()` anywhere in a walker turns
-    `\\ec2.tf` into `/ec2.tf` and `/batch-check\\job.yaml` into
-    `/batch-check/job.yaml` on this host, collapsing 215 + 2 + 268 rows into
-    `forward-only` and failing here - and *only* here, because every rule id, every
-    severity and every row count would be untouched by it.
+    `\\ec2.tf` into `/ec2.tf` and `/batch-check\\job.yaml` into `/batch-check/job.yaml`
+    on this host - measured, that moves **604 of the 1055 rows** the six fixtures
+    produce: checkov's 217 backslash-or-mixed terraform rows, its 268 kubernetes rows,
+    and tfsec's 119 absolute-native ones. The remaining 451 are `as_posix()` fixed
+    points, all of them trivy's, which is why the table above says this test cannot
+    vouch for that walker.
+
+    Not the only test such a change fails, and this docstring used to claim it was.
+    Measured by planting `Path(...).as_posix()` on `walk_checkov`'s `target` and running
+    the suite bare: **6 cases across 5 test functions** fail -
+    `test_checkov_failed_checks_become_rows`,
+    `test_checkov_accepts_a_list_of_run_documents`,
+    `test_an_absent_path_key_becomes_an_empty_target_for_every_walker[checkov]`,
+    `test_walk_stamps_the_case_id_it_is_given_without_interpretation`, and this test on
+    both checkov captures. What *is* untouched by it is every rule id, every severity
+    and every row count - the three golden tables in
+    `test_walker_handles_the_real_captured_output` all hold, so this table and the
+    hand-written target assertions are the whole of the coverage.
 
     The three scanners spell the same two scan roots three ways: checkov relative with
     a leading separator and mixed separators, trivy relative with forward slashes,
