@@ -236,8 +236,17 @@ Measured by re-running the capture and diffing against the committed blob:
   the order of records within `failed_checks` and `passed_checks` varies between
   runs, and `check_result.evaluated_keys` is a set serialized to a list, so its
   order varies within a record (observed on the `CKV2_*` graph checks).
-- **tfsec** — no instability observed across runs, but this is one comparison,
-  not a guarantee.
+- **tfsec** — stable in count and in record order, unstable in content. A third
+  run (made while re-verifying the capture script) matched the committed blob at
+  119 findings in the same order, but the five `AVD-AWS-0038` findings on
+  `aws_eks_cluster.eks_cluster` (`eks.tf:118`) had permuted their `description`
+  strings among themselves — same five values, four of them in different slots.
+  So the earlier "no instability observed" was an artefact of comparing two runs.
+  Load-bearing beyond reproducibility: those five findings differ in nothing but
+  `description`, and 119 tfsec findings collapse to 110 distinct
+  `(rule_id, filename, start_line, resource)` keys — three keys collide
+  (`AVD-AWS-0038` x5, `AVD-AWS-0057` x4 and x3). A deduplication key without
+  `description` discards real findings; one with it is order-dependent.
 
 What *is* stable for checkov, and is what later tasks may rely on: the multiset
 of `(check_id, file_path, file_line_range, resource)` over each bucket is
