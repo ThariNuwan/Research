@@ -46,7 +46,7 @@ $ManifestSchemaVersion = 1
 # Stands in for this checkout root inside the recorded argv; see argv_note.
 $RepoRootToken = '<repo>'
 
-# Same reasoning as tools/vendor_corpus.ps1:63-70. A scanner or platform name out
+# Same reasoning as tools/vendor_corpus.ps1:55-63. A scanner or platform name out
 # of this class would be joined into a fixture filename; the lockfiles are ours
 # and the risk is low, but the guard is one line.
 $NameRe = '^[a-z0-9][a-z0-9-]*$'
@@ -54,7 +54,7 @@ $NameRe = '^[a-z0-9][a-z0-9-]*$'
 function Write-Step($Message) { Write-Host "==> $Message" -ForegroundColor Cyan }
 function Write-Ok($Message) { Write-Host "    OK   $Message" -ForegroundColor Green }
 # Failures go to stderr, not to the host, so a caller capturing stderr sees the
-# reason instead of a bare exit 1. Mirrors tools/vendor_corpus.ps1:73.
+# reason instead of a bare exit 1. Mirrors tools/vendor_corpus.ps1:79.
 function Die($Message) { [Console]::Error.WriteLine("    FAIL $Message"); exit 1 }
 function Write-Warn($Message) { [Console]::Error.WriteLine("    WARN $Message") }
 
@@ -108,10 +108,16 @@ function Get-PropertyNames($Object) {
 # downstream as "Python can load this file", so the verdict has to come from
 # Python or the field is a claim about a different parser.
 #
-# The validator runs over the STAGED FILE, not over a decoded string: a UTF-8 BOM
-# is part of what json.load has to accept or reject, and stripping it before
-# asking would answer a question nobody asked. If the validator cannot be run at
-# all, the capture dies. Falling back to the permissive probe would put
+# The validator runs over the STAGED FILE, not over a decoded string: decoding
+# first would answer a question about a PowerShell string rather than about the
+# bytes a Python consumer opens. What it does NOT decide is the BOM question -
+# measured, json.loads over bytes takes json.detect_encoding, which reports
+# utf-8-sig for BOM-led input and parses it happily, as does
+# json.load(open(path, "rb")). Only the text path, open(path, encoding="utf-8"),
+# raises "Unexpected UTF-8 BOM". That is why stdout_has_bom is a separate
+# byte-level field rather than a corollary of stdout_is_json, and why a BOM is
+# warned about on its own below. If the validator cannot be run at all, the
+# capture dies. Falling back to the permissive probe would put
 # `stdout_is_json: true` in the manifest having checked nothing, which is worse
 # than carrying no such field.
 $ValidatorSource = @'
@@ -125,8 +131,11 @@ from "the validator did not run" (a failure) and stop rather than record a
 verdict it never obtained.
 
 Bytes, not text: json.loads over bytes is the same detect-encoding path that
-json.load(open(path, "rb")) takes, and whether a BOM is present is part of what
-decides if Python can read the file at all.
+json.load(open(path, "rb")) takes, which is how every consumer of these fixtures
+reaches them. Note what that path does not settle - it ACCEPTS a leading UTF-8
+BOM, because detect_encoding reports utf-8-sig for it. The text path,
+open(path, encoding="utf-8"), rejects the same bytes. The BOM is therefore
+checked separately, on the bytes, by the caller.
 """
 import json
 import sys
@@ -322,7 +331,13 @@ foreach ($case in $cases) {
 
 # scan_root deduplicated per platform. Four Terraform cases share one root, so
 # this is 2 roots and not 5 - the difference between 6 scanner runs and 15.
-$Roots = [ordered]@{}
+# Ordinal comparer, not the default one. `[ordered]@{}` builds an OrderedDictionary
+# with a case-INSENSITIVE comparer, so `$Roots.Contains('Terraform')` answers true
+# for a root declared as 'terraform'. That would let a scanner declaring the wrong
+# case pass the coverage check below and then be looked up, later, under a key that
+# is not in the dictionary. The lockfile is lowercase and $NameRe enforces it; this
+# makes the dictionary agree instead of quietly forgiving.
+$Roots = New-Object System.Collections.Specialized.OrderedDictionary([StringComparer]::Ordinal)
 foreach ($platformName in @($cases | ForEach-Object { $_.platform } | Sort-Object -Unique)) {
     $matched = @($cases | Where-Object { $_.platform -ceq $platformName })
     # NOT $roots: PowerShell identifiers are case-insensitive, so a lower-case
@@ -345,7 +360,7 @@ foreach ($platformName in @($cases | ForEach-Object { $_.platform } | Sort-Objec
     # The lockfile is ours, but the resolved path is handed to a scanner as a
     # directory to walk; a '..' segment would point the scan outside the repo and
     # a fixture would then describe files that are not corpus.
-    # tools/vendor_corpus.ps1:53-63 refuses the same class of path by a different
+    # tools/vendor_corpus.ps1:55-63 refuses the same class of path by a different
     # mechanism - a regex over the declared string, applied before anything is
     # resolved. This one tests the resolved path, so it also catches a symlink or
     # a junction, which no regex over the lockfile text can see.
@@ -380,6 +395,15 @@ foreach ($name in $ScannerNames) {
     if (@($declared).Count -eq 0) {
         Die "tools/scanners.lock.json declares no platforms for '$name', so nothing decides what to run it against."
     }
+    # Same guard the corpus cases get at :327, for the same reason: a platform name
+    # is joined into a fixture filename. Checked here as well because these two
+    # lists are separate declarations - a case's platform passing $NameRe says
+    # nothing about a scanner's, and $Roots is keyed by the case side.
+    foreach ($declaredPlatform in $declared) {
+        if ($declaredPlatform -cnotmatch $NameRe) {
+            Die "'$name' in tools/scanners.lock.json declares platform '$declaredPlatform', outside $NameRe, and the platform is joined into a fixture filename."
+        }
+    }
     $missing = @($declared | Where-Object { -not $Roots.Contains($_) })
     if (@($missing).Count -gt 0) {
         Die "'$name' declares support for $($missing -join ', ') but tools/corpus.lock.json has no case with that platform, so this run would capture nothing for it and still report success. Add a case or narrow the scanner's platforms."
@@ -388,23 +412,44 @@ foreach ($name in $ScannerNames) {
 Write-Ok "every declared scanner platform has a corpus scan root"
 
 # ---------------------------------------------------------------------------
-# Output directories. New-Item -ItemType Directory -Force is idempotent on a
-# directory; -Force is never applied to a file path here, because on a file it
-# TRUNCATES an existing one - which on this script's own outputs would destroy
-# the previous capture before the new one is known to have worked.
+# Output directories, all three through one helper.
+#
+# Measured on this host, not assumed: `New-Item -ItemType Directory -Force`
+# against a path that is an existing FILE is a silent no-op. It does not throw
+# under $ErrorActionPreference='Stop', it does not create the directory, and it
+# leaves the file's bytes alone (a 21-byte file was still 21 bytes afterwards).
+# `-ItemType File -Force` is the form that truncates - same measurement, 21 bytes
+# to 0 - and this script never uses it.
+#
+# So the hazard here is a lost error rather than lost data: the run carries on
+# believing the directory exists, and the first write into it throws
+# "Could not find a part of the path ...\checkov-terraform.json", which names the
+# fixture and says nothing about its parent being a file - a minute into a
+# scanner run, or in the publish step, whichever touches it first.
+#
+# Two of the three creations tested for a container first and the third called
+# -Force bare, so whether anything noticed at all depended on which line you
+# read. One helper, which turns it into a named precondition failure before the
+# first scanner starts.
 # ---------------------------------------------------------------------------
-foreach ($dir in @($FixtureDir, $ArtifactDir)) {
-    if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
-        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+function New-OutputDirectory([string]$Path, [string]$What) {
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        Die "$What at $Path is a file, not a directory. New-Item -ItemType Directory -Force will not fail on it - it silently creates nothing, and a later write would fail naming a file inside $Path instead. Move it aside and run this again."
+    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        New-Item -ItemType Directory -Force -Path $Path | Out-Null
     }
 }
 
+New-OutputDirectory $FixtureDir 'the fixture directory'
+New-OutputDirectory $ArtifactDir 'the artifact directory'
+
 # Staged outside the repository. A scanner killed halfway leaves a truncated file,
 # and a truncated fixture that still happens to parse is worse than no fixture:
-# stdout lands here first and is moved into tests/harvest/fixtures only after the
-# exit code is known and the bytes have been parsed.
+# stdout lands here first and moves into tests/harvest/fixtures only once all six
+# captures have parsed - see the publish step after the matrix assertion.
 $TempDir = Join-Path ([IO.Path]::GetTempPath()) ("iacrisk-capture-" + [guid]::NewGuid().ToString('N').Substring(0, 12))
-New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
+New-OutputDirectory $TempDir 'the staging directory'
 $KeepTemp = $false
 
 # The validator lives in the staging directory rather than in tools/: it is twenty
@@ -434,6 +479,10 @@ if ($saysBad.Ok) {
 Write-Ok "json.load validator live: object accepted, raw newline in a string literal rejected ($($saysBad.Error))"
 
 $Records = New-Object System.Collections.Generic.List[object]
+# One entry per capture that parsed, published together after the last one. Held
+# separately from $Records because a record is what the manifest says and an entry
+# here is a file that still has to be moved.
+$Pending = New-Object System.Collections.Generic.List[object]
 
 function Invoke-Capture {
     param(
@@ -495,9 +544,10 @@ function Invoke-Capture {
     $errBytes = [IO.File]::ReadAllBytes($stagedErr)
     $bom = ($outBytes.Length -ge 3 -and $outBytes[0] -eq 0xEF -and $outBytes[1] -eq 0xBB -and $outBytes[2] -eq 0xBF)
     # Skipped for the decode below, which exists only to count CRLF pairs and
-    # where GetString would otherwise turn a BOM into a leading U+FEFF. NOT
-    # skipped for the JSON verdict: Test-JsonFile reads the staged file whole, so
-    # a BOM makes the capture non-JSON, which is exactly what it makes it.
+    # where GetString would otherwise turn a BOM into a leading U+FEFF. The JSON
+    # verdict is taken over the whole staged file, BOM included, and measured that
+    # verdict is unchanged by one: json.loads over bytes accepts a leading BOM.
+    # $bom is recorded and warned about separately for exactly that reason.
     $offset = if ($bom) { 3 } else { 0 }
     $outText = [Text.Encoding]::UTF8.GetString($outBytes, $offset, $outBytes.Length - $offset)
     $errText = [Text.Encoding]::UTF8.GetString($errBytes)
@@ -538,7 +588,7 @@ function Invoke-Capture {
     # in place so the operator can read what actually came back.
     if (-not $probe.Ok -and -not $MayBeNonJson) {
         $script:KeepTemp = $true
-        $bomNote = if ($bom) { ' The output starts with a UTF-8 BOM, which json.load rejects by itself.' } else { '' }
+        $bomNote = if ($bom) { ' The output also starts with a UTF-8 BOM - not the cause of the parse failure above, since json.loads over bytes accepts one, but a second defect to fix.' } else { '' }
         Die ("$Scanner over $($root.Relative) did not produce JSON ($($probe.Error)). exit=$exit, " +
              "stdout=$($outBytes.Length) bytes, stderr=$($errBytes.Length) bytes.$bomNote " +
              "Staged output kept at $stagedOut and stderr at $stagedErr - read them before changing the argument array. " +
@@ -549,21 +599,26 @@ function Invoke-Capture {
     # trap for any test that globs the fixture directory, so a capture that did
     # not parse is saved as .stdout.txt instead and the stale sibling from a
     # previous run is removed rather than left to be picked up.
+    #
+    # Queued here, not published. Publishing each capture as it finished meant a
+    # run that died on capture four left four new fixtures beside two old ones and
+    # a manifest describing neither - a mixed set that
+    # tests/harvest/test_fixtures.py detects by byte count but cannot repair, and
+    # that no single file on disk announces.
     $ext = if ($probe.Ok) { '.json' } else { '.stdout.txt' }
     $fixture = Join-Path $FixtureDir "$Scanner-$Platform$ext"
     $stale = Join-Path $FixtureDir ("$Scanner-$Platform" + $(if ($probe.Ok) { '.stdout.txt' } else { '.json' }))
-    if (Test-Path -LiteralPath $stale -PathType Leaf) { Remove-Item -LiteralPath $stale -Force }
-    Move-Item -LiteralPath $stagedOut -Destination $fixture -Force
+    $Pending.Add([ordered]@{ Staged = $stagedOut; Fixture = $fixture; Stale = $stale })
     # Repo-relative and forward-slashed: the manifest is read by Python tests and
     # quoted in the spec appendix, neither of which wants a drive-letter prefix.
     $sep = [IO.Path]::DirectorySeparatorChar
     $fixtureRel = $fixture.Substring($RepoRoot.Length).TrimStart($sep).Replace($sep, '/')
 
-    if ($bom) { Write-Warn "$Scanner-$Platform starts with a UTF-8 BOM; Python's json.load rejects it" }
+    if ($bom) { Write-Warn "$Scanner-$Platform starts with a UTF-8 BOM; json.loads over bytes accepts it, a text-mode reader does not" }
     if ($crlf -gt 0) { Write-Warn "$Scanner-$Platform contains $crlf CRLF pairs, which .gitattributes will normalize to LF on commit" }
     $verdict = if ($probe.Ok) { "$($probe.TopLevel)" } else { "NOT JSON ($($probe.TopLevel))" }
     Write-Ok ("exit=$exit stdout=$($outBytes.Length)B [$verdict] stderr=$($errBytes.Length)B " +
-              "in $([math]::Round($sw.Elapsed.TotalSeconds, 1))s -> $(Split-Path -Leaf $fixture)")
+              "in $([math]::Round($sw.Elapsed.TotalSeconds, 1))s -> staged for $(Split-Path -Leaf $fixture)")
 
     $Records.Add([ordered]@{
         scanner            = $Scanner
@@ -678,6 +733,35 @@ if ($Records.Count -ne $expected) {
     Die "captured $($Records.Count) fixture(s) but the matrix is $(@($ScannerNames).Count) scanner(s) x $(@($Roots.Keys).Count) scan root(s) = $expected. Add or remove an Invoke-Capture call to match."
 }
 
+# ---------------------------------------------------------------------------
+# Publish.
+#
+# Every capture has run and parsed, so the staged files move into the repository
+# now, together, and the manifest is written after them.
+#
+# This shrinks the window rather than closing it, which is the honest claim: what
+# is left is six renames with nothing between them that can invoke a scanner, in
+# place of six scanner runs each of which could die after the previous ones had
+# already published. A crash inside this loop still leaves a mixed set. It is a
+# much smaller target, and it is the smallest one available without a transaction
+# the filesystem does not offer.
+# ---------------------------------------------------------------------------
+Write-Step 'publishing'
+if ($Pending.Count -ne $expected) {
+    Die "$($Pending.Count) staged capture(s) are queued for publication but the matrix is $expected. A capture recorded itself without queuing its bytes, or the reverse."
+}
+foreach ($entry in $Pending) {
+    if (-not (Test-Path -LiteralPath $entry.Staged -PathType Leaf)) {
+        $script:KeepTemp = $true
+        Die "the staged capture at $($entry.Staged) is gone before it could be published to $($entry.Fixture). Nothing has been moved; the fixtures on disk are still the previous run's."
+    }
+}
+foreach ($entry in $Pending) {
+    if (Test-Path -LiteralPath $entry.Stale -PathType Leaf) { Remove-Item -LiteralPath $entry.Stale -Force }
+    Move-Item -LiteralPath $entry.Staged -Destination $entry.Fixture -Force
+    Write-Ok "$(Split-Path -Leaf $entry.Fixture)"
+}
+
 $rootSummary = [ordered]@{}
 foreach ($platformName in $Roots.Keys) {
     $rootSummary[$platformName] = [ordered]@{
@@ -710,11 +794,42 @@ $manifest = [ordered]@{
 # String.Replace, ordinal: a real CR or LF inside a JSON string value is escaped by
 # the serializer as \r or \n (two characters), so the only CRLF left in the text is
 # formatting. WriteAllText with UTF8Encoding($false) because Set-Content and
-# Out-File both prepend a UTF-8 BOM on PS 5.1 and Python's json.load rejects it.
+# Out-File both prepend a UTF-8 BOM on PS 5.1, and a text-mode Python reader
+# rejects the result - measured, open(path, encoding="utf-8") raises "Unexpected
+# UTF-8 BOM". The bytes path accepts it, which is what makes a BOM here a silent
+# defect rather than a loud one.
 $json = ($manifest | ConvertTo-Json -Depth 8).Replace("`r`n", "`n")
 if (-not $json.EndsWith("`n")) { $json += "`n" }
 [IO.File]::WriteAllText($ManifestPath, $json, (New-Object Text.UTF8Encoding $false))
-Write-Ok "wrote artifacts/scanner-behavior.json ($((Get-Item -LiteralPath $ManifestPath).Length) bytes, no BOM)"
+# The success line used to say "no BOM" without looking. Both halves are measured
+# now, against the file as it is on disk: the first three bytes, and the same
+# json.load validator every fixture went through. tests/harvest/test_fixtures.py
+# asserts the same two properties of the committed manifest; this is the same
+# check at the moment of writing, where the remedy is still obvious.
+#
+# The byte check is not redundant with the validator. Measured: the validator's
+# json.loads-over-bytes path ACCEPTS a leading UTF-8 BOM, so a BOM'd manifest
+# would pass it and fail later in any consumer that opens the file as text. The
+# three bytes are the only thing here that catches one.
+$manifestBytes = [IO.File]::ReadAllBytes($ManifestPath)
+$manifestBom = ($manifestBytes.Length -ge 3 -and
+                $manifestBytes[0] -eq 0xEF -and $manifestBytes[1] -eq 0xBB -and $manifestBytes[2] -eq 0xBF)
+if ($manifestBom) {
+    Die "artifacts/scanner-behavior.json was written with a UTF-8 BOM. json.loads over its bytes would still parse it, so this would not surface here - it surfaces in any consumer that opens the file as text, where json.load raises 'Unexpected UTF-8 BOM'. WriteAllText with a UTF8Encoding constructed to emit no preamble is supposed to make it impossible."
+}
+$manifestProbe = Test-JsonFile $ManifestPath
+if (-not $manifestProbe.Ok -or $manifestProbe.TopLevel -cne 'object') {
+    # Two different failures, and the parser only has something to say about one
+    # of them: a wrong-shape manifest parses cleanly and leaves Error empty, so
+    # naming the shape is the only way this message says anything.
+    $why = if ($manifestProbe.Ok) {
+        "it parsed as a JSON $($manifestProbe.TopLevel), not an object"
+    } else {
+        "the parser rejected it: $($manifestProbe.Error)"
+    }
+    Die "artifacts/scanner-behavior.json is not a JSON object after being written - $why. Every consumer reads it with json.load and indexes it by key."
+}
+Write-Ok "wrote artifacts/scanner-behavior.json ($($manifestBytes.Length) bytes, no BOM in the first three, json.load reads it as an $($manifestProbe.TopLevel))"
 
 # Only on success: a failed run leaves the staged bytes for the operator to read,
 # and the Die that sent them there names the path.

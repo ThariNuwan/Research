@@ -5,7 +5,8 @@ instead of re-running a scanner, so from Task 6 onwards they are the evidence, a
 nothing until now checked that what is on disk is still what was observed. The
 failure that matters is silent: a fixture truncated by a bad merge, given CRLF by a
 checkout on a host that ignored `.gitattributes`, or given a UTF-8 BOM by an editor,
-still looks like a JSON file to a reader and still passes every other test here.
+still looks like a JSON file to a reader - and a BOM'd one still parses on the bytes
+path, so only the byte-level assertions below see it at all.
 
 Every assertion here is content, in the §G1 sense `tests/test_corpus_lock.py` uses:
 each one compares bytes on disk against a specific value the manifest or a lockfile
@@ -66,8 +67,12 @@ TOP_LEVEL_TYPES: dict[str, type] = {"array": list, "object": dict}
 def _load(path: Path) -> Any:
     """Parse with `json.loads` over raw bytes, which is what Task 6 will do.
 
-    Bytes rather than `read_text`: a BOM decoded away by an encoding-aware reader is
-    a BOM the next consumer still trips over.
+    Bytes rather than `read_text`: `read_text("utf-8-sig")` would strip a BOM before
+    the parser saw it, and the locale-default `read_text()` would mis-decode any
+    non-ASCII byte on this host. Neither this path nor that one makes a BOM *fail* -
+    measured, `json.loads` over bytes takes `json.detect_encoding`, which reports
+    utf-8-sig and parses BOM-led input happily. That is why the BOM has its own
+    byte-level test below rather than being left to this one.
     """
     return json.loads(path.read_bytes())
 
@@ -83,8 +88,11 @@ def test_every_fixture_parses_under_strict_json_load(capture: dict[str, Any]) ->
     The manifest's `stdout_is_json` was decided at capture time by a validator the
     capture script launched. This is the independent second opinion, and it is the
     one that matters: every consumer from Task 6 on reaches these bytes through
-    `json.load`, which rejects a BOM and rejects a raw control character inside a
-    string literal where a more permissive parser accepts both.
+    `json.load`, which rejects a raw control character inside a string literal where
+    the `JavaScriptSerializer` the capture script first used accepted one.
+
+    It does not reject a BOM - see `_load` - so this test would pass over a BOM'd
+    fixture. That gap is the whole reason the next test exists.
     """
     path = REPO_ROOT / capture["fixture"]
     doc = _load(path)
@@ -102,8 +110,11 @@ def test_every_fixture_parses_under_strict_json_load(capture: dict[str, Any]) ->
 def test_no_fixture_carries_a_utf8_bom(capture: dict[str, Any]) -> None:
     """Content, stated separately from parsing because the cause is specific.
 
-    `json.load` rejects a leading BOM, an editor that saves as "UTF-8" on Windows
-    adds one, and the file looks unchanged in that editor afterwards. The manifest
+    An editor that saves as "UTF-8" on Windows adds a leading BOM and shows the file
+    unchanged afterwards, and nothing else in this module notices: measured, the
+    bytes path every test here uses accepts a BOM, while a consumer that opens the
+    file as text - `open(path, encoding="utf-8")` - raises "Unexpected UTF-8 BOM".
+    So this is the only assertion standing between a BOM and Task 6. The manifest
     recorded `stdout_has_bom` at capture time; both sides are checked so a BOM
     arriving after the capture is a failure here and not a disagreement nobody reads.
     """
