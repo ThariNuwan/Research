@@ -87,37 +87,124 @@ function Get-PropertyNames($Object) {
     return @($Object.PSObject.Properties | ForEach-Object { $_.Name })
 }
 
-# JSON validity, decided by a parser rather than by eyeballing the first byte.
+# JSON validity, decided by the parser the fixtures are actually for.
+#
 # NOT ConvertFrom-Json: on PS 5.1 that path raises "the length of the string
 # exceeds the value set on the maxJsonLength property" on large payloads, and a
-# capture must not fail for being big. JavaScriptSerializer takes an explicit
-# unlimited length, so the only thing it can now object to is malformed JSON.
-Add-Type -AssemblyName System.Web.Extensions
-$JsonProbe = New-Object System.Web.Script.Serialization.JavaScriptSerializer
-$JsonProbe.MaxJsonLength = [int]::MaxValue
-$JsonProbe.RecursionLimit = 1000
+# 2.2 MB capture must not fail for being big.
+#
+# And NOT JavaScriptSerializer, which is what this script reached for first. It
+# takes an unlimited MaxJsonLength so it survives the size, but it is a
+# JavaScript deserializer rather than a JSON one and it accepts input json.load
+# refuses. Measured on this host, twelve bytes each:
+#
+#   {"a": "b<LF>c"}   JavaScriptSerializer -> Ok=True, TopLevel=object
+#                     Python json.loads    -> Invalid control character at:
+#                                             line 1 column 9 (char 8)
+#
+# A raw control character inside a string literal is not hypothetical here: it is
+# what PS 5.1's `2>&1 | Out-String` hard-wrap produces, the hazard the two-file
+# redirect below exists to avoid. `stdout_is_json: true` in the manifest is read
+# downstream as "Python can load this file", so the verdict has to come from
+# Python or the field is a claim about a different parser.
+#
+# The validator runs over the STAGED FILE, not over a decoded string: a UTF-8 BOM
+# is part of what json.load has to accept or reject, and stripping it before
+# asking would answer a question nobody asked. If the validator cannot be run at
+# all, the capture dies. Falling back to the permissive probe would put
+# `stdout_is_json: true` in the manifest having checked nothing, which is worse
+# than carrying no such field.
+$ValidatorSource = @'
+"""Decide whether one file is JSON, and report its top-level shape.
 
-function Test-JsonText($Text) {
-    # Measured: DeserializeObject('') returns $null WITHOUT throwing, so a
-    # scanner that wrote nothing at all would otherwise be recorded as valid
-    # JSON - the exact plausible-looking-fixture failure this script exists to
-    # prevent. Emptiness is checked first and null is treated as a failure.
-    if ([string]::IsNullOrWhiteSpace($Text)) {
-        return [ordered]@{ Ok = $false; TopLevel = 'empty'; Error = 'stdout was empty or whitespace only' }
+Written into the staging directory and invoked once per capture by
+tools/capture_fixtures.ps1. Prints exactly one line: `OK <object|array|null|
+scalar>`, `EMPTY <why>` or `BAD <parser message>`. The exit status is 0 whenever
+this script itself ran, so the caller can tell "the file is not JSON" (a result)
+from "the validator did not run" (a failure) and stop rather than record a
+verdict it never obtained.
+
+Bytes, not text: json.loads over bytes is the same detect-encoding path that
+json.load(open(path, "rb")) takes, and whether a BOM is present is part of what
+decides if Python can read the file at all.
+"""
+import json
+import sys
+
+raw = open(sys.argv[1], "rb").read()
+if not raw.strip():
+    print("EMPTY stdout was empty or whitespace only")
+    sys.exit(0)
+try:
+    doc = json.loads(raw)
+except ValueError as exc:
+    print("BAD " + " ".join(str(exc).split()))
+    sys.exit(0)
+if isinstance(doc, dict):
+    print("OK object")
+elif isinstance(doc, list):
+    print("OK array")
+elif doc is None:
+    print("OK null")
+else:
+    print("OK scalar")
+'@
+
+# PS 5.1 does not quote -ArgumentList elements; an unquoted path with a space in
+# it would arrive as two arguments. RepoRoot has none today, which is exactly why
+# this is handled here rather than discovered later on a different host. One
+# function for both the scanner launches and the validator.
+function Format-LaunchArgs([string[]]$Vector) {
+    return @($Vector | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } })
+}
+
+function Test-JsonFile($Path) {
+    $vOut = Join-Path $TempDir 'validator.out'
+    $vErr = Join-Path $TempDir 'validator.err'
+    # uv, never a bare `python`: on this host `python` is the Microsoft Store alias
+    # stub and exits without running anything. -WorkingDirectory pins uv's project
+    # discovery to this repository, so the verdict comes from the project's own
+    # interpreter however the operator invoked this script.
+    try {
+        $proc = Start-Process -FilePath 'uv' -WorkingDirectory $RepoRoot `
+            -ArgumentList (Format-LaunchArgs @('run', 'python', $ValidatorPath, $Path)) `
+            -RedirectStandardOutput $vOut -RedirectStandardError $vErr -Wait -NoNewWindow -PassThru
+        $proc.WaitForExit()
     }
-    try { $parsed = $JsonProbe.DeserializeObject($Text) }
-    catch { return [ordered]@{ Ok = $false; TopLevel = 'invalid'; Error = (Get-FailureMessage $_) } }
-    if ($null -eq $parsed) {
-        return [ordered]@{ Ok = $false; TopLevel = 'null'; Error = 'parsed to JSON null' }
+    catch {
+        $script:KeepTemp = $true
+        Die "could not run the JSON validator (uv run python $ValidatorPath): $(Get-FailureMessage $_). Every stdout_is_json verdict in the manifest comes from Python's json.load, so without it this run would record a verdict it never obtained. Install uv (tools/bootstrap.ps1) and re-run."
     }
+    $code   = if ($null -eq $proc.ExitCode) { -1 } else { [int]$proc.ExitCode }
+    $said   = if (Test-Path -LiteralPath $vOut -PathType Leaf) { [IO.File]::ReadAllText($vOut) } else { '' }
+    $cried  = if (Test-Path -LiteralPath $vErr -PathType Leaf) { [IO.File]::ReadAllText($vErr) } else { '' }
+    $spoken = @($said -split "`r?`n" | Where-Object { $_.Trim().Length -gt 0 })
+    if ($code -ne 0 -or @($spoken).Count -eq 0) {
+        $script:KeepTemp = $true
+        Die "the JSON validator did not run: exit=$code, $(@($spoken).Count) line(s) on stdout. stderr: $($cried.Trim()). Refusing to record a stdout_is_json verdict this run never obtained."
+    }
+    $verdict = $spoken[0]
+    $word    = $verdict.Split(' ')[0]
+    $detail  = if ($verdict.Length -gt $word.Length) { $verdict.Substring($word.Length + 1) } else { '' }
     # Which of the two shapes came back is load-bearing for Task 6: Checkov emits
     # a JSON object for a single detected framework and a JSON ARRAY of result
     # objects when it detects several, so a walker that assumes a dict breaks on
     # the other corpus half. Recorded per capture rather than assumed.
-    $top = 'scalar'
-    if ($parsed -is [System.Collections.IDictionary]) { $top = 'object' }
-    elseif ($parsed -is [System.Array]) { $top = 'array' }
-    return [ordered]@{ Ok = $true; TopLevel = $top; Error = $null }
+    switch -CaseSensitive ($word) {
+        'EMPTY' { return [ordered]@{ Ok = $false; TopLevel = 'empty';   Error = $detail } }
+        'BAD'   { return [ordered]@{ Ok = $false; TopLevel = 'invalid'; Error = $detail } }
+        'OK'    {
+            # Top-level null parses but carries nothing: a fixture that is the four
+            # bytes `null` would satisfy a downstream "it parsed" assertion and
+            # nothing else. Treated as a failure, as the old probe treated it.
+            if ($detail -ceq 'null') {
+                return [ordered]@{ Ok = $false; TopLevel = 'null'; Error = 'parsed to JSON null' }
+            }
+            return [ordered]@{ Ok = $true; TopLevel = $detail; Error = $null }
+        }
+    }
+    $script:KeepTemp = $true
+    Die "the JSON validator printed '$verdict', which is none of OK/EMPTY/BAD. Its contract and this switch have drifted apart, so neither a pass nor a fail can be read out of it."
 }
 
 # ---------------------------------------------------------------------------
@@ -284,6 +371,32 @@ $TempDir = Join-Path ([IO.Path]::GetTempPath()) ("iacrisk-capture-" + [guid]::Ne
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 $KeepTemp = $false
 
+# The validator lives in the staging directory rather than in tools/: it is twenty
+# lines that exist only to lend this script a JSON parser, and a tools/*.py file
+# would be a second Python entry point for Task 6 to either import or duplicate.
+$ValidatorPath = Join-Path $TempDir 'validate_json.py'
+$NoBom = New-Object Text.UTF8Encoding $false
+[IO.File]::WriteAllText($ValidatorPath, $ValidatorSource, $NoBom)
+
+# Construct both states and observe them rather than trust that the gate is live.
+# The rejected sample is the exact input the JavaScriptSerializer probe accepted -
+# a raw LF inside a string literal - so if this script ever loses its real parser
+# again it stops here, before a scanner runs, instead of at a manifest full of
+# stdout_is_json: true.
+$probeGood = Join-Path $TempDir 'validator-selfcheck-good.json'
+$probeBad  = Join-Path $TempDir 'validator-selfcheck-bad.json'
+[IO.File]::WriteAllText($probeGood, "{`"a`": `"b`"}", $NoBom)
+[IO.File]::WriteAllText($probeBad,  "{`"a`": `"b`nc`"}", $NoBom)
+$saysGood = Test-JsonFile $probeGood
+$saysBad  = Test-JsonFile $probeBad
+if (-not $saysGood.Ok -or $saysGood.TopLevel -cne 'object') {
+    Die "the JSON validator rejected a valid JSON object (verdict: $($saysGood.TopLevel) / $($saysGood.Error)). Nothing it says about a real capture could be trusted."
+}
+if ($saysBad.Ok) {
+    Die "the JSON validator accepted a raw newline inside a string literal, which Python's json.load rejects. It is not the parser this script claims to use, so every stdout_is_json in the manifest would describe some other parser."
+}
+Write-Ok "json.load validator live: object accepted, raw newline in a string literal rejected ($($saysBad.Error))"
+
 $Records = New-Object System.Collections.Generic.List[object]
 
 function Invoke-Capture {
@@ -301,10 +414,8 @@ function Invoke-Capture {
 
     $root = $Roots[$Platform]
     $argv = @($Arguments) + @($root.Absolute)
-    # PS 5.1 does not quote -ArgumentList elements; an unquoted path with a space
-    # would arrive as two arguments. RepoRoot has none today, which is exactly why
-    # this has to be handled here rather than discovered later on a different host.
-    $launch = @($argv | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } })
+    # Quoted by Format-LaunchArgs, which the validator launch shares.
+    $launch = Format-LaunchArgs $argv
 
     $stagedOut = Join-Path $TempDir "$Scanner-$Platform.out"
     $stagedErr = Join-Path $TempDir "$Scanner-$Platform.err"
@@ -347,8 +458,10 @@ function Invoke-Capture {
     $outBytes = [IO.File]::ReadAllBytes($stagedOut)
     $errBytes = [IO.File]::ReadAllBytes($stagedErr)
     $bom = ($outBytes.Length -ge 3 -and $outBytes[0] -eq 0xEF -and $outBytes[1] -eq 0xBB -and $outBytes[2] -eq 0xBF)
-    # A BOM is not decoded away by GetString: it becomes a leading U+FEFF that
-    # makes the JSON parse fail, so it is skipped here and reported instead.
+    # Skipped for the decode below, which exists only to count CRLF pairs and
+    # where GetString would otherwise turn a BOM into a leading U+FEFF. NOT
+    # skipped for the JSON verdict: Test-JsonFile reads the staged file whole, so
+    # a BOM makes the capture non-JSON, which is exactly what it makes it.
     $offset = if ($bom) { 3 } else { 0 }
     $outText = [Text.Encoding]::UTF8.GetString($outBytes, $offset, $outBytes.Length - $offset)
     $errText = [Text.Encoding]::UTF8.GetString($errBytes)
@@ -365,7 +478,7 @@ function Invoke-Capture {
     }
     $errFirst = if (@($errLines).Count -gt 0) { $errLines[0] } else { '' }
 
-    $probe = Test-JsonText $outText
+    $probe = Test-JsonFile $stagedOut
     # MayBeNonJson is set for exactly one capture, tfsec x kubernetes, and the
     # reason is recorded in the manifest rather than left to this comment: tfsec
     # is pinned Terraform-only, the run exists to find out what it does with
@@ -376,8 +489,9 @@ function Invoke-Capture {
     # in place so the operator can read what actually came back.
     if (-not $probe.Ok -and -not $MayBeNonJson) {
         $script:KeepTemp = $true
+        $bomNote = if ($bom) { ' The output starts with a UTF-8 BOM, which json.load rejects by itself.' } else { '' }
         Die ("$Scanner over $($root.Relative) did not produce JSON ($($probe.Error)). exit=$exit, " +
-             "stdout=$($outBytes.Length) bytes, stderr=$($errBytes.Length) bytes. " +
+             "stdout=$($outBytes.Length) bytes, stderr=$($errBytes.Length) bytes.$bomNote " +
              "Staged output kept at $stagedOut and stderr at $stagedErr - read them before changing the argument array. " +
              "A fixture is only useful if it is what the scanner really emits.")
     }
