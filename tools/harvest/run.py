@@ -474,7 +474,12 @@ def main(argv: list[str] | None = None) -> int:
     are no rows, and printing that as `0.0` would assert a measurement nobody made.
     """
     parser = argparse.ArgumentParser(description="Harvest the scanner rule-ID inventory.")
-    parser.add_argument("--out", type=Path, default=REPO_ROOT / "artifacts" / "rule-inventory.json")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=REPO_ROOT / "artifacts" / "rule-inventory.json",
+        help="where to write the inventory JSON (default: <repo>/artifacts/rule-inventory.json)",
+    )
     args = parser.parse_args(argv)
 
     inventory = harvest()

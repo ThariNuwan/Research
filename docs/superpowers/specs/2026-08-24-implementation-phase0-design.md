@@ -236,12 +236,13 @@ Measured by re-running the capture and diffing against the committed blob:
   the order of records within `failed_checks` and `passed_checks` varies between
   runs, and `check_result.evaluated_keys` is a set serialized to a list, so its
   order varies within a record (observed on the `CKV2_*` graph checks).
-- **tfsec** — stable in count and in record order, unstable in content. A third
-  run (made while re-verifying the capture script) matched the committed blob at
-  119 findings in the same order, but the five `AVD-AWS-0038` findings on
-  `aws_eks_cluster.eks_cluster` (`eks.tf:118`) had permuted their `description`
-  strings among themselves — same five values, four of them in different slots.
-  So the earlier "no instability observed" was an artefact of comparing two runs.
+- **tfsec** — stable in count and, over the runs behind this bullet, in record
+  order; unstable in content. A third run (made while re-verifying the capture
+  script) matched the committed blob at 119 findings in the same order, but the
+  five `AVD-AWS-0038` findings on `aws_eks_cluster.eks_cluster` (`eks.tf:118`)
+  had permuted their `description` strings among themselves — same five values,
+  four of them in different slots. So the earlier "no instability observed" was
+  an artefact of comparing two runs.
   Load-bearing beyond reproducibility, and re-measured over the committed
   fixture: 119 tfsec findings collapse to 110 distinct
   `(rule_id, filename, start_line, resource)` keys — three keys collide, in two
@@ -260,6 +261,12 @@ Measured by re-running the capture and diffing against the committed blob:
   `(key, description)` tuples is unchanged across runs, and the deduplicated set
   with it. What the permutation breaks is per-record stability: no claim that a
   particular finding keeps a particular `description` across runs survives it.
+  Nor does a claim about the order of whole records: Task 8 re-ran tfsec over
+  this root and got the same 119 findings back in a different sequence, so the
+  ordering half of this bullet is an observation over three runs rather than a
+  property S1 may assert. The section *Reproduction: `artifacts/raw/` against
+  the Task 5 fixtures* states what is and is not stable for all three scanners
+  at once, and is the one to read for that.
 
 What *is* stable for checkov, and is what later tasks may rely on: the multiset
 of `(check_id, file_path, file_line_range, resource)` over each bucket is
@@ -441,8 +448,15 @@ Closed by Task 8, 2026-09-04. Every figure below is derived from bytes committed
 this section - `artifacts/rule-inventory.json`, the five documents under `artifacts/raw/`,
 the six fixtures under `tests/harvest/fixtures/`, and the vendored corpus itself - and where
 a figure is also asserted by a test, the test is named. This section was written **before**
-the final harvest run, so `provenance.spec_hashes` in that artifact covers these bytes
-rather than an earlier version of them.
+the final harvest run, so `provenance.spec_hashes` recorded the SHA-256 of this file as it
+then stood. A later correction round amended §A.1 and the tfsec bullet below, so recomputing
+this file's hash now will **not** match the value that field carries for
+`docs/superpowers/specs/2026-08-24-implementation-phase0-design.md`. That is expected rather
+than staleness: the field records which spec text produced the inventory, and the inventory
+was deliberately not re-run to chase a prose correction. One more thing that artifact does
+not do uniformly: `runs[].argv` is scrubbed to `<repo>`, while `provenance.scanners[*].exe`
+keeps each resolved launcher path exactly as this checkout spells it, absolute - so the
+scrubbing is per field, not file-wide.
 
 | # | gate item | outcome | evidence |
 |---|---|---|---|
@@ -562,11 +576,19 @@ can test what the pins are for. Result, asserted in `tests/harvest/test_run.py`:
   and individual `check_result.evaluated_keys`, in trivy's `Results[].Misconfigurations`,
   and in tfsec's single `results`. How many lists move varies from run to run, so no count
   of them is recorded here.
-- **tfsec is why that is stated as a rule and not an exception.** It matched its fixture
-  byte for byte on this harvest's first run, and on the second it permuted five adjacent
-  `AVD-AWS-0038` findings on `eks.tf:118` among themselves - same 119-element multiset,
-  same byte length, different order. So a byte-equality assertion for tfsec passes or fails
-  by luck; it was removed rather than kept green, and no scanner's byte order is asserted.
+- **tfsec is why that is stated as a rule and not an exception.** Observed in the harvest
+  session rather than from these bytes: it matched its fixture byte for byte on the first
+  run, and on the second it permuted five adjacent `AVD-AWS-0038` findings on `eks.tf:118`
+  among themselves - same 119-element multiset, same byte length, different order. The
+  committed corroboration is `artifacts/raw/tfsec-terraform.json` itself, which holds the
+  fixture's 119 findings in a different sequence. So a byte-equality assertion for tfsec
+  passes or fails by luck, which is why none was ever written - not in this task and not
+  in Task 5; nothing was removed to make this comparison green. The point survives without
+  the session observation anyway: as committed, all five documents under `artifacts/raw/`
+  have exactly the same byte *length* as their fixture and differ in content regardless -
+  2724 differing bytes for `tfsec-terraform`, 35 for `trivy-terraform`, 20692 for
+  `trivy-kubernetes`, 8765 for `checkov-kubernetes` and 391182 for `checkov-terraform`.
+  Equal length is no evidence of equal bytes, and no scanner's byte order is asserted.
 - trivy additionally carries a fresh `CreatedAt` and `ReportID` per run, excluded by name.
   Those two are volatile by construction, and `CreatedAt` also rules out byte *length* as a
   cheap proxy for byte equality: Go trims trailing zeros from RFC3339Nano fractional

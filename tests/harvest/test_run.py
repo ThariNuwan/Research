@@ -14,6 +14,7 @@ shape the corpus does **not** contain, `Unobserved:` marks it, the convention
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,10 @@ import pytest
 from tools.harvest.model import InventoryRow
 from tools.harvest.run import (
     NORMALIZATION_RULE,
+    SCANNER_TIMEOUT_SECONDS,
     UNATTRIBUTED,
+    _portable,
+    _run_scanner,
     applicable_scanners,
     attribute,
     declared_case_ids,
@@ -396,6 +400,78 @@ def test_a_scanner_the_matrix_does_not_name_keeps_its_own_counts() -> None:
 
 
 # ---------------------------------------------------------------------------
+# The two helpers that touch the world outside the pure layer. Every other test in
+# this file reaches `_portable` and `_run_scanner` only through the artifact one run
+# of them produced, so neither has a failure of its own until here.
+# ---------------------------------------------------------------------------
+
+
+def test_portable_replaces_this_checkouts_path_and_leaves_other_arguments_alone() -> None:
+    """The host-path scrub asserted on the function, not only on its output.
+
+    Delete this and the scrub is asserted only as a property of committed bytes -
+    `test_every_run_is_recorded_with_the_exit_code_task_5_measured`'s
+    `str(REPO_ROOT) not in ...` - which cannot fail until a harvest re-run has already
+    written this checkout's absolute path into a committed artifact. That is the wrong end
+    of a standing integrity rule to discover it from.
+
+    Both arms occur in the recorded `runs[].argv`: every flag passes through untouched and
+    only the trailing scan target carries the repo root. The remainder is re-spelled with
+    forward slashes, so one recorded argv reads the same whichever separator produced it.
+    """
+    tail = "corpus/vendor/terragoat/terraform/aws"
+    assert _portable(str(REPO_ROOT / tail), REPO_ROOT) == f"<repo>/{tail}"
+    assert _portable("--skip-download", REPO_ROOT) == "--skip-download"
+
+
+@pytest.mark.parametrize(
+    ("output", "stderr", "expected_stdout", "expected_stderr"),
+    [(b"partial", b"boom", b"partial", b"boom"), (None, None, b"", b"")],
+    ids=["partial-output-is-kept", "no-output-becomes-empty-bytes"],
+)
+def test_a_timed_out_scanner_comes_back_as_an_error_record(
+    output: bytes | None,
+    stderr: bytes | None,
+    expected_stdout: bytes,
+    expected_stderr: bytes,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hung scanner becomes a record and the harvest goes on; it does not raise.
+
+    Unobserved: no run on this host has timed out - all five records in
+    `artifacts/rule-inventory.json` carry an `exit_code` and none carries an `error` - so
+    the timeout is raised here rather than provoked.
+
+    Delete this and nothing executes that arm at all. `TimeoutExpired` would propagate out
+    of `harvest()`'s loop, discarding every completed run and writing no artifact because
+    one scanner hung, and the suite would stay green. `exit_code is None` is the other half
+    of the record: a scanner that exits non-zero is normal here, so "did not finish" needs a
+    value no exit status can supply. `SCANNER_TIMEOUT_SECONDS` is imported from the module
+    under test rather than restated, so the message asserted is the one the code builds.
+    """
+
+    def fake(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise subprocess.TimeoutExpired(
+            cmd=["no-such-scanner"],
+            timeout=SCANNER_TIMEOUT_SECONDS,
+            output=output,
+            stderr=stderr,
+        )
+
+    # Patched onto `subprocess` itself - the target `tests/harvest/test_provenance.py`'s
+    # `_raising_run` documents, since `run.py` does `import subprocess` and resolves `.run`
+    # at call time. The argv names no installed program, so a patch that missed would raise
+    # FileNotFoundError rather than start a scanner.
+    monkeypatch.setattr(subprocess, "run", fake)
+    stdout, captured_stderr, exit_code, error = _run_scanner(["no-such-scanner", "ROOT"])
+
+    assert error == f"timeout after {SCANNER_TIMEOUT_SECONDS}s"
+    assert exit_code is None
+    assert stdout == expected_stdout
+    assert captured_stderr == expected_stderr
+
+
+# ---------------------------------------------------------------------------
 # The emitted artifact. Committed bytes only - `artifacts/raw/`, the documents this
 # task's harvest wrote, against `tests/harvest/fixtures/`, the documents Task 5
 # captured, and against the inventory built from them. No scanner runs here.
@@ -459,22 +535,34 @@ def test_raw_output_holds_the_same_findings_as_the_fixture(stem: str) -> None:
     tfsec's single `results`. How many reorder varies run to run, which is why no count is
     asserted here and why this comparison is order-insensitive rather than byte-exact.
 
-    tfsec is what settles that. It matched its fixture byte for byte on this harvest's first
-    run and permuted five adjacent `AVD-AWS-0038` findings on `eks.tf:118` on the second -
-    same 119-element multiset, same byte length - so a byte assertion for tfsec passes or
-    fails by luck. `_canonical` moves elements and cannot drop or alter one, which
+    tfsec is what settles that. Observed in the harvest session rather than from these bytes:
+    it matched its fixture byte for byte on the first run and permuted five adjacent
+    `AVD-AWS-0038` findings on `eks.tf:118` on the second - same 119-element multiset, same
+    byte length. What these bytes do show is the fixture's 119 findings in a different
+    sequence. Either way a byte assertion for tfsec passes or fails by luck, and none is
+    written - here or anywhere else in this repository. `_canonical` moves elements and
+    cannot drop or alter one, which
     `test_the_order_insensitive_comparison_still_catches_a_changed_value` proves rather than
     claims.
 
     checkov's framework-block order is stable (`terraform`, `dockerfile`, `secrets` both
     times), so the instability is inside the blocks, not between them - the opposite of what
     a reader would guess. trivy's `CreatedAt` and `ReportID` are dropped because they are
-    wall-clock and a fresh UUID, and the two sides differ in both. `CreatedAt` is also why
-    even byte *length* is not a safe proxy: Go trims trailing zeros from RFC3339Nano
+    wall-clock and a fresh UUID, and that the two sides differ in both is asserted below
+    rather than assumed - only the two trivy documents carry the keys at all. `CreatedAt` is
+    also why even byte *length* is not a safe proxy: Go trims trailing zeros from RFC3339Nano
     fractional seconds, so one re-run came back a single byte shorter than its fixture.
     """
     raw = json.loads((RAW_DIR / f"{stem}.json").read_bytes())
     fixture = json.loads((FIXTURE_DIR / f"{stem}.json").read_bytes())
+    if stem.startswith("trivy-"):
+        # Asserted before the drop, so the exclusion cannot widen unnoticed: on the two
+        # trivy documents both keys are present on both sides and both differ, which is
+        # what makes dropping them necessary. A third name in VOLATILE_TRIVY_KEYS fails
+        # here instead of quietly excluding a key that does reproduce.
+        for key in VOLATILE_TRIVY_KEYS:
+            assert key in raw and key in fixture, key
+            assert raw[key] != fixture[key], key
     if isinstance(raw, dict) and isinstance(fixture, dict):
         for key in VOLATILE_TRIVY_KEYS:
             raw.pop(key, None)
@@ -555,7 +643,16 @@ def test_the_inventory_case_universe_comes_from_the_matrix() -> None:
     declared = declared_case_ids(LOCK, {"cases": CASES})
     for scanner, entry in inventory["by_scanner"].items():
         assert set(entry["cases"]) - {UNATTRIBUTED} == set(declared[scanner]), scanner
-    assert "kg-scenarios" not in inventory["by_scanner"]["tfsec"]["cases"]
+    # tfsec's key set against literals rather than against `declared` a second time: the
+    # loop above passes if the matrix and the artifact ever drift the same way, and this
+    # line is what does not.
+    assert set(inventory["by_scanner"]["tfsec"]["cases"]) == {
+        UNATTRIBUTED,
+        "tg-aws-compute",
+        "tg-aws-iam",
+        "tg-aws-networking",
+        "tg-aws-s3",
+    }
     assert inventory["by_scanner"]["tfsec"]["cases"][UNATTRIBUTED] == 52
 
 
