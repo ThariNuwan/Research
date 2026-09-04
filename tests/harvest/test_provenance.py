@@ -26,7 +26,17 @@ from typing import Any
 
 import pytest
 
-from tools.harvest.provenance import _git_commit, build_provenance, hash_file
+# `_git_commit` is private and imported anyway: its six states are reached through a
+# repository's shape and through git's own refusals, and `build_provenance` offers no
+# way to supply either - one fixture per state would have to be a whole repository.
+# `GIT_TIMEOUT_SECONDS` is public and imported so the stand-in below raises the timeout
+# the code under test actually passed, rather than a number restated here.
+from tools.harvest.provenance import (
+    GIT_TIMEOUT_SECONDS,
+    _git_commit,
+    build_provenance,
+    hash_file,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESOLVED = REPO_ROOT / "tools" / "resolved.json"
@@ -58,6 +68,17 @@ def _skip_without_git() -> None:
         subprocess.run(["git", "--version"], capture_output=True, check=True, timeout=30)
     except (OSError, subprocess.SubprocessError) as exc:  # pragma: no cover
         pytest.skip(f"git is not usable here: {exc}")
+
+
+def _skip_inside_a_checkout(tmp_path: Path) -> None:
+    """Skip when a `.git` sits above `tmp_path`: the refusals below cannot be produced.
+
+    `rev-parse --git-dir` succeeds from any child of a repository, so with a checkout
+    as an ancestor every directory built under `tmp_path` answers `ok` and the states
+    this file distinguishes collapse into one.
+    """
+    if any((parent / ".git").exists() for parent in (tmp_path, *tmp_path.parents)):
+        pytest.skip(f"{tmp_path} sits inside a git checkout, so the states collapse")
 
 
 def _raising_run(error: BaseException) -> Callable[..., subprocess.CompletedProcess[str]]:
@@ -167,6 +188,38 @@ def test_missing_resolved_json_is_an_explicit_error(tmp_path: Path) -> None:
         build_provenance(tmp_path)
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        (b"[]", "object of scanner records"),
+        (b'{"trivy": "0.74.0"}', "records trivy as a str"),
+        (b"{not json at all", "not valid JSON"),
+    ],
+    ids=["top-level-list", "record-is-a-string", "unparseable-bytes"],
+)
+def test_a_malformed_resolved_json_names_the_file_it_could_not_read(
+    payload: bytes, expected: str, tmp_path: Path
+) -> None:
+    """A file that exists but is the wrong shape fails the way an absent one does.
+
+    Unvalidated, a top-level list reaches `.items()` and a string record reaches
+    `.get`, and the `AttributeError` that follows names neither the file nor what was
+    wrong with it. For a file that is gitignored, written only by
+    `tools/bootstrap.ps1`, and read five tasks later, naming the path *is* the
+    diagnosis - which is why the absent case already does it.
+
+    Unobserved: all three payloads are shapes this repository's writer cannot produce.
+    `tools/bootstrap.ps1` writes one object per resolved scanner or dies first, so
+    these are the hand-edit and half-written-file cases, not observed output.
+    """
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "tools" / "resolved.json").write_bytes(payload)
+
+    with pytest.raises(ValueError, match=expected) as raised:
+        build_provenance(tmp_path)
+    assert str(tmp_path / "tools" / "resolved.json") in str(raised.value)
+
+
 def test_a_utf8_bom_on_resolved_json_is_read_not_rejected(tmp_path: Path) -> None:
     """`json.loads` accepts a BOM in `bytes` and rejects one in `str`.
 
@@ -186,24 +239,41 @@ def test_a_utf8_bom_on_resolved_json_is_read_not_rejected(tmp_path: Path) -> Non
     assert prov["scanners"]["tfsec"]["version"] == "1.28.14"
 
 
-def test_a_scanner_that_printed_nothing_gets_no_display_value(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("version_output", "output_is_retained"),
+    [("  \n\n ", True), (None, False)],
+    ids=["blank-capture", "json-null"],
+)
+def test_a_scanner_that_printed_nothing_gets_no_display_value(
+    version_output: str | None, output_is_retained: bool, tmp_path: Path
+) -> None:
     """The raw capture is kept; no tidy value is invented from a blank one.
 
     The other half of decision 2: a `version_output` that is present but holds no
     non-empty line is not an absent key, so the raw is still copied - but there is
     no one-line version to display, and `""` would assert that there is.
+
+    The `null` case is the one that folds. `entry.get` returns `None` both for a key
+    that is absent and for a key whose value is JSON `null`, so `null` is emitted the
+    way a missing key is - no `version_output` at all - while a blank string is
+    retained. Three input states, two behaviours, and this parametrization is where
+    the second one is asserted rather than inferred from the code.
     """
     (tmp_path / "tools").mkdir()
     (tmp_path / "tools" / "resolved.json").write_text(
-        json.dumps({"tfsec": {"exe": "x", "version": "1.28.14", "version_output": "  \n\n "}}),
+        json.dumps({"tfsec": {"exe": "x", "version": "1.28.14", "version_output": version_output}}),
         encoding="utf-8",
     )
 
     prov = build_provenance(tmp_path)
 
-    assert prov["scanners"]["tfsec"]["version_output"] == "  \n\n "
-    assert "version_display" not in prov["scanners"]["tfsec"]
-    assert "version_display_rule" not in prov["scanners"]["tfsec"]
+    entry = prov["scanners"]["tfsec"]
+    assert ("version_output" in entry) is output_is_retained
+    if output_is_retained:
+        assert entry["version_output"] == version_output
+    assert entry["version"] == "1.28.14", "the record's other keys are unaffected"
+    assert "version_display" not in entry
+    assert "version_display_rule" not in entry
 
 
 def test_a_multi_line_banner_reduces_to_its_last_non_empty_line(tmp_path: Path) -> None:
@@ -250,8 +320,7 @@ def test_not_a_checkout_is_a_different_state_from_a_git_that_failed(tmp_path: Pa
     is why `_git_commit` runs two.
     """
     _skip_without_git()
-    if any((parent / ".git").exists() for parent in (tmp_path, *tmp_path.parents)):
-        pytest.skip(f"{tmp_path} sits inside a git checkout, so the two states collapse")
+    _skip_inside_a_checkout(tmp_path)
 
     outside = tmp_path / "not-a-repo"
     outside.mkdir()
@@ -265,11 +334,65 @@ def test_not_a_checkout_is_a_different_state_from_a_git_that_failed(tmp_path: Pa
     assert _git_commit(unborn) == {"commit": None, "state": "git-failed"}
 
 
+def _missing_directory(tmp_path: Path) -> Path:
+    """A path that was never created, so git cannot change into it."""
+    return tmp_path / "never-created"
+
+
+def _corrupt_git_pointer(tmp_path: Path) -> Path:
+    """A directory whose `.git` *file* points at a gitdir that does not exist."""
+    target = tmp_path / "corrupt-pointer"
+    target.mkdir()
+    (target / ".git").write_text(f"gitdir: {tmp_path / 'nowhere-at-all'}\n", encoding="utf-8")
+    return target
+
+
+@pytest.mark.parametrize(
+    "make_target",
+    [_missing_directory, _corrupt_git_pointer],
+    ids=["missing-directory", "corrupt-git-pointer"],
+)
+def test_an_exit_128_without_the_non_repository_signature_is_git_failed(
+    make_target: Callable[[Path], Path], tmp_path: Path
+) -> None:
+    """Exit 128 is not a verdict: three different refusals share it.
+
+    Measured this session with git 2.55.0.windows.5, running
+    `git -C <path> rev-parse --git-dir` on three directories that all exit **128**:
+
+        no repository       fatal: not a git repository (or any of the parent directories): .git
+        missing directory   fatal: cannot change to '<abs path>': No such file or directory
+        .git -> nowhere     fatal: not a git repository: (NULL)
+
+    Only the first is *"there is nothing to determine"*; the other two - the two cases
+    here - are *"I could not ask"*. Calling either of them `not-a-checkout` would put
+    the one positive claim this state carries into a provenance block on the strength
+    of an exit code that four other refusals also produce.
+
+    Each case asserts a plain sibling directory alongside itself, because a
+    discrimination that had collapsed the other way - `git-failed` for everything,
+    including a genuine non-repository - would pass the first assertion on its own.
+
+    git's message is read for that discrimination and then dropped: the
+    missing-directory line above quotes the host's absolute path, and this block gets
+    written into a committed artifact.
+    """
+    _skip_without_git()
+    _skip_inside_a_checkout(tmp_path)
+
+    target = make_target(tmp_path)
+    assert _git_commit(target) == {"commit": None, "state": "git-failed"}
+
+    plain = tmp_path / "plain-dir"
+    plain.mkdir()
+    assert _git_commit(plain) == {"commit": None, "state": "not-a-checkout"}
+
+
 @pytest.mark.parametrize(
     ("error", "expected_state"),
     [
         (FileNotFoundError("git"), "git-unavailable"),
-        (subprocess.TimeoutExpired(cmd=["git"], timeout=30), "git-timeout"),
+        (subprocess.TimeoutExpired(cmd=["git"], timeout=GIT_TIMEOUT_SECONDS), "git-timeout"),
     ],
     ids=["git-unavailable", "git-timeout"],
 )
@@ -292,6 +415,37 @@ def test_a_successful_git_with_empty_output_is_its_own_state(
     # Same patch target as `_raising_run`, for the reason given there.
     monkeypatch.setattr(subprocess, "run", fake)
     assert _git_commit(REPO_ROOT) == {"commit": None, "state": "empty-output"}
+
+
+def test_a_hang_on_the_second_probe_is_a_timeout_and_not_a_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The realistic hang: `--git-dir` answers at once and `rev-parse HEAD` does not.
+
+    `_raising_run` raises on every call, so every test above it can only ever exercise
+    probe 1. Probe 2 has its own `except` arms and its own mapping from failure to
+    state - it is the one that turns a non-zero exit into `git-failed` rather than
+    consulting stderr - and nothing reaches them until a stand-in survives the first
+    call. The call log is asserted for the same reason: `git-timeout` would also be the
+    answer if probe 2 had never run, and a returned state cannot tell those apart.
+
+    The timeout raised is `GIT_TIMEOUT_SECONDS`, imported from the module under test
+    rather than restated here, so this stand-in hangs for as long as the code allows.
+    """
+    calls: list[tuple[str, ...]] = []
+
+    def fake(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(tuple(cmd))
+        if len(calls) == 1:
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=".git\n", stderr="")
+        raise subprocess.TimeoutExpired(cmd=cmd, timeout=GIT_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(subprocess, "run", fake)  # same target as `_raising_run`
+
+    assert _git_commit(REPO_ROOT) == {"commit": None, "state": "git-timeout"}
+    assert len(calls) == 2, "probe 2 has to have run for this to be probe 2's timeout"
+    assert calls[0][-1] == "--git-dir"
+    assert calls[1][-1] == "HEAD"
 
 
 def test_this_repository_hashes_its_real_spec_and_tidies_the_tfsec_banner() -> None:

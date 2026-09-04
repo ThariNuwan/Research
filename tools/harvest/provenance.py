@@ -11,7 +11,10 @@ may not report with one value:
 - **`repo_commit` is a mapping, not a bare SHA-or-None.** Six outcomes reach it -
   a commit; not a checkout; git not installed; git ran and failed; git hung; and a
   successful run that printed nothing - and five of the six are falsy. `commit`
-  carries the SHA or `None`, `state` carries which of the six it was.
+  carries the SHA or `None`, `state` carries which of the six it was. `not-a-checkout`
+  is the only one that makes a positive claim, so it is awarded on git's own message
+  and not on an exit code it shares with four other refusals - see
+  `_NOT_A_REPO_SIGNATURE`.
 - **`spec_hashes` is reported with the roots it searched.** `{}` on its own cannot
   be told apart from "specs exist and were not hashed", which is what an empty
   result meant for as long as the only search root was a directory this repository
@@ -41,9 +44,31 @@ from pathlib import Path
 from typing import Any
 
 GIT_TIMEOUT_SECONDS = 30
+"""Timeout for **one** git probe. `_git_commit` runs two, so its worst case is 60s."""
 
 _NONZERO_EXIT = "nonzero-exit"
 """Internal marker: git ran and exited non-zero. What that means is the caller's."""
+
+_NOT_A_REPO_SIGNATURE = "not a git repository (or any"
+"""The stderr signature git emits when the path is genuinely no repository.
+
+Measured this session with git 2.55.0.windows.5, on three directories that all make
+`rev-parse --git-dir` exit **128**:
+
+```
+no repository       fatal: not a git repository (or any of the parent directories): .git
+missing directory   fatal: cannot change to '<abs path>': No such file or directory
+.git -> nowhere     fatal: not a git repository: (NULL)
+```
+
+Only the first is *"there is nothing to determine"*; the other two are *"I could not
+ask"*. The exit code cannot tell them apart, so the discrimination is on git's
+message. Truncated at `(or any` on purpose: it also matches git's
+`(or any parent up to mount point ...)` variant of the same verdict, while excluding
+the `: (NULL)` corrupt-pointer message above. A localized git whose message does not
+match falls through to `git-failed`, which is the safe direction - `not-a-checkout`
+is the only state that makes a positive claim.
+"""
 
 SPEC_SEARCH_ROOTS: tuple[str, ...] = ("docs/superpowers/specs", "specs")
 """Where spec files are looked for, in search order.
@@ -85,12 +110,19 @@ def hash_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _git_stdout(repo_root: Path, *args: str) -> tuple[str | None, str | None]:
-    """Run `git -C repo_root *args`. Returns `(stdout, None)` or `(None, failure)`.
+def _git_stdout(repo_root: Path, *args: str) -> tuple[str | None, str | None, str]:
+    """Run `git -C repo_root *args`. Returns `(stdout, failure, stderr)`.
 
-    The failure is `git-unavailable`, `git-timeout` or `_NONZERO_EXIT` - and the
-    last of those is deliberately not one of the reported state names, because what
-    a non-zero exit *means* depends on which probe made it.
+    Either `stdout` or `failure` is `None`. The failure is `git-unavailable`,
+    `git-timeout` or `_NONZERO_EXIT` - and the last of those is deliberately not one
+    of the reported state names, because what a non-zero exit *means* depends on which
+    probe made it and on what git said.
+
+    `stderr` is returned for that discrimination and for nothing else: it is read by
+    `_git_commit` and never placed in the block. git's refusals quote paths - a
+    dubious-ownership rejection prints the host's absolute path - and this block is
+    written into an artifact that gets committed. It is `""` unless git ran and exited
+    non-zero, which is the only case where anything reads it.
     """
     try:
         result = subprocess.run(
@@ -101,12 +133,12 @@ def _git_stdout(repo_root: Path, *args: str) -> tuple[str | None, str | None]:
             timeout=GIT_TIMEOUT_SECONDS,
         )
     except FileNotFoundError:
-        return None, "git-unavailable"
+        return None, "git-unavailable", ""
     except subprocess.TimeoutExpired:
-        return None, "git-timeout"
-    except subprocess.CalledProcessError:
-        return None, _NONZERO_EXIT
-    return result.stdout, None
+        return None, "git-timeout", ""
+    except subprocess.CalledProcessError as exc:
+        return None, _NONZERO_EXIT, exc.stderr or ""
+    return result.stdout, None, ""
 
 
 def _git_commit(repo_root: Path) -> dict[str, str | None]:
@@ -119,13 +151,25 @@ def _git_commit(repo_root: Path) -> dict[str, str | None]:
 
     Two probes rather than one: `rev-parse HEAD` exits non-zero both outside a
     repository and inside a fresh one whose HEAD is unborn, so on its own it cannot
-    tell those apart. `rev-parse --git-dir` answers the first question by itself.
+    tell those apart. `rev-parse --git-dir` answers the first question by itself. Each
+    probe carries its own `GIT_TIMEOUT_SECONDS`, so a hung git is bounded at twice it.
     """
-    _, failure = _git_stdout(repo_root, "rev-parse", "--git-dir")
+    _, failure, stderr = _git_stdout(repo_root, "rev-parse", "--git-dir")
     if failure is not None:
-        return {"commit": None, "state": "not-a-checkout" if failure == _NONZERO_EXIT else failure}
+        if failure != _NONZERO_EXIT:
+            return {"commit": None, "state": failure}
+        # Which failure this is comes from git's message, not from its exit code: git
+        # exits 128 for a genuine non-repository and for every other refusal alike -
+        # a `repo_root` that does not exist, an unreadable or corrupt `.git`, a
+        # dubious-ownership rejection, permission denial. `not-a-checkout` is the one
+        # state here that makes a positive claim, so only the measured signature earns
+        # it; everything else is *"I could not ask"*, which is `git-failed`. The
+        # comparison is lowercased on both sides because the constant is stored
+        # lowercase, and the stderr goes no further than this line.
+        matched = _NOT_A_REPO_SIGNATURE in stderr.lower()
+        return {"commit": None, "state": "not-a-checkout" if matched else "git-failed"}
 
-    stdout, failure = _git_stdout(repo_root, "rev-parse", "HEAD")
+    stdout, failure, _ = _git_stdout(repo_root, "rev-parse", "HEAD")
     if failure is not None:
         return {"commit": None, "state": "git-failed" if failure == _NONZERO_EXIT else failure}
 
@@ -146,7 +190,7 @@ def _version_display(version_output: str) -> str | None:
     return lines[-1] if lines else None
 
 
-def _scanner_entry(entry: Any) -> dict[str, Any]:
+def _scanner_entry(entry: dict[str, Any]) -> dict[str, Any]:
     """One scanner's provenance, built from its `tools/resolved.json` record.
 
     `version_output` is copied under its captured name, at full fidelity: renaming
@@ -156,8 +200,24 @@ def _scanner_entry(entry: Any) -> dict[str, Any]:
     can tell the captured value from the derived one *and* see how the derived one
     was derived.
 
-    A record with no `version_output` gets neither key - not an empty display
-    string, which would assert a tidy value for a capture that does not exist.
+    Three keys and three ways of saying *"not there"*, because a reader of the emitted
+    block has to know which key uses which:
+
+    - `exe` and `version` are **always present**, holding `None` when the record does
+      not carry them. A block that dropped the path to the binary it ran would read
+      like a block that never had one to record.
+    - `version_output` is **present only when the record has it**, and a missing key,
+      an explicit JSON `null` and a capture that never happened all fold into that one
+      absence: `entry.get` cannot tell them apart, and `null` is what a writer with
+      nothing to record would emit, so the fold loses nothing a reader could use. `""`
+      and `"   "` do **not** fold into it - a capture that ran and printed whitespace
+      is a fact, and it is retained verbatim. (Unreachable from this repository's
+      writer either way: `tools/bootstrap.ps1` dies unless the captured output
+      contains the pinned version, and stores `$raw.Trim()`.)
+    - `version_display` and `version_display_rule` are **present only when a display
+      value exists**, and they appear or vanish together. `""` would assert a tidy
+      value for a capture that has none, and a rule key with nothing to apply it to
+      would claim a derivation that did not happen.
     """
     scanner: dict[str, Any] = {"exe": entry.get("exe"), "version": entry.get("version")}
     version_output = entry.get("version_output")
@@ -199,6 +259,12 @@ def build_provenance(repo_root: Path) -> dict[str, Any]:
     Raises FileNotFoundError when `tools/resolved.json` is absent: emitting an
     artifact with no scanner provenance at all would be worse than failing here,
     and that file is gitignored, so a fresh clone hits this path before bootstrap.
+
+    Raises ValueError, naming the same path, when the file exists but does not hold an
+    object of scanner records. Read unvalidated, a top-level list reaches `.items()`
+    and a string record reaches `.get`, and the `AttributeError` that follows names
+    neither the file nor what was wrong with it - which for a file no test fixture
+    produces and only `tools/bootstrap.ps1` writes is the whole diagnosis.
     """
     resolved_path = repo_root / "tools" / "resolved.json"
     if not resolved_path.exists():
@@ -207,7 +273,25 @@ def build_provenance(repo_root: Path) -> dict[str, Any]:
         )
     # Bytes, not text: json.loads tolerates a UTF-8 BOM in bytes and rejects one in
     # str, and a PowerShell 5.1 host writes this file. See the module docstring.
-    resolved = json.loads(resolved_path.read_bytes())
+    try:
+        resolved = json.loads(resolved_path.read_bytes())
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"{resolved_path} is not valid JSON ({exc}); re-run tools/bootstrap.ps1"
+        ) from exc
+    if not isinstance(resolved, dict):
+        raise ValueError(
+            f"{resolved_path} must hold a JSON object of scanner records, not a "
+            f"{type(resolved).__name__}; re-run tools/bootstrap.ps1"
+        )
+    scanners: dict[str, Any] = {}
+    for name, entry in sorted(resolved.items()):
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"{resolved_path} records {name} as a {type(entry).__name__}, not an "
+                "object; re-run tools/bootstrap.ps1"
+            )
+        scanners[name] = _scanner_entry(entry)
 
     spec_hashes, spec_search_roots = _spec_hashes(repo_root)
     return {
@@ -215,7 +299,7 @@ def build_provenance(repo_root: Path) -> dict[str, Any]:
         "python": platform.python_version(),
         "host": {"system": platform.system(), "release": platform.release()},
         "repo_commit": _git_commit(repo_root),
-        "scanners": {name: _scanner_entry(entry) for name, entry in sorted(resolved.items())},
+        "scanners": scanners,
         "spec_hashes": spec_hashes,
         "spec_search_roots": spec_search_roots,
     }
