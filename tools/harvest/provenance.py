@@ -24,8 +24,8 @@ may not report with one value:
 `tools/resolved.json` is read as **bytes**. `json.loads` accepts a UTF-8 BOM in
 `bytes` and raises `Unexpected UTF-8 BOM` on a `str`, and that file is written by
 `tools/bootstrap.ps1` on a Windows PowerShell 5.1 host, whose default writers emit
-one. The committed copy is BOM-free today; that is a fact about today, not a
-property of the writer.
+one. The bootstrapped copy on this host is BOM-free today; that is a fact about
+today, not a property of the writer.
 
 Read-only in the other direction too: nothing here recomputes a pinned digest, a
 version or a vendored commit SHA from disk. The recorded value is the value, and
@@ -83,10 +83,10 @@ was searched and found absent is a different fact from a root never looked at.
 VERSION_DISPLAY_RULE = "last-non-empty-line"
 """How `version_display` is derived from a captured `version_output`.
 
-Measured this session over the committed `tools/resolved.json`: checkov's
-`version_output` is 6 characters on 1 line, trivy's is 15 on 1 line, and tfsec's is
-382 over 11 lines, 9 of them non-empty - a deprecation banner wrapped around the
-number. Last non-empty line, whitespace-stripped, yields `3.3.12`,
+Measured this session over the bootstrapped `tools/resolved.json` on this host:
+checkov's `version_output` is 6 characters on 1 line, trivy's is 15 on 1 line, and
+tfsec's is 382 over 11 lines, 9 of them non-empty - a deprecation banner wrapped
+around the number. Last non-empty line, whitespace-stripped, yields `3.3.12`,
 `Version: 0.74.0` and `v1.28.14` respectively, with no per-scanner branch. First
 non-empty line would yield tfsec's row of `=` characters, which is worse than the
 banner it replaces.

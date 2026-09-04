@@ -49,7 +49,8 @@ HEX = set("0123456789abcdef")
 # pins: a test whose expectation comes from the file under test cannot detect that
 # file changing. tfsec's is the case that motivates `version_display` at all - its
 # raw capture is a 382-character, 11-line deprecation banner wrapped around
-# `v1.28.14`, measured this session over the committed `tools/resolved.json`.
+# `v1.28.14`, measured this session over the bootstrapped `tools/resolved.json` on
+# this host.
 EXPECTED_DISPLAY = {"checkov": "3.3.12", "trivy": "Version: 0.74.0", "tfsec": "v1.28.14"}
 
 
@@ -227,8 +228,9 @@ def test_a_utf8_bom_on_resolved_json_is_read_not_rejected(tmp_path: Path) -> Non
     PowerShell 5.1 host, where `Out-File -Encoding utf8` and `Set-Content` both emit
     a UTF-8 BOM and `ConvertFrom-Json` tolerates one. Reading it as text would fail
     on a file every default writer there produces, five tasks after the file was
-    written. The committed copy is BOM-free today, which is a fact about today
-    rather than a property of the writer, so this test supplies the BOM itself.
+    written. The bootstrapped copy on this host is BOM-free today, which is a fact
+    about today rather than a property of the writer, so this test supplies the BOM
+    itself.
     """
     (tmp_path / "tools").mkdir()
     payload = json.dumps({"tfsec": {"exe": "C:\\bin\\tfsec.exe", "version": "1.28.14"}})
@@ -282,8 +284,8 @@ def test_a_multi_line_banner_reduces_to_its_last_non_empty_line(tmp_path: Path) 
     Last non-empty line, whitespace-stripped - not first: tfsec prints its ASCII
     rule first, and a display value of `======...` is worse than the banner it
     replaces. CRLF is in the fixture deliberately, because that is what the real
-    capture holds: the committed `tools/resolved.json` stores tfsec's banner with
-    `\\r\\n` separators.
+    capture holds: the bootstrapped `tools/resolved.json` on this host stores
+    tfsec's banner with `\\r\\n` separators.
     """
     (tmp_path / "tools").mkdir()
     banner = "======\r\nsomething is joining something\r\n\r\n======\r\n  v9.9.9  \r\n"
@@ -456,8 +458,8 @@ def test_this_repository_hashes_its_real_spec_and_tidies_the_tfsec_banner() -> N
     their fixtures had no spec root either, so `== {}` was true for the wrong reason.
 
     And tfsec's raw `version_output` really is a banner - measured this session over
-    the committed `tools/resolved.json`: 382 characters across 11 lines, against
-    checkov's 6 and trivy's 15 on one line each. The tidy value sits beside the raw,
+    the bootstrapped `tools/resolved.json` on this host: 382 characters across 11
+    lines, against checkov's 6 and trivy's 15 on one line each. The tidy value sits beside the raw,
     never instead of it, since `tools/resolved.json` is read-only and its fidelity is
     deliberate.
     """
