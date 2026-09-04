@@ -433,10 +433,14 @@ def test_tally_over_the_six_fixtures_matches_the_golden_table() -> None:
     place `distinct_rules` can be checked at all - two rows cannot show a 45-rule
     overlap. What each number's movement means is recorded above its table.
 
-    It also carries the `distinct_rule_ids >= distinct_rules` invariant `tally.py`
-    states. Asserted here it is 255 >= 210 over measured rows and can fail - a
-    reconciliation that split one identifier into two would break it - where over
-    hand-built rows it would have been `2 >= 1` over literals the test supplied.
+    It also restates the `distinct_rule_ids >= distinct_rules` invariant `tally.py`
+    states, as 255 >= 210 beside the measured numbers it holds over. **The restatement
+    cannot fail here**: `EXPECTED_TOTALS` pins both operands, so a reconciliation that
+    split one identifier into two breaks the whole-dict assertion above before this line
+    is reached. Testing the fold is
+    `test_the_cross_scanner_rule_overlap_is_pinned_not_only_reported`'s job - it derives
+    the 45 from the rows with `_canonical_rule_id` and never consults `totals`, so a
+    changed fold breaks it on its own terms.
 
     The last assertion is the case-level half of the empty-scan problem `scanners=`
     solves at scanner level: tfsec's kubernetes capture produced no rows, so it

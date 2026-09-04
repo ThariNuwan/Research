@@ -14,6 +14,10 @@ The tests that read this repository rather than a `tmp_path` skip when
 `tools/resolved.json` is absent: it is written by `tools/bootstrap.ps1` and
 git-ignored, so it exists on a bootstrapped host and not in a fresh clone. `-rs` in
 `addopts` makes such a skip visible rather than silent.
+
+Where a payload this repository's writer cannot produce is used deliberately,
+`Unobserved:` marks it in the test's own docstring - the convention
+`tests/harvest/test_walkers.py` established and `test_tally.py` restates.
 """
 
 from __future__ import annotations
