@@ -349,9 +349,15 @@ foreach ($name in $lock.scanners.PSObject.Properties.Name) {
     else { Die "unknown channel '$($entry.channel)' for $name" }
 }
 
-# Out-File -Encoding utf8 is UTF-8 *with* BOM in PS 5.1. ConvertFrom-Json
-# tolerates the BOM, so the break would not surface here - it would surface in
-# Task 7's provenance builder as json.loads raising "Unexpected UTF-8 BOM".
+# Out-File -Encoding utf8 is UTF-8 *with* BOM in PS 5.1, and ConvertFrom-Json
+# tolerates the BOM, so a BOM would not surface on this side. It would not
+# surface on the Python side either, which is the correction Task 8 measured:
+# json.loads accepts a BOM in bytes and raises "Unexpected UTF-8 BOM" only on
+# str, and both readers of this file - Task 7's provenance.py and Task 8's
+# run.py - read_bytes(). So a BOM here would travel unreported into a
+# committed artifact. WriteAllText below is what keeps it out, and
+# test_resolved_json_is_bom_free_utf8_with_absolute_paths is the only thing
+# that would say it got in.
 $json = $resolved | ConvertTo-Json -Depth 5
 [System.IO.File]::WriteAllText($ResolvedPath, $json, (New-Object System.Text.UTF8Encoding $false))
 Write-Host ""

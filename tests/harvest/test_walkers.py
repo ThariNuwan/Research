@@ -52,7 +52,7 @@ def _load(path: Path) -> Any:
 CAPTURES: tuple[dict[str, Any], ...] = tuple(_load(MANIFEST)["captures"])
 CAPTURE_IDS = [f"{c['scanner']}-{c['platform']}" for c in CAPTURES]
 
-# Four of the five golden tables below - `EXPECTED_ROWS`, `EXPECTED_SEVERITIES`,
+# Three of the five golden tables below - `EXPECTED_SEVERITIES`,
 # `EXPECTED_DISTINCT_RULE_IDS` and `EXPECTED_ID_PREFIXES` - were measured over the
 # committed fixtures, with the walkers under test, by:
 #
@@ -65,22 +65,73 @@ CAPTURE_IDS = [f"{c['scanner']}-{c['platform']}" for c in CAPTURES]
 #
 # `EXPECTED_ID_PREFIXES` is keyed by scanner, so it is the union of that scanner's two
 # lines. `EXPECTED_TARGET_KINDS` comes from the same walk through `_separator_kind`
-# and carries its own note. Re-run the command after touching any walker: a moved
-# field path moves a count.
+# and carries its own note, and `EXPECTED_ROWS` is no longer a total, so it has its
+# own command below. Re-run them after touching any walker: a moved field path moves
+# a count.
 
-# How many InventoryRows each fixture's bytes produce. Exact counts, not a
-# lower bound, and not `assert rows` - a walker that returned [] would satisfy the
-# brief's `for row in rows: assert ...` loop vacuously for all six fixtures.
-# tfsec-kubernetes is 0 by measurement, which turns the off-matrix emptiness into
-# an asserted fact rather than an accident nobody would notice.
-EXPECTED_ROWS: dict[str, int] = {
-    "checkov-terraform.json": 221,
-    "checkov-kubernetes.json": 268,
-    "trivy-terraform.json": 115,
-    "trivy-kubernetes.json": 332,
-    "tfsec-terraform.json": 119,
-    "tfsec-kubernetes.json": 0,
+# How many InventoryRows each fixture's bytes produce, cut by the partition the document
+# itself declares rather than as one total per fixture. The checkov entries were measured
+# with the walker under test, one block at a time, by:
+#
+#   uv run python -c "import json, pathlib; \
+#     from tools.harvest.walkers import walk_checkov; \
+#     [print(p.name, {b['check_type']: len(walk_checkov([b], p.stem)) \
+#     for b in json.loads(p.read_bytes())}) \
+#     for p in sorted(pathlib.Path('tests/harvest/fixtures').glob('checkov-*.json'))]"
+#
+# The trivy and tfsec entries are the whole-document totals the header's command prints.
+# checkov is the only scanner here with a partition to cut: its top-level array is one
+# block per framework it detected *inside one scan root* - three over the Terraform root,
+# two over the Kubernetes one - so `terraform`/`dockerfile`/`secrets` and
+# `kubernetes`/`secrets` are keys the fixture bytes supply, not names invented here.
+# trivy's `Results` and tfsec's `results` are single flat arrays, so each has one entry,
+# keyed by the array's own name and covering the whole document.
+#
+# The cut is what buys this table a failure mode of its own, and as a total it had none:
+# `Counter(row.native_severity for row in rows)` sums to `len(rows)` by construction, so
+# `EXPECTED_SEVERITIES` implied every total below. For checkov it implied it twice over -
+# null is checkov's whole severity column, so that Counter is one number wearing a dict.
+# Per block, 215/2/4 and 266/2 can move against each other while both the sum and the
+# Counter hold, which is exactly the shape of a walker that filtered, doubled or
+# misattributed one `check_type`. For trivy and tfsec the implication stands and is left
+# standing: one bucket, one number, and no partition in the document to cut it by.
+#
+# Exact counts, not a lower bound, and not `assert rows` - a walker that returned []
+# would satisfy the brief's `for row in rows: assert ...` loop vacuously for all six
+# fixtures. tfsec-kubernetes is 0 by measurement, which turns the off-matrix emptiness
+# into an asserted fact rather than an accident nobody would notice.
+EXPECTED_ROWS: dict[str, dict[str, int]] = {
+    "checkov-terraform.json": {"dockerfile": 2, "secrets": 4, "terraform": 215},
+    "checkov-kubernetes.json": {"kubernetes": 266, "secrets": 2},
+    "trivy-terraform.json": {"Results": 115},
+    "trivy-kubernetes.json": {"Results": 332},
+    "tfsec-terraform.json": {"results": 119},
+    "tfsec-kubernetes.json": {"results": 0},
 }
+
+
+def _findings_blocks(scanner: str, doc: Any) -> dict[str, Any]:
+    """The document's own partition of its findings: one walkable sub-document per key.
+
+    checkov's top-level array is one block per detected framework, so each block is a
+    one-element array the walker accepts unchanged - that is what makes a per-block row
+    count measurable with the real walker rather than with a reimplementation of it.
+
+    Any other scanner gets one bucket holding the whole document, keyed by the name of
+    the array its rows come from. That default is deliberate rather than merely
+    convenient: a fourth walker arriving with a partition nobody has looked at yet gets
+    the weaker single-number expectation and no silent per-block claim, and
+    `EXPECTED_ROWS` is compared by equality, so its key has to be written down for the
+    test to pass at all.
+    """
+    if scanner == "checkov":
+        # Unobserved: both checkov captures are arrays (`stdout_top_level` in the
+        # manifest), and `walk_checkov` itself wraps a bare object - so a non-list here
+        # would be a fixture that changed shape, and the KeyError/TypeError that follows
+        # is the report.
+        return {block["check_type"]: [block] for block in doc}
+    return {"Results" if scanner == "trivy" else "results": doc}
+
 
 # The exact `native_severity` **distribution** each fixture yields - counts, not just
 # the vocabulary. A set comparison was the earlier form and it was too weak to be the
@@ -780,19 +831,26 @@ def test_walker_handles_the_real_captured_output(capture: dict[str, Any]) -> Non
     produces - so an unasserted count would have made this test green on the drift it
     was written for.
 
-    Three golden tables are checked per fixture: the row count; the severity
-    **distribution**, a `Counter` rather than a vocabulary set, so a level moving from one
-    id to another inside the same vocabulary still fails; and the number of distinct rule
-    ids, which moves when ids merge or split under an unchanged row count.
+    Three golden tables are checked per fixture: the row counts, per block of the
+    document's own partition and then summed; the severity **distribution**, a `Counter`
+    rather than a vocabulary set, so a level moving from one id to another inside the same
+    vocabulary still fails; and the number of distinct rule ids, which moves when ids
+    merge or split under an unchanged row count.
     `test_the_rule_id_namespaces_each_scanner_emits` adds a fourth, on the prefix
     vocabulary.
 
-    They are not three independent tripwires, and this docstring used to say they were.
-    `Counter(row.native_severity for row in rows)` totals `len(rows)` by construction, and
-    the pinned counts sum to the pinned row count in all six fixtures, so the severity
-    table **implies** the row count: nothing can move the count and still leave the
-    `Counter` matching. The row count is kept because it is asserted first and names that
-    drift in one number instead of in a diff of four levels. The other two pairings are
+    The row-count table used to be one total per fixture, and this docstring used to
+    record that it therefore could not fail alone: `Counter(row.native_severity for row in
+    rows)` totals `len(rows)` by construction, so `EXPECTED_SEVERITIES` implied every
+    total. Task 8 re-cut it. For checkov's two fixtures the counts are now per
+    `check_type` block, so a row migrating between blocks - a walker that filtered,
+    doubled or misattributed one framework - fails here while both the sum and the
+    `Counter` hold. For trivy and tfsec, single flat arrays with no partition to cut, the
+    implication still stands and the table says so.
+
+    The two row assertions are independent of each other as well: the first walks each
+    block alone and the second walks the document whole, so a walker that carried state
+    across blocks satisfies one and fails the other. The other two pairings are
     independent, measured on `trivy-terraform.json`: re-rating one rule (`AWS-0079`, 9
     rows, HIGH -> MEDIUM) moves only the `Counter` (HIGH 61 -> 52, MEDIUM 26 -> 35), and
     folding one id into another (`AWS-0026` -> `AWS-0028`) moves only the distinct-id
@@ -819,10 +877,19 @@ def test_walker_handles_the_real_captured_output(capture: dict[str, Any]) -> Non
     scanner = capture["scanner"]
     rows = walk(scanner, doc, case_id)
 
-    assert len(rows) == EXPECTED_ROWS[name], (
-        f"{scanner} produced {len(rows)} rows from {name}, not the "
-        f"{EXPECTED_ROWS[name]} measured at this pin - a field path has moved, or the "
-        "fixture has"
+    expected = EXPECTED_ROWS[name]
+    per_block = {
+        key: len(walk(scanner, block, case_id))
+        for key, block in _findings_blocks(scanner, doc).items()
+    }
+    assert per_block == expected, (
+        f"{scanner} produced {per_block} from {name}, not the {expected} measured at this "
+        "pin - a field path has moved, a framework block has, or the fixture has"
+    )
+    assert len(rows) == sum(expected.values()), (
+        f"{scanner} yields {len(rows)} rows walked as one document but "
+        f"{sum(expected.values())} walked block by block - the walker is not additive "
+        "over the partition it reads"
     )
     for row in rows:
         assert row.rule_id, f"empty rule_id in {name}"

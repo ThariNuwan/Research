@@ -217,11 +217,19 @@ def test_resolved_json_is_bom_free_utf8_with_absolute_paths() -> None:
 
     `resolved.json` is written by `tools/bootstrap.ps1` and is gitignored, so
     nothing else in the plan re-checks its bytes. Windows PowerShell 5.1's
-    `Out-File -Encoding utf8` emits a UTF-8 BOM, and `ConvertFrom-Json`
-    tolerates one - so a BOM here would pass every PowerShell-side check and
-    only surface five tasks later as `json.loads` raising "Unexpected UTF-8
-    BOM", pointing at a file this task wrote. Assert the Python-side contract
-    where it is produced: BOM-free UTF-8, an absolute `exe` that exists, and a
+    `Out-File -Encoding utf8` emits a UTF-8 BOM and `ConvertFrom-Json` tolerates
+    one, so a BOM here would pass every PowerShell-side check.
+
+    What it would not do is surface later as a `json.loads` failure. This
+    docstring claimed it would until Task 8 measured the asymmetry: `json.loads`
+    accepts a BOM in `bytes` and raises "Unexpected UTF-8 BOM" only on a `str`.
+    Both readers of this file - Task 7's `provenance.py` and Task 8's `run.py` -
+    take the `bytes` path, so a BOM would be tolerated the whole way into a
+    committed artifact and nothing downstream would report it. The assertion
+    below is that report, which is why it reads bytes and runs before the
+    `read_text()` beneath it - the one call here on the raising side.
+
+    Then the rest of the contract: an absolute `exe` that exists, and a
     `version` equal to the pin rather than merely non-empty.
     """
     _skip_without_resolved()
