@@ -18,6 +18,16 @@ it indistinguishable from a different and better outcome:
   over, never `0.0` - which is the value a scanner measured to be missing nothing
   reports.
 
+One invariant holds over every input: in `totals`, `distinct_rule_ids >=
+distinct_rules`. `_canonical_rule_id` strips a prefix, so it can map two identifiers
+onto one and never one onto two, and the gap between the two numbers is the
+deduplication reduction CLAUDE.md commits to reporting as a figure of its own.
+Measured over the six committed fixtures it is 255 - 210 = 45, and all 45 are one
+trivy and one tfsec spelling of the same rule: checkov's 128 canonical ids intersect
+the other two scanners' on none. `tests/harvest/test_tally.py` asserts the invariant
+over those measured rows rather than over rows a test chose, which is the only way an
+inequality of this shape can fail.
+
 Not done here, by ruling: attribution. `tally()` counts whatever `case_id` it is
 handed and forms no opinion about how the label got there. The three scanners spell
 paths three incompatible ways - checkov mixes separators and contradicts itself
@@ -97,9 +107,18 @@ def tally(rows: Iterable[InventoryRow], scanners: Iterable[str] | None = None) -
     whether or not it was named. Omitted, only scanners with rows appear - which
     cannot represent a scanner that ran and found nothing.
 
+    A bare `str` for `scanners` is rejected rather than iterated. `str` is
+    `Iterable[str]`, so the annotation and mypy both accept `scanners="checkov"`, and
+    iterating it would seed six single-character scanners - `c`, `e`, `h`, `k`, `o`,
+    `v` - into a committed inventory with nothing failing.
+
     Every list in the output is sorted and every mapping is key-sorted, so the
     committed inventory diffs cleanly between runs.
     """
+    if isinstance(scanners, str):
+        raise TypeError(
+            f"scanners must be an iterable of scanner names, not the bare str {scanners!r}"
+        )
     materialized = list(rows)
 
     by_scanner_rows: dict[str, list[InventoryRow]] = defaultdict(list)
