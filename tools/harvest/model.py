@@ -42,6 +42,12 @@ class InventoryRow:
     target: str
     """File path exactly as the scanner reported it - separators unmodified.
 
+    `""` is the one exception, and it means the scanner reported no path at all: a
+    missing key, JSON null, or a blank string. Unobserved in this corpus - checkov
+    `file_path` 489/489, trivy `Target` on all 32 `Results` entries, tfsec
+    `location.filename` 119/119 - so no row any committed fixture produces carries
+    it, and the four walker sites that fold it carry the same measurement.
+
     Preserved raw so S1's canonical-identity spec can be written against
     real observed path formats, including Windows backslashes.
     """
