@@ -151,8 +151,7 @@ def test_checkov_entry_declares_the_uv_tool_launcher_contract() -> None:
     """
     checkov = _lock()["scanners"]["checkov"]
     assert checkov["channel"] == "uv-tool", (
-        "checkov must stay an isolated uv tool and never become a project "
-        "dependency (PLAN.md Q3)"
+        "checkov must stay an isolated uv tool and never become a project dependency (PLAN.md Q3)"
     )
     for field in ("script", "exe"):
         assert field in checkov, (

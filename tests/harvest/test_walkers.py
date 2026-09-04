@@ -342,9 +342,7 @@ def test_checkov_failed_checks_become_rows() -> None:
                     "resource": "aws_s3_bucket.data",
                 },
             ],
-            "passed_checks": [
-                {"check_id": "CKV_AWS_99", "file_path": "\\x.tf", "resource": "r"}
-            ],
+            "passed_checks": [{"check_id": "CKV_AWS_99", "file_path": "\\x.tf", "resource": "r"}],
         },
     }
     rows = walk("checkov", doc, "tg-aws-s3")
@@ -442,9 +440,7 @@ def test_checkov_also_accepts_a_bare_object_document() -> None:
     doc = {
         "check_type": "terraform",
         "results": {
-            "failed_checks": [
-                {"check_id": "CKV_AWS_18", "severity": None, "file_path": "\\s3.tf"}
-            ]
+            "failed_checks": [{"check_id": "CKV_AWS_18", "severity": None, "file_path": "\\s3.tf"}]
         },
     }
     rows = walk("checkov", doc, "tg-aws-s3")
@@ -738,8 +734,7 @@ def test_every_walker_routes_severity_through_the_same_contract(
     rows = walk(scanner, _one_finding(scanner, value), "tg-aws-s3")
     assert len(rows) == 1, f"{scanner} dropped a finding whose severity was {value!r}"
     assert rows[0].native_severity == expected, (
-        f"{scanner} turned severity {value!r} into {rows[0].native_severity!r}, "
-        f"not {expected!r}"
+        f"{scanner} turned severity {value!r} into {rows[0].native_severity!r}, not {expected!r}"
     )
 
 

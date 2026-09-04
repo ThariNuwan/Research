@@ -156,8 +156,7 @@ def test_sources_pin_the_exact_commits_and_licenses_the_plan_fixed() -> None:
             f"{commit!r}; re-verify against upstream before changing this literal"
         )
         assert sources[name]["license"] == EXPECTED_LICENSES[name], (
-            f"{name} license is {sources[name]['license']!r}, expected "
-            f"{EXPECTED_LICENSES[name]!r}"
+            f"{name} license is {sources[name]['license']!r}, expected {EXPECTED_LICENSES[name]!r}"
         )
 
 
@@ -618,14 +617,12 @@ def test_sources_md_attributes_every_pinned_commit() -> None:
         assert license_value, f"{name} declares an empty license, which `in text` accepts"
         token = re.compile(rf"(?<![\w.\-]){re.escape(license_value)}(?![\w.\-])")
         assert token.search(text), (
-            f"SOURCES.md does not record {name}'s license {license_value!r} as a whole "
-            "token"
+            f"SOURCES.md does not record {name}'s license {license_value!r} as a whole token"
         )
         assert entry["url"] in text, f"SOURCES.md does not record {name}'s upstream url"
         checked.add(name)
     assert checked == set(EXPECTED_COMMITS), (
-        f"SOURCES.md was checked against {sorted(checked)}, expected "
-        f"{sorted(EXPECTED_COMMITS)}"
+        f"SOURCES.md was checked against {sorted(checked)}, expected {sorted(EXPECTED_COMMITS)}"
     )
 
 
@@ -671,4 +668,3 @@ def test_sources_md_census_matches_the_vendored_trees_on_disk() -> None:
     assert checked == set(EXPECTED_COMMITS), (
         f"census checked {sorted(checked)}, expected {sorted(EXPECTED_COMMITS)}"
     )
-

@@ -92,8 +92,11 @@ def test_missing_severity_is_none_never_a_default_level() -> None:
     JSON with the severity key absent.
     """
     row = InventoryRow(
-        scanner="checkov", rule_id="CKV_AWS_1", native_severity=None,
-        target="s3.tf", case_id="tg-aws-s3",
+        scanner="checkov",
+        rule_id="CKV_AWS_1",
+        native_severity=None,
+        target="s3.tf",
+        case_id="tg-aws-s3",
     )
     assert row.native_severity is None
 
