@@ -1,0 +1,599 @@
+{
+  "by_scanner": {
+    "checkov": {
+      "cases": {
+        "kg-scenarios": 268,
+        "tg-aws-compute": 25,
+        "tg-aws-iam": 7,
+        "tg-aws-networking": 3,
+        "tg-aws-s3": 31,
+        "unattributed": 155
+      },
+      "distinct_rule_ids": 128,
+      "missing_severity_rate": 1.0,
+      "missing_severity_rows": 489,
+      "observed_severity_levels": [],
+      "rows": 489,
+      "rule_ids": [
+        "CKV2_AWS_11",
+        "CKV2_AWS_12",
+        "CKV2_AWS_2",
+        "CKV2_AWS_41",
+        "CKV2_AWS_52",
+        "CKV2_AWS_58",
+        "CKV2_AWS_59",
+        "CKV2_AWS_6",
+        "CKV2_AWS_60",
+        "CKV2_AWS_61",
+        "CKV2_AWS_62",
+        "CKV2_AWS_64",
+        "CKV2_AWS_69",
+        "CKV2_AWS_8",
+        "CKV2_K8S_5",
+        "CKV2_K8S_6",
+        "CKV_AWS_101",
+        "CKV_AWS_109",
+        "CKV_AWS_111",
+        "CKV_AWS_115",
+        "CKV_AWS_116",
+        "CKV_AWS_117",
+        "CKV_AWS_118",
+        "CKV_AWS_126",
+        "CKV_AWS_127",
+        "CKV_AWS_129",
+        "CKV_AWS_130",
+        "CKV_AWS_133",
+        "CKV_AWS_135",
+        "CKV_AWS_136",
+        "CKV_AWS_137",
+        "CKV_AWS_139",
+        "CKV_AWS_144",
+        "CKV_AWS_145",
+        "CKV_AWS_157",
+        "CKV_AWS_16",
+        "CKV_AWS_161",
+        "CKV_AWS_162",
+        "CKV_AWS_163",
+        "CKV_AWS_17",
+        "CKV_AWS_173",
+        "CKV_AWS_18",
+        "CKV_AWS_186",
+        "CKV_AWS_189",
+        "CKV_AWS_21",
+        "CKV_AWS_226",
+        "CKV_AWS_228",
+        "CKV_AWS_23",
+        "CKV_AWS_24",
+        "CKV_AWS_247",
+        "CKV_AWS_248",
+        "CKV_AWS_260",
+        "CKV_AWS_272",
+        "CKV_AWS_273",
+        "CKV_AWS_279",
+        "CKV_AWS_280",
+        "CKV_AWS_283",
+        "CKV_AWS_286",
+        "CKV_AWS_287",
+        "CKV_AWS_288",
+        "CKV_AWS_289",
+        "CKV_AWS_290",
+        "CKV_AWS_293",
+        "CKV_AWS_3",
+        "CKV_AWS_313",
+        "CKV_AWS_317",
+        "CKV_AWS_318",
+        "CKV_AWS_324",
+        "CKV_AWS_325",
+        "CKV_AWS_326",
+        "CKV_AWS_327",
+        "CKV_AWS_347",
+        "CKV_AWS_355",
+        "CKV_AWS_356",
+        "CKV_AWS_359",
+        "CKV_AWS_361",
+        "CKV_AWS_362",
+        "CKV_AWS_363",
+        "CKV_AWS_37",
+        "CKV_AWS_376",
+        "CKV_AWS_38",
+        "CKV_AWS_382",
+        "CKV_AWS_39",
+        "CKV_AWS_41",
+        "CKV_AWS_44",
+        "CKV_AWS_45",
+        "CKV_AWS_46",
+        "CKV_AWS_5",
+        "CKV_AWS_50",
+        "CKV_AWS_51",
+        "CKV_AWS_58",
+        "CKV_AWS_7",
+        "CKV_AWS_79",
+        "CKV_AWS_8",
+        "CKV_AWS_84",
+        "CKV_AWS_92",
+        "CKV_AWS_96",
+        "CKV_DOCKER_2",
+        "CKV_DOCKER_3",
+        "CKV_K8S_10",
+        "CKV_K8S_11",
+        "CKV_K8S_12",
+        "CKV_K8S_13",
+        "CKV_K8S_14",
+        "CKV_K8S_16",
+        "CKV_K8S_17",
+        "CKV_K8S_18",
+        "CKV_K8S_19",
+        "CKV_K8S_20",
+        "CKV_K8S_21",
+        "CKV_K8S_22",
+        "CKV_K8S_23",
+        "CKV_K8S_25",
+        "CKV_K8S_27",
+        "CKV_K8S_28",
+        "CKV_K8S_29",
+        "CKV_K8S_30",
+        "CKV_K8S_31",
+        "CKV_K8S_35",
+        "CKV_K8S_37",
+        "CKV_K8S_38",
+        "CKV_K8S_40",
+        "CKV_K8S_43",
+        "CKV_K8S_49",
+        "CKV_K8S_8",
+        "CKV_K8S_9",
+        "CKV_SECRET_2",
+        "CKV_SECRET_6"
+      ]
+    },
+    "tfsec": {
+      "cases": {
+        "tg-aws-compute": 22,
+        "tg-aws-iam": 6,
+        "tg-aws-networking": 1,
+        "tg-aws-s3": 38,
+        "unattributed": 52
+      },
+      "distinct_rule_ids": 48,
+      "missing_severity_rate": 0.0,
+      "missing_severity_rows": 0,
+      "observed_severity_levels": [
+        "CRITICAL",
+        "HIGH",
+        "LOW",
+        "MEDIUM"
+      ],
+      "rows": 119,
+      "rule_ids": [
+        "AVD-AWS-0026",
+        "AVD-AWS-0027",
+        "AVD-AWS-0028",
+        "AVD-AWS-0029",
+        "AVD-AWS-0030",
+        "AVD-AWS-0031",
+        "AVD-AWS-0033",
+        "AVD-AWS-0038",
+        "AVD-AWS-0039",
+        "AVD-AWS-0040",
+        "AVD-AWS-0041",
+        "AVD-AWS-0042",
+        "AVD-AWS-0043",
+        "AVD-AWS-0046",
+        "AVD-AWS-0048",
+        "AVD-AWS-0053",
+        "AVD-AWS-0057",
+        "AVD-AWS-0065",
+        "AVD-AWS-0066",
+        "AVD-AWS-0075",
+        "AVD-AWS-0076",
+        "AVD-AWS-0077",
+        "AVD-AWS-0079",
+        "AVD-AWS-0080",
+        "AVD-AWS-0082",
+        "AVD-AWS-0086",
+        "AVD-AWS-0087",
+        "AVD-AWS-0088",
+        "AVD-AWS-0089",
+        "AVD-AWS-0090",
+        "AVD-AWS-0091",
+        "AVD-AWS-0093",
+        "AVD-AWS-0094",
+        "AVD-AWS-0099",
+        "AVD-AWS-0104",
+        "AVD-AWS-0107",
+        "AVD-AWS-0124",
+        "AVD-AWS-0126",
+        "AVD-AWS-0128",
+        "AVD-AWS-0131",
+        "AVD-AWS-0132",
+        "AVD-AWS-0133",
+        "AVD-AWS-0143",
+        "AVD-AWS-0164",
+        "AVD-AWS-0176",
+        "AVD-AWS-0177",
+        "AVD-AWS-0178",
+        "AVD-AWS-0180"
+      ]
+    },
+    "trivy": {
+      "cases": {
+        "kg-scenarios": 332,
+        "tg-aws-compute": 20,
+        "tg-aws-iam": 1,
+        "tg-aws-networking": 1,
+        "tg-aws-s3": 34,
+        "unattributed": 59
+      },
+      "distinct_rule_ids": 79,
+      "missing_severity_rate": 0.0,
+      "missing_severity_rows": 0,
+      "observed_severity_levels": [
+        "CRITICAL",
+        "HIGH",
+        "LOW",
+        "MEDIUM"
+      ],
+      "rows": 447,
+      "rule_ids": [
+        "AWS-0026",
+        "AWS-0027",
+        "AWS-0028",
+        "AWS-0029",
+        "AWS-0030",
+        "AWS-0031",
+        "AWS-0033",
+        "AWS-0038",
+        "AWS-0039",
+        "AWS-0040",
+        "AWS-0041",
+        "AWS-0042",
+        "AWS-0043",
+        "AWS-0046",
+        "AWS-0048",
+        "AWS-0053",
+        "AWS-0065",
+        "AWS-0066",
+        "AWS-0075",
+        "AWS-0076",
+        "AWS-0077",
+        "AWS-0079",
+        "AWS-0080",
+        "AWS-0086",
+        "AWS-0087",
+        "AWS-0089",
+        "AWS-0090",
+        "AWS-0091",
+        "AWS-0093",
+        "AWS-0094",
+        "AWS-0099",
+        "AWS-0104",
+        "AWS-0107",
+        "AWS-0124",
+        "AWS-0126",
+        "AWS-0128",
+        "AWS-0131",
+        "AWS-0132",
+        "AWS-0133",
+        "AWS-0143",
+        "AWS-0164",
+        "AWS-0176",
+        "AWS-0177",
+        "AWS-0178",
+        "AWS-0180",
+        "AWS-0343",
+        "AWS-0345",
+        "DS-0002",
+        "DS-0026",
+        "KSV-0001",
+        "KSV-0003",
+        "KSV-0004",
+        "KSV-0006",
+        "KSV-0008",
+        "KSV-0009",
+        "KSV-0010",
+        "KSV-0011",
+        "KSV-0012",
+        "KSV-0013",
+        "KSV-0014",
+        "KSV-0015",
+        "KSV-0016",
+        "KSV-0017",
+        "KSV-0018",
+        "KSV-0020",
+        "KSV-0021",
+        "KSV-0022",
+        "KSV-0023",
+        "KSV-0030",
+        "KSV-0104",
+        "KSV-0105",
+        "KSV-0106",
+        "KSV-0110",
+        "KSV-0111",
+        "KSV-0112",
+        "KSV-0117",
+        "KSV-0118",
+        "KSV-0121",
+        "KSV-0125"
+      ]
+    }
+  },
+  "corpus": {
+    "attribution": {
+      "attributed_rows": 789,
+      "normalization_rule": "separators-to-posix-then-cut-at-or-join-to-scan-root",
+      "rows_per_case": {
+        "kg-scenarios": 600,
+        "tg-aws-compute": 67,
+        "tg-aws-iam": 14,
+        "tg-aws-networking": 5,
+        "tg-aws-s3": 103
+      },
+      "rows_per_category": {
+        "compute": 67,
+        "containers": 600,
+        "iam": 14,
+        "networking": 5,
+        "storage": 103
+      },
+      "rule_source": "tools/corpus.lock.json#attribution",
+      "unattributed_rows": 266,
+      "unattributed_state": "unattributed"
+    },
+    "case_count": 5,
+    "categories": [
+      "compute",
+      "containers",
+      "iam",
+      "networking",
+      "storage"
+    ],
+    "scan_roots": [
+      {
+        "case_ids": [
+          "kg-scenarios"
+        ],
+        "platform": "kubernetes",
+        "scan_root": "corpus/vendor/kubernetes-goat/scenarios"
+      },
+      {
+        "case_ids": [
+          "tg-aws-compute",
+          "tg-aws-iam",
+          "tg-aws-networking",
+          "tg-aws-s3"
+        ],
+        "platform": "terraform",
+        "scan_root": "corpus/vendor/terragoat/terraform/aws"
+      }
+    ],
+    "sources": {
+      "kubernetes-goat": {
+        "commit": "723a0db478f050d173d23b4ce5044b65bce0bdd0",
+        "license": "MIT",
+        "pin_verified_utc": "2026-08-24",
+        "ref": "master",
+        "retrieved_utc": "2026-08-31",
+        "subtree": "scenarios",
+        "url": "https://github.com/madhuakula/kubernetes-goat"
+      },
+      "terragoat": {
+        "commit": "729f8da62c6a85ce4af5ad3d123de97776d954c4",
+        "license": "Apache-2.0",
+        "pin_verified_utc": "2026-08-24",
+        "ref": "master",
+        "retrieved_utc": "2026-08-31",
+        "scope_note": "AWS only. alicloud/azure/gcp/oracle omitted - they add rule volume, not category coverage.",
+        "subtree": "terraform/aws",
+        "url": "https://github.com/bridgecrewio/terragoat"
+      }
+    }
+  },
+  "provenance": {
+    "generated_utc": "2026-09-04T10:20:59Z",
+    "host": {
+      "release": "11",
+      "system": "Windows"
+    },
+    "python": "3.12.13",
+    "repo_commit": {
+      "commit": "249aa250b827e8415e9ca5a1ca1d9c02b795622d",
+      "state": "ok"
+    },
+    "scanners": {
+      "checkov": {
+        "exe": "D:\\Research\\tools\\bin\\checkov.cmd",
+        "version": "3.3.12",
+        "version_display": "3.3.12",
+        "version_display_rule": "last-non-empty-line",
+        "version_output": "3.3.12"
+      },
+      "tfsec": {
+        "exe": "D:\\Research\\tools\\bin\\tfsec.exe",
+        "version": "1.28.14",
+        "version_display": "v1.28.14",
+        "version_display_rule": "last-non-empty-line",
+        "version_output": "======================================================\r\ntfsec is joining the Trivy family\r\n\r\ntfsec will continue to remain available \r\nfor the time being, although our engineering \r\nattention will be directed at Trivy going forward.\r\n\r\nYou can read more here: \r\nhttps://github.com/aquasecurity/tfsec/discussions/1994\r\n======================================================\r\nv1.28.14"
+      },
+      "trivy": {
+        "exe": "D:\\Research\\tools\\bin\\trivy.exe",
+        "version": "0.74.0",
+        "version_display": "Version: 0.74.0",
+        "version_display_rule": "last-non-empty-line",
+        "version_output": "Version: 0.74.0"
+      }
+    },
+    "spec_hashes": {
+      "docs/superpowers/specs/2026-08-24-implementation-phase0-design.md": "3ebb0606d591d02de831938f63b3cc4c2c58295c56559d912734f3f08ed40416"
+    },
+    "spec_search_roots": [
+      {
+        "exists": true,
+        "files_hashed": 1,
+        "root": "docs/superpowers/specs"
+      },
+      {
+        "exists": false,
+        "files_hashed": 0,
+        "root": "specs"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "argv": [
+        "--output",
+        "json",
+        "--compact",
+        "--skip-download",
+        "--directory",
+        "<repo>/corpus/vendor/kubernetes-goat/scenarios"
+      ],
+      "case_ids": [
+        "kg-scenarios"
+      ],
+      "cases": {
+        "kg-scenarios": 268
+      },
+      "exit_code": 1,
+      "platform": "kubernetes",
+      "raw_path": "artifacts/raw/checkov-kubernetes.json",
+      "rows": 268,
+      "scan_root": "corpus/vendor/kubernetes-goat/scenarios",
+      "scanner": "checkov",
+      "stderr_bytes": 0,
+      "stdout_bytes": 2249315,
+      "unattributed_rows": 0
+    },
+    {
+      "argv": [
+        "config",
+        "--format",
+        "json",
+        "--quiet",
+        "--disable-telemetry",
+        "--skip-check-update",
+        "<repo>/corpus/vendor/kubernetes-goat/scenarios"
+      ],
+      "case_ids": [
+        "kg-scenarios"
+      ],
+      "cases": {
+        "kg-scenarios": 332
+      },
+      "exit_code": 0,
+      "platform": "kubernetes",
+      "raw_path": "artifacts/raw/trivy-kubernetes.json",
+      "rows": 332,
+      "scan_root": "corpus/vendor/kubernetes-goat/scenarios",
+      "scanner": "trivy",
+      "stderr_bytes": 0,
+      "stdout_bytes": 1481908,
+      "unattributed_rows": 0
+    },
+    {
+      "argv": [
+        "--output",
+        "json",
+        "--compact",
+        "--skip-download",
+        "--directory",
+        "<repo>/corpus/vendor/terragoat/terraform/aws"
+      ],
+      "case_ids": [
+        "tg-aws-compute",
+        "tg-aws-iam",
+        "tg-aws-networking",
+        "tg-aws-s3"
+      ],
+      "cases": {
+        "tg-aws-compute": 25,
+        "tg-aws-iam": 7,
+        "tg-aws-networking": 3,
+        "tg-aws-s3": 31
+      },
+      "exit_code": 1,
+      "platform": "terraform",
+      "raw_path": "artifacts/raw/checkov-terraform.json",
+      "rows": 221,
+      "scan_root": "corpus/vendor/terragoat/terraform/aws",
+      "scanner": "checkov",
+      "stderr_bytes": 0,
+      "stdout_bytes": 1003802,
+      "unattributed_rows": 155
+    },
+    {
+      "argv": [
+        "--format",
+        "json",
+        "--no-colour",
+        "--no-module-downloads",
+        "<repo>/corpus/vendor/terragoat/terraform/aws"
+      ],
+      "case_ids": [
+        "tg-aws-compute",
+        "tg-aws-iam",
+        "tg-aws-networking",
+        "tg-aws-s3"
+      ],
+      "cases": {
+        "tg-aws-compute": 22,
+        "tg-aws-iam": 6,
+        "tg-aws-networking": 1,
+        "tg-aws-s3": 38
+      },
+      "exit_code": 1,
+      "platform": "terraform",
+      "raw_path": "artifacts/raw/tfsec-terraform.json",
+      "rows": 119,
+      "scan_root": "corpus/vendor/terragoat/terraform/aws",
+      "scanner": "tfsec",
+      "stderr_bytes": 365,
+      "stdout_bytes": 110338,
+      "unattributed_rows": 52
+    },
+    {
+      "argv": [
+        "config",
+        "--format",
+        "json",
+        "--quiet",
+        "--disable-telemetry",
+        "--skip-check-update",
+        "<repo>/corpus/vendor/terragoat/terraform/aws"
+      ],
+      "case_ids": [
+        "tg-aws-compute",
+        "tg-aws-iam",
+        "tg-aws-networking",
+        "tg-aws-s3"
+      ],
+      "cases": {
+        "tg-aws-compute": 20,
+        "tg-aws-iam": 1,
+        "tg-aws-networking": 1,
+        "tg-aws-s3": 34
+      },
+      "exit_code": 0,
+      "platform": "terraform",
+      "raw_path": "artifacts/raw/trivy-terraform.json",
+      "rows": 115,
+      "scan_root": "corpus/vendor/terragoat/terraform/aws",
+      "scanner": "trivy",
+      "stderr_bytes": 0,
+      "stdout_bytes": 600285,
+      "unattributed_rows": 59
+    }
+  ],
+  "totals": {
+    "distinct_rule_ids": 255,
+    "distinct_rules": 210,
+    "missing_severity_rate": 0.464,
+    "missing_severity_rows": 489,
+    "rows": 1055,
+    "rule_id_reconciliation": "strip-leading-AVD-prefix",
+    "scanners": [
+      "checkov",
+      "tfsec",
+      "trivy"
+    ]
+  }
+}

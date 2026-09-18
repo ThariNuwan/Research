@@ -173,3 +173,455 @@ S0 is done when all eight hold:
 ## 8. Out of scope for S0
 
 The normalized finding record; the issue-class taxonomy; any scoring; contrastive pairs and scenario configs; the evaluation harness; the CLI. S0 produces a pinned toolchain and an empirical rule inventory — nothing more.
+
+---
+
+## Appendix — observed scanner behaviour (S0, Task 5)
+
+Recorded as observed fact, per the closing line of §5. Produced by
+`tools/capture_fixtures.ps1`, which runs each pinned scanner once over each
+*distinct* `scan_root` declared in `tools/corpus.lock.json` (two roots, not five
+cases) and writes stdout verbatim. Six fixtures under
+`tests/harvest/fixtures/`; the mechanical record of each run — argv, exit code,
+byte counts, stream separation, top-level shape — is
+`artifacts/scanner-behavior.json`.
+
+Every number below was obtained by reading the committed fixtures. Where a
+cause is claimed rather than an observation, the evidence is named inline.
+
+### A.1 §5.1 — each scanner's real JSON schema
+
+| | checkov 3.3.12 | trivy 0.74.0 | tfsec 1.28.14 |
+|---|---|---|---|
+| top level | **array** of per-framework blocks | object, `SchemaVersion: 2` | object, single key `results` |
+| findings path | `[].results.failed_checks[]` | `Results[].Misconfigurations[]` | `results[]` |
+| rule id | `check_id` (`CKV_AWS_133`) | `ID` (`AWS-0028`, `KSV-0001`) | `rule_id` (`AVD-AWS-0099`) |
+| native severity | `severity` — **always `null`**, see A.3 | `Severity` (`HIGH`) | `severity` (`LOW`) |
+| target path | `file_path`, `file_abs_path`, `repo_file_path` | `Results[].Target` — on the **parent**, not the finding | `location.filename` |
+| separator style | mixed, see A.4 | forward slashes, scan-root-relative | **absolute**, backslashes |
+| reports passes | yes, `passed_checks[]` | counts only, `MisconfSummary.Successes` | no |
+
+Three structural facts that a walker written from the docs would get wrong:
+
+1. **Checkov's top level is an array whose length depends on the input.** It is 3
+   for the Terraform root (`terraform`, `dockerfile`, `secrets`) and 2 for the
+   Kubernetes root (`kubernetes`, `secrets`). `--framework` is deliberately not
+   passed, so auto-detection stays observable — and it fires: both roots yield
+   findings from frameworks other than the declared platform. Trivy does the same
+   thing through `Results[].Type`, which carries `dockerfile` alongside
+   `terraform` and `helm` alongside `kubernetes`.
+2. **Trivy puts the file path on the parent object, not on the finding.** A
+   `Results` entry can also omit `Misconfigurations` entirely — 1 of 14 entries in
+   the Terraform fixture (`Target: "."`, 66 successes and 0 failures) and 2 of 18
+   in the Kubernetes fixture. Indexing that key unconditionally raises.
+3. **tfsec's `status` is the integer `0` on a *failing* check** (119/119). It is
+   not a pass/fail discriminator; tfsec emits failures only.
+
+Rule-ID namespaces do not coincide. Trivy and tfsec both serve the Aqua
+Vulnerability Database ruleset but spell the identifier differently — trivy
+`AWS-0028`, tfsec `AVD-AWS-0099`. Over the Terraform root: trivy emits 49
+distinct IDs, tfsec 48, and 45 coincide once `AVD-` is stripped. Checkov's 98
+distinct IDs overlap neither set. Cross-scanner deduplication therefore needs an
+identity mapping, not string equality, and the `AVD-` prefix is the only
+mechanical part of it.
+
+**No fixture here is byte-reproducible, and the reasons differ per scanner.**
+Measured by re-running the capture and diffing against the committed blob:
+
+- **trivy** — `ReportID` is a fresh UUID and `CreatedAt` a local wall-clock
+  timestamp with offset on every run; `ArtifactName` embeds the absolute scan
+  path. Two runs of the Terraform capture differed in length by one byte for
+  this reason alone.
+- **checkov** — same byte *length* across runs, different bytes. Two sources:
+  the order of records within `failed_checks` and `passed_checks` varies between
+  runs, and `check_result.evaluated_keys` is a set serialized to a list, so its
+  order varies within a record (observed on the `CKV2_*` graph checks).
+- **tfsec** — stable in count and, over the runs behind this bullet, in record
+  order; unstable in content. A third run (made while re-verifying the capture
+  script) matched the committed blob at 119 findings in the same order, but the
+  five `AVD-AWS-0038` findings on `aws_eks_cluster.eks_cluster` (`eks.tf:118`)
+  had permuted their `description` strings among themselves — same five values,
+  four of them in different slots. So the earlier "no instability observed" was
+  an artefact of comparing two runs.
+  Load-bearing beyond reproducibility, and re-measured over the committed
+  fixture: 119 tfsec findings collapse to 110 distinct
+  `(rule_id, filename, start_line, resource)` keys — three keys collide, in two
+  different ways. `AVD-AWS-0038` at `eks.tf:118` (x5) is five **genuinely
+  distinct findings** — API server, scheduler, controller-manager, authenticator
+  and audit logging each not enabled — separated by `description` alone.
+  `AVD-AWS-0057` at `iam.tf:34` (x4) and at `db-app.tf:215` (x3) are **exact
+  duplicates in every field tfsec emits**, `description` included. So the 9
+  records the 4-field key drops are 4 real findings destroyed plus 5 true
+  duplicates correctly collapsed, and adding `description` gives **114** keys
+  (110 - 1 + 5): it rescues all four real findings and still collapses both
+  duplicate groups, which is what makes it the minimal correct key and not just
+  a less wrong one. It is also order-*in*dependent: a key-based dedup is a set
+  operation, set membership does not depend on record order, and the permutation
+  above is among those same five `description` values — so the multiset of
+  `(key, description)` tuples is unchanged across runs, and the deduplicated set
+  with it. What the permutation breaks is per-record stability: no claim that a
+  particular finding keeps a particular `description` across runs survives it.
+  Nor does a claim about the order of whole records: Task 8 re-ran tfsec over
+  this root and got the same 119 findings back in a different sequence, so the
+  ordering half of this bullet is an observation over three runs rather than a
+  property S1 may assert. The section *Reproduction: `artifacts/raw/` against
+  the Task 5 fixtures* states what is and is not stable for all three scanners
+  at once, and is the one to read for that.
+
+What *is* stable for checkov, and is what later tasks may rely on: the multiset
+of `(check_id, file_path, file_line_range, resource)` over each bucket is
+identical across runs — 215 failed and 115 passed in the Terraform root's
+`terraform` framework **block**, 266 and 994 in the Kubernetes root's
+`kubernetes` block, same tuples both times. Those are block counts, not root
+counts: checkov emits one block per framework it detects under a root, so the
+Terraform root totals 221 failed / 117 passed (`terraform` 215/115 +
+`dockerfile` 2/2 + `secrets` 4/0) and the Kubernetes root 268 / 994
+(`kubernetes` 266/994 + `secrets` 2/0) — the numbers §A.3 sums to 489 and 1111.
+
+**Consequence.** A test that asserts on fixture bytes, or on a finding at a
+fixed array index, will be flaky. Task 6's walkers must be tested against
+order-insensitive assertions, and any later re-capture will produce a diff that
+is noise rather than a change in scanner behaviour.
+
+### A.2 §5.2 — platform-applicability: what tfsec does with Kubernetes YAML
+
+**It does not refuse. It exits 0 and reports nothing.**
+
+```
+tfsec --format json --no-colour --no-module-downloads <repo>/corpus/vendor/kubernetes-goat/scenarios
+  exit code : 0
+  stdout    : 19 bytes, valid JSON  ->  {\n\t"results": []\n}\n
+  stderr    : 365 bytes (the 'tfsec is joining the Trivy family' banner)
+```
+
+For contrast, the same invocation over the Terraform root exits **1** with 119
+findings. So *for tfsec* the exit code carries *findings / no findings*, and
+`0` is indistinguishable from *this scanner cannot analyse this input at all*.
+Read no further than tfsec with it: trivy exits **0** over both roots while
+carrying 447 findings between them (332 Kubernetes + 115 Terraform, Task 8's
+`runs` block), so for trivy the exit code separates nothing at all.
+The 365-byte banner is emitted on **every** invocation, including `--help` and
+including the successful Terraform run, so its presence carries no signal either.
+Measured directly rather than inferred: the stderr of the two runs above is
+byte-identical, SHA-256
+`b2e50e31e1699ac05a6281257f69869778b70200aa80367847f6e686170c3eba` for both --
+365 bytes and 11 LF terminators, the first line blank. `stderr_lines` records
+**12**, one more, because it is a `-split "\r?\n"` part count and the stream
+ends in a newline: the twelfth part is the empty tail after it. `stderr_head` in
+`artifacts/scanner-behavior.json` is the field that records it: `stderr_bytes` and
+`stderr_lines` agree across the two runs, but only `stderr_head` shows the text
+itself is the same. `stderr_first_line` is `''` for both because the banner's
+literal first line is empty, so on its own that field misleads; the byte-identity
+of the two streams is established by `stderr_head` in the committed manifest
+together with the measurement recorded earlier in this section. The capture script
+**now also records** `stderr_first_text`, the first line carrying non-whitespace --
+a field the committed manifest predates (its `captures` records carry 21 fields and
+this is not one of them), and one a future re-capture will include.
+
+**Consequence for R3-#3.** The 'fail loudly only for the input platform's
+required scanners' rule cannot be implemented by inspecting what the scanner
+returned. Routing Kubernetes manifests to tfsec is a silent false negative that
+looks exactly like a clean scan. The platform-to-scanner matrix has to be
+declared and enforced by the caller *before* the process is launched, which is
+why `tools/scanners.lock.json` carries a `platforms` list per scanner and
+`tools/capture_fixtures.ps1` refuses to build a capture for a platform a scanner
+does not declare. The tfsec x Kubernetes capture above exists only because it was
+requested explicitly as the off-matrix probe that establishes this fact, and it is
+the one capture flagged `off_matrix: true` in the manifest.
+
+### A.3 §5.3 — per-scanner missing native-severity rate
+
+Failed findings only, over both scan roots:
+
+| scanner | findings | severity absent or null | rate |
+|---|---|---|---|
+| checkov | 489 (221 terraform + 268 kubernetes) | 489 | **100%** |
+| trivy | 447 (115 + 332) | 0 | 0% |
+| tfsec | 119 (119 + 0) | 0 | 0% |
+
+Checkov's 100% is not a corpus artifact and not a flag mistake. It holds for
+`passed_checks` too (1111/1111 null), and it was traced to its cause two
+independent ways:
+
+- **By reading the installed source.**
+  `checkov/common/bridgecrew/integration_features/features/policy_metadata_integration.py`.
+  `_handle_public_metadata` (`:129`) builds each check's metadata from the public
+  response with two keys only, `guideline` and `id`. Severity is assigned at
+  `:82` from that metadata, and is populated only by `_handle_customer_run_config`
+  (`:146`), which reads `run_config['policyMetadata']` — the response that
+  requires a Prisma Cloud / Bridgecrew API key.
+- **By a two-arm run** over one vendored file
+  (`corpus/vendor/terragoat/terraform/aws/db-app.tf`, 24 findings both arms):
+
+| arm | `severity` | `bc_check_id` | `guideline` |
+|---|---|---|---|
+| `--compact --skip-download` (the fixture config) | null 24/24 | null 24/24 | null 24/24 |
+| `--compact` (metadata fetch allowed) | **null 24/24** | set 24/24 | set 24/24 |
+
+The second arm proves the fetch happened and the integration ran — `bc_check_id`
+and `guideline` fill in — and that severity is still absent. So `--skip-download`
+costs only the guideline URL and the Bridgecrew alias, which is what vindicates it
+as the flag for a hermetic capture.
+
+**Consequences.**
+
+1. The risk model's `Severity` factor (1-5, the baseline term) has **no Checkov
+   input** in any configuration reachable without a commercial API key. Findings
+   that only Checkov reports arrive with no native severity at all.
+2. `native_severity=None` is therefore the common case, not an edge case, and
+   R3-#4's prohibition on silently defaulting it is load-bearing rather than
+   defensive. `tools/harvest/model.py` types the field `str | None` for this
+   reason.
+3. CLAUDE.md defines the evaluation baseline as *raw scanner severity output*.
+   That baseline cannot be built from Checkov. It has to come from trivy/tfsec,
+   or be defined over the subset of findings that carry a native severity, and
+   the choice must be stated in S5.
+4. Where a native severity does exist it is a **four**-level scale —
+   `CRITICAL / HIGH / MEDIUM / LOW`, with no `INFO` or `UNKNOWN` observed in
+   the 566 findings that carry one — mapping onto a 1-5 factor. S1's normalization spec has to
+   say what the fifth level is for, or drop to four.
+
+### A.4 §5.4 — Checkov path separators on Windows
+
+**Yes, backslashes — and worse than uniformly.** Checkov emits three path fields
+per finding, in three different conventions, and one of them is not even
+self-consistent within a single document.
+
+Values below are shown decoded; the JSON source escapes each backslash as `\\`.
+
+| field | convention | example |
+|---|---|---|
+| `file_path` | scan-root-relative, leading separator, **mixed style** | `\db-app.tf` |
+| `file_abs_path` | absolute, backslashes, 489/489 findings | `D:\Research\corpus\vendor\terragoat\terraform\aws\db-app.tf` |
+| `repo_file_path` | repo-rooted, forward slashes | `/corpus/vendor/terragoat/terraform/aws/db-app.tf` |
+
+The mixing is the part that sets a hard requirement. Within
+`tests/harvest/fixtures/checkov-terraform.json`, the *same file* is reported under
+two different spellings depending on which framework block found it:
+
+```
+terraform block : \ec2.tf
+secrets   block : /ec2.tf
+```
+
+Three files (`ec2.tf`, `lambda.tf`, `providers.tf`) appear under both spellings in
+that one fixture. A single `file_path` value can also carry both separators at
+once: `/resources\Dockerfile`, from the dockerfile block — leading forward slash,
+interior backslash.
+
+**Requirements this sets for S1's canonical-identity spec.**
+
+1. Normalize separators to `/` before any comparison. Neither `os.path` nor
+   `PurePath` on a POSIX host will do it: `PurePosixPath` treats `\` as an
+   ordinary filename character, so `\ec2.tf` is a *one-segment* name there.
+   The normalization has to be an explicit character replacement.
+2. Strip the leading separator. `file_path` is root-relative but always prefixed.
+3. Do not assume one spelling per document, per scanner, or per file. Identity has
+   to be established after normalization, not by matching raw strings.
+4. Prefer `repo_file_path` where it is present — it is the only Checkov field that
+   is already normalized and host-independent — but it cannot be the sole source,
+   because trivy (`Results[].Target`, forward slashes, root-relative) and tfsec
+   (`location.filename`, absolute backslashes) offer nothing equivalent. Case
+   attribution has to work from a normalized root-relative form derived from all
+   three.
+
+This also decides the shape of `InventoryRow.target`, which stores the scanner's
+string **unmodified** (`tools/harvest/model.py`): the normalization is S1's
+specified transform, so recording the raw value keeps the observed input to that
+transform available rather than pre-empting it.
+
+### A.5 Which S0 acceptance-gate items this closes
+
+| gate item | status after Task 5 |
+|---|---|
+| 4 — raw JSON fixtures per (scanner x applicable platform) | **met**: six fixtures committed, one per scanner per distinct scan root, plus the off-matrix probe |
+| 5 — platform-applicability recorded as observed fact | **met**: A.2 |
+| 6 — missing/unknown-severity rate computed and recorded | **met at fixture level**: A.3. The number that goes in `artifacts/rule-inventory.json` is computed by the harvest walkers, not here |
+
+Items 1, 2, 3, 7 and 8 are unaffected by this task.
+
+---
+
+## S0 gate — outcome
+
+Closed by Task 8, 2026-09-04. Every figure below is derived from bytes committed beside
+this section - `artifacts/rule-inventory.json`, the five documents under `artifacts/raw/`,
+the six fixtures under `tests/harvest/fixtures/`, and the vendored corpus itself - and where
+a figure is also asserted by a test, the test is named. This section was written **before**
+the final harvest run, so `provenance.spec_hashes` recorded the SHA-256 of this file as it
+then stood. A later correction round amended §A.1 and the tfsec bullet below, so recomputing
+this file's hash now will **not** match the value that field carries for
+`docs/superpowers/specs/2026-08-24-implementation-phase0-design.md`. That is expected rather
+than staleness: the field records which spec text produced the inventory, and the inventory
+was deliberately not re-run to chase a prose correction. One more thing that artifact does
+not do uniformly: `runs[].argv` is scrubbed to `<repo>`, while `provenance.scanners[*].exe`
+keeps each resolved launcher path exactly as this checkout spells it, absolute - so the
+scrubbing is per field, not file-wide.
+
+| # | gate item | outcome | evidence |
+|---|---|---|---|
+| 1 | `.\tools\bootstrap.ps1 -Verify` passes | **met** | Exit 0. `checkov 3.3.12`, `trivy 0.74.0`, `tfsec 1.28.14`; archive *and* executable checksums verified for both release binaries. The run rewrites `tools/resolved.json` unconditionally, and it rewrote it byte-identically - sha256 `5c4b3c79297d4333ce56cfca8c5f72becda8dbf86bd84b2f1859282a4a930867` before and after. |
+| 2 | every command in `CLAUDE.md` executed on this machine | **met** | `uv sync`, `uv run pytest`, `uv run pytest tests/harvest`, `uv run ruff check .`, `uv run ruff format .`, `uv run ruff format --check .`, `uv run mypy` and `uv run python -m tools.harvest.run` were run in Task 8; `bootstrap.ps1`, `vendor_corpus.ps1` and `capture_fixtures.ps1` in Tasks 3, 4 and 5, which is where `tools/bin/`, `corpus/vendor/` and `tests/harvest/fixtures/` came from. Two were corrected *from* observed output rather than copied from the plan: `mypy` is now bare, because a path argument overrides `[tool.mypy] files` and checks 9 of 19 files while printing `Success`; and the `python3` / `python` advice was inverted - `python3` is the Store stub. |
+| 3 | inventory non-empty, spans five categories, reports per-scanner rule-ID counts | **met** | 1055 rows. `corpus.attribution.rows_per_category`: compute 67, containers 600, iam 14, networking 5, storage 103 - none zero, and the thinnest is `tg-aws-networking` at 5 because `elb.tf` is the corpus's only networking-only file. `by_scanner[*].distinct_rule_ids`: checkov 128, tfsec 48, trivy 79. |
+| 4 | raw JSON committed per (scanner × applicable platform) | **met** | Five files under `artifacts/raw/`, one per dispatched (scanner, scan root) pair, named `<scanner>-<platform>.json` after the Task 5 fixtures. The six fixtures in `tests/harvest/fixtures/` remain the control and include the off-matrix tfsec-on-Kubernetes probe that the harvest itself never runs. |
+| 5 | platform-applicability recorded as observed fact | **met** | A.2 records the probe. The harvest records the consequence: `runs` holds five entries and no tfsec-on-Kubernetes entry, and `by_scanner.tfsec.cases` carries no `kg-scenarios` key at all. That absence is derived from `scanners.lock.json`'s `platforms` list, so it is data; `applicable_scanners()` is the only code that reads it and it contains no scanner name. |
+| 6 | per-scanner missing/unknown-severity rate computed and recorded | **met** | `totals.missing_severity_rate` 0.464 (489 of 1055). Per scanner: checkov 1.0 (489 of 489, `observed_severity_levels` empty), trivy 0.0, tfsec 0.0, both of the latter observing exactly CRITICAL / HIGH / MEDIUM / LOW. |
+| 7 | `eval/` import-isolation test exists and passes | **met** | `tests/test_architecture.py::test_no_module_imports_checkov` and `::test_eval_does_not_import_scoring`, green in the full suite; `test_import_matcher_resolves_every_import_form` pins the import-form matcher they depend on. |
+| 8 | `corpus/vendor/SOURCES.md` records SHA, date and license per source | **met** | terragoat `729f8da62c6a85ce4af5ad3d123de97776d954c4`, Apache-2.0; kubernetes-goat `723a0db478f050d173d23b4ce5044b65bce0bdd0`, MIT. Both carry pin-verified 2026-08-24, vendored 2026-08-31, the vendored subtree, and the retained upstream `LICENSE` path. |
+
+### The inventory, in numbers
+
+1055 rows over two scan roots and five scanner runs. `distinct_rule_ids` 255,
+`distinct_rules` 210 after reconciliation, `missing_severity_rows` 489.
+
+| scanner | rows | distinct rule ids | missing severity | exit codes |
+|---|---|---|---|---|
+| checkov | 489 | 128 | 489 (1.0) | 1 on both roots |
+| trivy | 447 | 79 | 0 | **0 on both roots** |
+| tfsec | 119 | 48 | 0 | 1 on the Terraform root; not dispatched off-platform |
+
+trivy's two zeros are the standing warning against reading an exit code as a findings
+signal: the same stream of 447 findings arrives under exit 0, while checkov and tfsec
+report 1 for the same reason. No walker and no runner in `tools/harvest/` reads an exit
+code to decide anything; `runs[].exit_code` is recorded and never branched on.
+
+### 255 spellings, 210 rules
+
+`totals.rule_id_reconciliation` is `strip-leading-AVD-prefix`, and here is what it does
+on this corpus. The three scanners share **no** literal rule-id string - all three
+pairwise intersections are empty - yet tfsec and trivy are one Aqua namespace apart:
+tfsec spells all 48 of its ids `AVD-AWS-0026`, trivy spells the same rules `AWS-0026`.
+Stripping the prefix collapses **45 of tfsec's 48** onto a trivy id, which is the whole
+255 → 210 difference; the three that stay tfsec-only are `AWS-0057`, `AWS-0082` and
+`AWS-0088`.
+
+So a deduplication metric that counts id strings would count 45 rules twice, and one that
+assumes different scanners never agree would miss that tfsec is a near-subset of trivy
+here. Both numbers are reported; neither is presented as the canonical count, because
+canonical identity is S1's spec to write. checkov's `CKV*` namespace overlaps neither
+before nor after.
+
+### Attribution: the two figures the lockfile asks for separately
+
+`tools/corpus.lock.json`'s `attribution` rule requires "unattributable by path format" and
+"outside every declared case" to be reported as two numbers rather than one. Measured:
+
+- **0 of 1055** rows attribute without normalization, and no scanner is the odd one out.
+  checkov's `file_path` is root-relative with a leading separator and mixes styles inside a
+  single value (`/batch-check\job.yaml`), and spells one file two ways in one document -
+  `\ec2.tf` from its terraform block, `/ec2.tf` from its secrets block (§A.4). trivy is
+  root-relative with forward slashes and no leading separator (`s3.tf`). tfsec is
+  drive-absolute (`D:\Research\corpus\vendor\...`). None of the three carries the
+  corpus prefix that matching against `corpus/vendor/` would need: **0** rows begin with one.
+- **266** rows - 25.2% - fall outside every declared case after normalization and carry
+  `case_id` `unattributed`: an explicit state, never a nearest-case guess. All 266 are
+  Terraform, across ten files the four declared cases do not name: `rds.tf` 113,
+  `db-app.tf` 54, `eks.tf` 30, `es.tf` 24, `neptune.tf` 15, `lambda.tf` 11, `ecr.tf` 9,
+  `kms.tf` 4, `resources/Dockerfile` 4, `providers.tf` 2. By scanner: checkov 155,
+  trivy 59, tfsec 52.
+
+The remaining 789 rows attribute to a declared case. Collapsing the two figures into one -
+reporting the pre-normalization count as the gap - would have claimed 1055 unattributed,
+very nearly four times the real 266.
+
+### Coverage, reported three ways
+
+A number computed over rows alone cannot tell *analysed and clean* from *never analysed*,
+so it is reported in three states for the Kubernetes root, where trivy's `Results` entries
+make the middle state visible. Of 24 files under
+`corpus/vendor/kubernetes-goat/scenarios`:
+
+- **16** carry findings from at least one scanner,
+- **2** were parsed by trivy and came back clean
+  (`kyverno-namespace-exec-block/kyverno-block-pod-exec-by-namespace.yaml`,
+  `metadata-db/templates/service.yaml`),
+- **6** were touched by no scanner at all - all six under `metadata-db/`
+  (`Chart.yaml`, `values.yaml`, `templates/NOTES.txt`, `templates/_helpers.tpl`,
+  `templates/ingress.yaml`, `templates/tests/test-connection.yaml`).
+
+16 + 2 + 6 = 24, and every reported path resolves to a real file on disk. Analysed-and-
+clean is a result; unanalysed is a gap; a single "8 files appear in no row" would have
+overstated the gap by a third.
+
+The Terraform root is reported in two states, not three, and both reasons are worth
+recording. trivy's `Results` there holds 14 entries - 13 files carrying misconfigurations
+plus one `.` entry carrying none - so it does not expose the parsed-and-clean list it
+exposes on Kubernetes. And the inventory could not carry that state anyway: the walkers
+read `failed_checks` and not `passed_checks` (§A.3: 1111 passed checks, severity null in
+all of them). So: of the root's 14 `.tf` files, 4 are named by declared cases and 10 are
+not, 9 of those 10 produce rows and `consts.tf` alone produces none.
+`resources/Dockerfile` also produces rows, through checkov's `dockerfile` framework
+block.
+
+### The tool-agnostic premise, measured rather than asserted
+
+On the Kubernetes root, checkov reports findings on **14** of the 24 files and trivy on
+**16**, having parsed 18. checkov's 14 are a strict subset of trivy's 16 - the two files
+trivy alone reports are `insecure-rbac/setup.yaml` and
+`metadata-db/templates/deployment.yaml`. That is the "no single scanner is sufficient" premise as a
+measurement. Note also that `metadata-db/templates/deployment.yaml` appears on
+`corpus.lock.json`'s list of templated manifests "a plain YAML parser cannot read" and
+still produces trivy findings - that note is not a skip list and must not be used as one.
+
+### Reproduction: `artifacts/raw/` against the Task 5 fixtures
+
+Task 8 is the only task that legitimately re-runs the scanners, so it is the only one that
+can test what the pins are for. Result, asserted in `tests/harvest/test_run.py`:
+
+- **Byte equality is not an invariant for any of the three, and that is measured.** Every
+  difference between `artifacts/raw/` and `tests/harvest/fixtures/` is the order of elements
+  inside a list: canonicalizing recursively - each mapping key-sorted, each list sorted by
+  its own element's JSON text - makes all five documents compare equal, so not one leaf
+  value differs. The reordering has been seen in checkov's `failed_checks`, `passed_checks`
+  and individual `check_result.evaluated_keys`, in trivy's `Results[].Misconfigurations`,
+  and in tfsec's single `results`. How many lists move varies from run to run, so no count
+  of them is recorded here.
+- **tfsec is why that is stated as a rule and not an exception.** Observed in the harvest
+  session rather than from these bytes: it matched its fixture byte for byte on the first
+  run, and on the second it permuted five adjacent `AVD-AWS-0038` findings on `eks.tf:118`
+  among themselves - same 119-element multiset, same byte length, different order. The
+  committed corroboration is `artifacts/raw/tfsec-terraform.json` itself, which holds the
+  fixture's 119 findings in a different sequence. So a byte-equality assertion for tfsec
+  passes or fails by luck, which is why none was ever written - not in this task and not
+  in Task 5; nothing was removed to make this comparison green. The point survives without
+  the session observation anyway: as committed, all five documents under `artifacts/raw/`
+  have exactly the same byte *length* as their fixture and differ in content regardless -
+  2724 differing bytes for `tfsec-terraform`, 35 for `trivy-terraform`, 20692 for
+  `trivy-kubernetes`, 8765 for `checkov-kubernetes` and 391182 for `checkov-terraform`.
+  Equal length is no evidence of equal bytes, and no scanner's byte order is asserted.
+- trivy additionally carries a fresh `CreatedAt` and `ReportID` per run, excluded by name.
+  Those two are volatile by construction, and `CreatedAt` also rules out byte *length* as a
+  cheap proxy for byte equality: Go trims trailing zeros from RFC3339Nano fractional
+  seconds, so a trivy document comes back exactly one byte shorter than its fixture whenever
+  its timestamp's last digit would have been a zero, with nothing else changed. Each of the
+  two trivy documents has done it, on different runs.
+- **The derived artifact is reproducible even though the raw bytes are not.** Every figure
+  in this section survives the reordering, and that is asserted from committed bytes rather
+  than from a lucky re-run: `test_the_inventory_reproduces_the_row_counts_the_fixtures_yield`
+  re-derives `corpus.attribution.rows_per_case` from the *fixtures*, whose list order
+  differs from the raw documents the artifact was built from, and the counts agree.
+
+So a re-run of the harvest can show any of the five files under `artifacts/raw/` as
+modified in `git status` with no change in meaning. That is expected, and it is why the comparison is
+order-insensitive by construction. It is not a loosening: `_canonical` moves elements and
+cannot drop or alter one, which
+`test_the_order_insensitive_comparison_still_catches_a_changed_value` demonstrates by
+changing one severity string and by dropping one finding.
+
+### Three things S1 must not read into this
+
+1. **The four observed severity levels are a corpus observation, not a scanner contract.**
+   §A.3 item 4 records it from the other direction - the 566 rows that carry a severity
+   carry `CRITICAL / HIGH / MEDIUM / LOW` and nothing else, so a fifth level is unobserved
+   rather than absent - and §A.3's first two bullets record why checkov's column is empty:
+   severity reaches checkov's JSON only through the API-key `policyMetadata` path, read out
+   of the installed source and confirmed by a two-arm run. trivy 447 + tfsec 119 = 566 is
+   that same number reached from this artifact rather than from the fixtures.
+2. **`unattributed` is not a defect rate.** 266 rows fall outside the declared cases
+   because corpus v0 declares four Terraform cases over a 17-file root, not because
+   attribution failed. Widening the case list moves that number without any code change.
+3. **The case floor is a floor, not a measurement.** Every declared (scanner, case) pair
+   in this run produced rows, so the artifact's zero-filling is currently invisible in the
+   output; `tests/harvest/test_run.py` is what keeps it honest. tfsec's missing
+   `kg-scenarios` key is the *matrix* exclusion and is deliberately not floored to 0 -
+   "never ran" and "ran and found nothing" are different facts.

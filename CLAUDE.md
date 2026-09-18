@@ -19,7 +19,7 @@ The prioritization layer is the **main research contribution**. Keep it separabl
 The framework is a pipeline. Preserve this separation of concerns when implementing:
 
 1. **IaC Input** — accept Terraform files and Kubernetes YAML manifests (CloudFormation / ARM / Helm are conceptually in scope but not the evaluation focus).
-2. **Security Scanning** — run existing scanners (Checkov, tfsec, Trivy) to produce baseline findings. Tool-agnostic: parse each scanner's output into a common finding record (issue id, description, severity, affected resource, file path, remediation suggestion).
+2. **Security Scanning** — run existing scanners (Checkov, tfsec, Trivy) to produce baseline findings. This layer has a home as of S0: `tools/harvest/` runs the scanners over the pinned corpus (`run.py` orchestrates, `walkers.py` reads each scanner's JSON) and emits `artifacts/rule-inventory.json`. The S3 adapters land under `src/iacrisk/scanners/`, which does not exist yet. Tool-agnostic: parse each scanner's output into a common finding record (issue id, description, severity, affected resource, file path, remediation suggestion) — with the measured caveat on severity below, which is not present in every scanner's output.
 3. **Context Extraction** — enrich each finding with contextual attributes. The two factors not reliably derivable from IaC code (Resource Sensitivity, Environment Criticality) enter via a **declared-context** input on the primary evaluation path; a convention-based **auto-inference** mode is built and evaluated as a second mode. Other factors are parsed from the flagged resource definition **and bounded related resources for a closed list of supported exposure patterns** (literals-only; unresolved values are represented as an explicit `unresolved` state — conservatively scored, excluded from prioritization-quality claims, or sensitivity-analysed — never silently defaulted to low).
 4. **Risk Scoring** — apply the transparent weighted additive model (below) to compute a priority score.
 5. **Reporting** — rank findings and map scores to remediation priority categories.
@@ -43,6 +43,8 @@ Contextual risk factors and their scoring ranges:
 | Environment criticality | 0–5 | production vs staging vs development |
 | Encryption risk | 0–3 | Required encryption/data-protection missing? |
 
+The Severity row assumes every finding arrives carrying one. Measured over corpus v0, it does not: 489 of 1055 rows have no severity at all and every one of them is Checkov (*Current state* below has the numbers). What fills that gap is S1/S3's normalization decision, deliberately not fixed here, and it is an `unresolved` value in layer 3's sense — not a silent Low.
+
 Priority mapping (thresholds fixed a priori from the score structure and frozen before evaluation; threshold/weight movement is reported as a *sensitivity analysis*, not tuned to fit the test data):
 
 | Priority | Score | Action |
@@ -56,7 +58,7 @@ Note: the additive model has a max possible score of 28 (5+5+5+5+5+3) and min of
 
 ## Evaluation
 
-The framework is evaluated on **prioritization quality**, not detection accuracy (detection is delegated to the baseline scanners). Baseline = raw scanner severity output; framework output = the contextually re-ranked list. Test cases cover storage, networking, IAM, compute, and container workloads, built from open-source examples, benchmark repos, and deliberately-insecure configs.
+The framework is evaluated on **prioritization quality**, not detection accuracy (detection is delegated to the baseline scanners). Baseline = raw scanner severity output — buildable from Trivy and tfsec rows as they stand, and not from Checkov's, which carry no severity in corpus v0; the normalization that closes that gap is S1/S3's to specify and to report. Framework output = the contextually re-ranked list. Test cases cover storage, networking, IAM, compute, and container workloads, built from open-source examples, benchmark repos, and deliberately-insecure configs.
 
 Evaluation metrics: **normalization/retention coverage** (not detection accuracy — that is delegated to the scanners), **prioritization usefulness** (measured against a defined oracle: contrastive-pair pass/fail + scenario-expected ordering), **alert reduction** (reported as two separate numbers — deduplication reduction vs. Critical/High priority-band reduction, never combined), **ranking consistency** (split into auto-inference agreement and model sensitivity), and **baseline comparison** (rank-change table vs. a scanner-severity-normalized baseline, each change justified by contextual factors).
 
@@ -67,4 +69,88 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-The repository is currently **empty** (no code, not yet under version control). No build/lint/test tooling exists yet. When it's established, update this file with the real commands — do not invent them. Python is the natural fit given the scanner ecosystem (Checkov/Trivy are Python/Go tools with JSON output), but the toolchain is not yet decided.
+S0 complete: a pinned toolchain plus an empirical rule-ID inventory over a
+vendored corpus. Phase 1 (the five specification artifacts) is next — see
+`docs/superpowers/specs/` and `docs/superpowers/plans/`.
+
+Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
+3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four
+interpreter facts about this host, because they are easy to state backwards:
+
+- **`python3` is the broken Microsoft Store alias** — `where.exe python3` finds
+  only `C:\Users\<you>\AppData\Local\Microsoft\WindowsApps\python3.exe`, which is a stub.
+- Bare **`python`** resolves to `.venv\Scripts\python.exe` (3.12.13) while the venv is
+  ahead of WindowsApps on PATH, and to that same Store stub when it is not.
+- A system **3.13.5** is installed at `C:\Python313` and is not on PATH.
+- uv manages **3.12.13 and 3.14.0** side by side (`uv python list --only-installed`).
+
+Which is why `.python-version` and `uv run` are load-bearing rather than
+decorative: **always `uv run python`**, never bare `python`.
+
+### Commands
+
+```powershell
+uv sync                      # install/refresh dependencies
+uv run pytest                # full suite; addopts already carries -q --strict-markers -rs
+uv run pytest tests/harvest  # harvest tests only
+uv run ruff check .          # lint
+uv run ruff format .         # format (mutating)
+uv run ruff format --check . # the gate form; must report 0 files to reformat
+uv run mypy                  # type-check - BARE, no path arguments (see below)
+
+.\tools\bootstrap.ps1            # install + checksum-verify the pinned scanners
+.\tools\bootstrap.ps1 -Verify    # re-assert the pins without downloading
+.\tools\vendor_corpus.ps1        # re-vendor corpus v0 at the pinned commits
+.\tools\capture_fixtures.ps1     # re-capture the golden scanner JSON fixtures
+
+uv run python -m tools.harvest.run   # regenerate artifacts/rule-inventory.json + artifacts/raw/
+```
+
+**Give `mypy` no path argument.** A path overrides `[tool.mypy] files` entirely:
+measured on this tree, `uv run mypy` checks 19 files and `uv run mypy src tools
+eval` checks 9 — dropping every test file — and both print `Success`. Bare is the
+only form that cannot drift from the config.
+
+**Re-running the harvest dirties `artifacts/raw/`.** `git status` will usually show all
+five documents modified with nothing changed in meaning: checkov, trivy and tfsec each
+reorder list elements between runs, and trivy also stamps a fresh `CreatedAt` and
+`ReportID`. That is why the comparison against the golden fixtures is order-insensitive
+(`tests/harvest/test_run.py`) rather than a byte comparison; the derived inventory itself
+comes back with identical numbers.
+
+Two notes on the PowerShell scripts. `-Verify` never downloads, but it does
+rewrite `tools/resolved.json` unconditionally; that file is gitignored, so the
+rewrite is invisible to `git status` (verified byte-identical when re-run against
+an already-verified tree). And `capture_fixtures.ps1` overwrites the golden
+fixtures under `tests/harvest/fixtures/`, which are the control the harvest is
+compared against — re-capture deliberately, not as a habit.
+
+### Pinned versions
+
+Scanners — `tools/scanners.lock.json`: Checkov **3.3.12** (`uv-tool`), Trivy
+**0.74.0** and tfsec **1.28.14** (`github-release`, SHA-256 pinned). The
+`platforms` list in that file is the platform matrix, and it is data: tfsec
+declares `["terraform"]` only, so tfsec-on-Kubernetes is an absence the runner
+derives from the lockfile, never an `if` in the code.
+
+Corpus v0 — `tools/corpus.lock.json`: TerraGoat at `729f8da6`
+(`terraform/aws` subtree) and Kubernetes-Goat at `723a0db4` (`scenarios`
+subtree), five declared cases over two scan roots.
+
+**Checkov is an isolated `uv tool` and must never become a project dependency.**
+
+### Severity in corpus v0, measured
+
+From `artifacts/rule-inventory.json`, 1055 rows: **489 of them (46.4%) carry no
+severity at all, and every one of the 489 is Checkov** — 221 on the Terraform
+root, 268 on the Kubernetes root. Severity reaches Checkov's JSON only through
+the API-key `policyMetadata` path; the public path fills `guideline` and `id` and
+leaves severity null. The other 566 rows (Trivy 447, tfsec 119) carry exactly
+four levels: CRITICAL, HIGH, MEDIUM, LOW.
+
+Read that as a property of **corpus v0 as measured on this host**, not of the
+scanners: Trivy's severity vocabulary carries a fifth level this corpus does not
+exercise, so the four observed levels are a corpus observation and not a scanner
+contract. Do not pick a numeric mapping for the absent severities here — that is
+S1/S3's normalization spec, and spec §5 asked for these facts precisely so that
+spec could be written from them.

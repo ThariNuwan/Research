@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-08-24",
+  "host_platform": "windows-amd64",
+  "scanners": {
+    "checkov": {
+      "version": "3.3.12",
+      "channel": "uv-tool",
+      "package": "checkov==3.3.12",
+      "python": "3.12",
+      "script": "checkov",
+      "exe": "checkov.cmd",
+      "version_args": ["--version"],
+      "platforms": ["terraform", "kubernetes"],
+      "note": "Isolated uv tool. Never a project dependency (PLAN.md Q3). checkov 3.3.12 declares no console_scripts entry point (its dist-info carries no entry_points.txt, only the wheel data scripts Scripts/checkov and Scripts/checkov.cmd), so neither uv nor pip can generate a checkov.exe trampoline on any platform. Upstream's own checkov.cmd resolves `python` from PATH rather than from the tool venv, which on a Windows host carrying the Microsoft Store app-execution alias runs the stub (observed: exit 9009, 'Python was not found'). `script` is therefore the script uv places in the tool venv's Scripts dir, and `exe` is the pinned launcher bootstrap.ps1 generates into tools/bin/ around the tool venv's own interpreter.",
+      "exe_sha256_exemption": "Deliberate, not an oversight: the two github-release entries carry exe_sha256 and this one cannot. checkov's `exe` is a .cmd that bootstrap.ps1 generates, embedding this host's absolute interpreter path, so its hash is host-specific and changes legitimately on every machine - pinning it would fail everywhere but the machine it was recorded on. checkov's integrity rests instead on four other things; see the exemption comment in tools/bootstrap.ps1's Install-UvTool for the full reasoning."
+    },
+    "trivy": {
+      "version": "0.74.0",
+      "channel": "github-release",
+      "url": "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_windows-64bit.zip",
+      "sha256": "94c40e0696e4b907a74b7b2e1438d5d72ebaca83115817407f568a002d520842",
+      "archive": "zip",
+      "exe": "trivy.exe",
+      "exe_sha256": "4c532e1f28f53282dc364671e87381cd77760fa9cafab143f576449c2207cdd5",
+      "version_args": ["--version"],
+      "platforms": ["terraform", "kubernetes"]
+    },
+    "tfsec": {
+      "version": "1.28.14",
+      "channel": "github-release",
+      "url": "https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec_1.28.14_windows_amd64.tar.gz",
+      "sha256": "a53c4d7c6c85029378c8895ffbf9b23ea04a887d20136dc1d24d1307cf1a0491",
+      "archive": "targz",
+      "exe": "tfsec.exe",
+      "exe_sha256": "c177de9da7f75965fdd7b7785ad7d668dfec36b28e6f6b5d62c84a4dfa6374b5",
+      "version_args": ["--version"],
+      "platforms": ["terraform"],
+      "note": "Last upstream release 2025-05-02, 15 months before capture. Retained as legacy/comparative per PLAN.md R1-#19. The .exe asset publishes only a GPG .sig, so the checksummed .tar.gz is used instead. The tarball also contains tfsec-checkgen.exe, which this framework never runs; `exe` names tfsec.exe explicitly rather than globbing, so checkgen deliberately gets no entry and no exe_sha256."
+    }
+  }
+}

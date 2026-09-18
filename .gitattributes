@@ -1,0 +1,30 @@
+# Normalize everything to LF in the repository.
+# Research-integrity requirement: specs/ hashes and artifacts/ fixtures appear
+# in provenance blocks (spec §4.4). CRLF renormalization would silently change
+# those hashes and invalidate reproducibility claims.
+* text=auto eol=lf
+
+# text=auto, not unconditional text: unconditional `text` converts line endings
+# "without guessing the content type" (gitattributes(5)), which would override
+# line 5 and strip binary detection from exactly the trees this file protects.
+# The binary list below covers only 5 extensions, so a .jpg/.ico/.pdf/.jar under
+# corpus/** would be silently LF-mangled - and Task 4 verifies the pinned SHA
+# against the cache clone before copying the subtree, so nothing re-checks the
+# vendored bytes afterwards.
+specs/**       text=auto eol=lf
+artifacts/**   text=auto eol=lf
+corpus/**      text=auto eol=lf
+
+# Unconditional `text` is deliberate here and is NOT an inconsistency with the
+# three rules above: .json is a known-text extension, so forcing LF is precise
+# and intended. Do not "tidy" this to text=auto.
+tools/*.json   text eol=lf
+
+# PowerShell is the one exception - keep CRLF on Windows.
+*.ps1 text eol=crlf
+
+*.png  binary
+*.zip  binary
+*.gz   binary
+*.exe  binary
+*.tar  binary
