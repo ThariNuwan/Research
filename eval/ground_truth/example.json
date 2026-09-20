@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "example-s3-public",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": { "sensitivity": 4, "criticality": 4 },
+        "aws_s3_bucket.scratch": { "sensitivity": null, "criticality": null }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility",
+            "expected_band": "Critical"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.scratch",
+            "issue_class": "storage-encryption-at-rest",
+            "unresolved_factors": ["sensitivity", "criticality"],
+            "excluded_from_quality_claims": true
+          }
+        ],
+        "notes": "The scratch bucket declares null context deliberately: it exercises the default-fallback path and is therefore held out of prioritization-quality claims."
+      }
+    },
+    {
+      "case_id": "example-s3-locked",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_s3_bucket.data": { "sensitivity": 4, "criticality": 4 }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest",
+            "expected_band": "Medium"
+          }
+        ],
+        "notes": "Identical to example-s3-public but with the public-access-block enabled."
+      }
+    },
+    {
+      "case_id": "example-k8s-privileged",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/system-monitor/deployment.yaml"
+      },
+      "declared_context": {
+        "apps/v1/Deployment/default/system-monitor [container=system-monitor]": {
+          "sensitivity": 5,
+          "criticality": 4
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "apps/v1/Deployment/default/system-monitor [container=system-monitor]",
+            "issue_class": "containers-privileged-execution",
+            "expected_band": "Critical"
+          }
+        ]
+      }
+    }
+  ],
+  "contrastive_pairs": [
+    {
+      "pair_id": "exposure-public-vs-locked-bucket",
+      "factor_under_test": "exposure",
+      "case_high": "example-s3-public",
+      "case_low": "example-s3-locked",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "The two cases are identical apart from the public-access-block setting, so any rank difference is attributable to Public Exposure alone."
+    }
+  ],
+  "scenarios": [
+    {
+      "scenario_id": "example-storage-triage-order",
+      "domain": "storage",
+      "expected_ordering": [["example-s3-public"], ["example-s3-locked"]],
+      "rationale": "A world-readable bucket holding regulated data must be triaged before the same bucket with public access blocked.",
+      "oracle": {
+        "author": "258243J",
+        "reviewer": "supervisor",
+        "registered_at": "2026-09-19T00:00:00Z",
+        "reviewer_verdict": "partial",
+        "disagreement_note": "Reviewer agrees on the ordering but would place the locked bucket in Low rather than Medium; recorded as oracle uncertainty on the band, not on the order."
+      }
+    }
+  ]
+}
