@@ -315,5 +315,44 @@
     "unresolved_default_reporting": "Band distribution is reported split by count-of-defaulted-factors; findings above a defaulted-factor threshold are flagged low-confidence and excluded from prioritization-quality claims; the stacked-default total is carried into the Q10 sensitivity analysis. Design spec section 3.5(2).",
     "severity_context_fencing": "Scanner severity is a context-free rule baseline. The five context factors are instance-level deltas scored only from resolved instance evidence and are never re-derived from the rule. class_id is never a term in the score. Design spec section 3.5(3).",
     "encryption_sensitivity_orthogonality": "Encryption level 3 keys only on the control-mandate being an established engineering requirement; the data's regulated status raises Sensitivity alone, so the two axes share no input. Design spec section 3.5."
+  },
+  "severity_normalization": {
+    "unknown_state": "unknown",
+    "unknown_resolves_to": 4,
+    "token_scale": {
+      "CRITICAL": 5,
+      "HIGH": 4,
+      "MEDIUM": 3,
+      "LOW": 2,
+      "NONE": 1
+    },
+    "unknown_tokens": ["UNKNOWN"],
+    "null_routes_to": "unknown",
+    "reserved_unexercised": ["NONE"],
+    "per_scanner": {
+      "checkov": {
+        "vocabulary": [],
+        "observed_in_corpus_v0": [],
+        "note": "Severity reaches checkov's JSON only through the API-key policyMetadata path; the public path fills guideline and id and leaves severity null. 489 of 489 rows null in corpus v0."
+      },
+      "trivy": {
+        "vocabulary": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"],
+        "observed_in_corpus_v0": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "note": "UNKNOWN is severity-undetermined, not an informational band. It routes to the unknown state, never to level 1."
+      },
+      "tfsec": {
+        "vocabulary": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "observed_in_corpus_v0": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "note": "119 rows in corpus v0, all four levels exercised."
+      }
+    },
+    "corpus_v0": {
+      "rows": 1055,
+      "missing_severity_rows": 489,
+      "missing_severity_rate": 0.464,
+      "all_missing_are_checkov": true,
+      "note": "A corpus observation measured on this host, not a scanner contract."
+    },
+    "reporting": "The per-scanner unknown-severity rate is reported as an evaluation-integrity metric (PLAN Q3 #4); unknown stays a first-class state in the finding record and the output JSON."
   }
 }

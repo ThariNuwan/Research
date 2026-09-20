@@ -24,6 +24,9 @@ DATA_PATH = Path(__file__).resolve().parent / "data" / "rubric.json"
 FACTOR_KEYS = ("severity", "exposure", "privilege", "sensitivity", "criticality", "encryption")
 """The six model terms, in formula order. A seventh would move the score ceiling."""
 
+UNKNOWN = "unknown"
+"""The explicit severity-undetermined state. Never coerced to a numeric level."""
+
 
 @dataclass(frozen=True)
 class Level:
@@ -149,3 +152,40 @@ def band_for(score: int) -> str:
         if band.minimum <= score <= band.maximum:
             return band.name
     raise ValueError(f"score {score} matched no band; rubric.json bands do not tile the range")
+
+
+def severity_normalization() -> MappingProxyType[str, Any]:
+    """The per-scanner raw-token to 1-5 table (design spec section 3.3)."""
+    return MappingProxyType(dict(_document()["severity_normalization"]))
+
+
+def normalize_severity(scanner: str, token: str | None) -> int | str:
+    """Map a scanner's raw severity token to a 1-5 level, or to `UNKNOWN`.
+
+    This is what makes the raw-scanner baseline comparable across scanners
+    (PLAN Q7 #5). Four routes end in `UNKNOWN`, and none of them ends in a low
+    number, which is the whole point:
+
+    - `None`: the scanner emitted no severity at all. Every one of corpus v0's
+      489 such rows is Checkov.
+    - A token in `unknown_tokens`: trivy's `UNKNOWN` is severity-undetermined,
+      not a benign informational band. Scoring it 1 was the defect the
+      verification pass caught (spec section 3.4).
+    - A token the table does not know: named, not guessed at.
+    - A scanner outside the pinned three: no verified token vocabulary exists
+      for it, so its tokens cannot be trusted to mean what they look like.
+
+    The caller resolves `UNKNOWN` through `unresolved_default("severity")`, which
+    the table's own `unknown_resolves_to` is asserted to agree with.
+    """
+    table = _document()["severity_normalization"]
+    if scanner not in table["per_scanner"]:
+        return UNKNOWN
+    if token is None:
+        return UNKNOWN
+    normalized = token.strip().upper()
+    if not normalized or normalized in table["unknown_tokens"]:
+        return UNKNOWN
+    scale: dict[str, int] = table["token_scale"]
+    level = scale.get(normalized)
+    return UNKNOWN if level is None else level
