@@ -1131,16 +1131,25 @@ Create `tests/test_severity_normalization.py`:
 The load-bearing case is `unknown`. Trivy's fifth level is UNKNOWN - severity
 undetermined, NOT a benign informational band - and 489 of corpus v0's 1055 rows
 carry no severity at all, every one of them Checkov. Both route to the explicit
-unknown state and take the conservative default of 4. Neither is ever scored low:
-that is the exact failure the phase0 review warned about.
+unknown state and take the conservative default of 4. Neither is ever scored low.
+Phase0 section A.3 item 4 left this open rather than warning about it: it recorded
+that only four levels were observed across the 566 rows carrying a severity, and
+required S1's normalization spec to say what the fifth level is for or drop to
+four. This table is that answer - the fifth slot is UNKNOWN, routed to the
+unresolved default, with level 1 held in reserve for a CVSS None the corpus never
+exercised.
 """
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import pytest
 
 from iacrisk import rubric
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
 SCANNERS = ["checkov", "trivy", "tfsec"]
 
 
@@ -1206,28 +1215,60 @@ def test_unknown_is_never_scored_below_an_observed_low() -> None:
 
 
 def test_the_reserved_none_band_is_recorded_as_unexercised() -> None:
-    """Level 1 exists so the scale need not shift later; corpus v0 never hits it."""
+    """Level 1 exists so the scale need not shift later; corpus v0 never hits it.
+
+    Checks the claim rather than restating it: NONE must appear in no scanner's
+    observed levels, which is what makes 'reserved' and 'unexercised' both true.
+    """
     table = rubric.severity_normalization()
 
     assert table["reserved_unexercised"] == ["NONE"]
+    assert table["token_scale"]["NONE"] == 1
+    for scanner, block in table["per_scanner"].items():
+        assert "NONE" not in block["observed_in_corpus_v0"], f"{scanner} observed NONE"
 
 
 def test_the_recorded_corpus_measurement_matches_the_harvest() -> None:
-    """Spec section 0: these are corpus v0 observations, and they must stay honest."""
+    """The recorded numbers are checked against the harvest, not against themselves.
+
+    Spec section 0: these are corpus v0 observations measured on this host. If the
+    corpus is re-harvested and the counts move, this fails and the recorded block
+    has to be updated - which is the drift the guard exists to catch. Comparing
+    against literals typed into the test would make it a dormant guard: it could
+    never fail for the reason its name promises.
+    """
+    inventory = json.loads(
+        (REPO_ROOT / "artifacts" / "rule-inventory.json").read_text(encoding="utf-8")
+    )
+    by_scanner = inventory["by_scanner"]
+    rows = sum(block["rows"] for block in by_scanner.values())
+    missing = sum(block["missing_severity_rows"] for block in by_scanner.values())
+
     corpus = rubric.severity_normalization()["corpus_v0"]
 
-    assert corpus["rows"] == 1055
-    assert corpus["missing_severity_rows"] == 489
+    assert corpus["rows"] == rows
+    assert corpus["missing_severity_rows"] == missing
     assert corpus["all_missing_are_checkov"] is True
+    assert by_scanner["checkov"]["missing_severity_rows"] == missing
 
 
 @pytest.mark.parametrize("scanner", SCANNERS)
 def test_every_pinned_scanner_has_a_recorded_vocabulary(scanner: str) -> None:
-    """The per-scanner block is what lets the unknown rate be reported per scanner."""
+    """The per-scanner block is what lets the unknown rate be reported per scanner.
+
+    Observed levels are compared against the harvest rather than merely asserted
+    present, so a re-harvest cannot leave this block stale. The comparison is on
+    sets: the rubric records levels in severity order, the inventory alphabetically.
+    """
+    inventory = json.loads(
+        (REPO_ROOT / "artifacts" / "rule-inventory.json").read_text(encoding="utf-8")
+    )
     per_scanner = rubric.severity_normalization()["per_scanner"]
 
     assert scanner in per_scanner
-    assert "observed_in_corpus_v0" in per_scanner[scanner]
+    recorded = per_scanner[scanner]["observed_in_corpus_v0"]
+    observed = inventory["by_scanner"][scanner]["observed_severity_levels"]
+    assert set(recorded) == set(observed)
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -2771,9 +2812,9 @@ context extractor, and the scoring engine that enforces the coherence rules S1
 carries as data.
 ```
 
-- [ ] **Step 5: Correct the §2.2 twin example (verified erratum)**
+- [ ] **Step 5: Correct two verified errata in the spec**
 
-The spec illustrates `canonical_id` with a twin pair that corpus v0 does not contain. Measured against `artifacts/rule-inventory.json`: there are exactly 45 trivy/tfsec twin pairs, and `AWS-0057`, `AWS-0082` and `AWS-0088` are the three tfsec-only rules — trivy never emits `AWS-0088`. The canonicalization rule itself is correct and unchanged; only the example is wrong. Leaving it is precisely the §G3 defect class the spec defines.
+**Erratum 1 — §2.2 twin example.** The spec illustrates `canonical_id` with a twin pair that corpus v0 does not contain. Measured against `artifacts/rule-inventory.json`: there are exactly 45 trivy/tfsec twin pairs, and `AWS-0057`, `AWS-0082` and `AWS-0088` are the three tfsec-only rules — trivy never emits `AWS-0088`. The canonicalization rule itself is correct and unchanged; only the example is wrong. Leaving it is precisely the §G3 defect class the spec defines.
 
 In `docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md` §2.2, replace:
 
@@ -2785,6 +2826,20 @@ with:
 
 ```markdown
 `canonical_id` strips a leading `AVD-`: trivy emits `AWS-0026`, tfsec emits `AVD-AWS-0026`, both are the same Aqua rule → `canonical_id = AWS-0026`. (Corpus v0 holds 45 such twin pairs; `AWS-0057`, `AWS-0082` and `AWS-0088` are tfsec-only and have no trivy counterpart, so they canonicalize without pairing.)
+```
+
+**Erratum 2 — §3.4 misattributes a warning to phase0.** The spec's first §3.4 bullet calls the severity-level-1 defect "grave, and exactly the phase0 warning". Phase0 issued no such warning. Its §A.3 item 4 records that only four levels were observed across the 566 severity-carrying rows and then *hands the decision to S1*: "S1's normalization spec has to say what the fifth level is for, or drop to four." The defect was real and the correction stands; only the attribution is wrong — a citation the cited artifact does not support, which is §G3.
+
+In §3.4, replace:
+
+```markdown
+- **Severity level-1 "informational" → UNKNOWN (grave, and exactly the phase0 warning).**
+```
+
+with:
+
+```markdown
+- **Severity level-1 "informational" → UNKNOWN (grave, and the question phase0 left to S1).** Phase0 §A.3 item 4 recorded only four observed levels and required S1 to "say what the fifth level is for, or drop to four"; it did not itself warn against reading the fifth level as informational. This bullet is that answer.
 ```
 
 - [ ] **Step 6: Mark the spec approved**
