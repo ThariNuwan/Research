@@ -3,17 +3,26 @@
 The load-bearing case is `unknown`. Trivy's fifth level is UNKNOWN - severity
 undetermined, NOT a benign informational band - and 489 of corpus v0's 1055 rows
 carry no severity at all, every one of them Checkov. Both route to the explicit
-unknown state and take the conservative default of 4. Neither is ever scored low:
-that is the exact failure the phase0 review warned about.
+unknown state and take the conservative default of 4. Neither is ever scored low.
+Phase0 section A.3 item 4 left this open rather than warning about it: it recorded
+that only four levels were observed across the 566 rows carrying a severity, and
+required S1's normalization spec to say what the fifth level is for or drop to
+four. This table is that answer - the fifth slot is UNKNOWN, routed to the
+unresolved default, with level 1 held in reserve for a CVSS None the corpus never
+exercised.
 """
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import pytest
 
 from iacrisk import rubric
 
 SCANNERS = ["checkov", "trivy", "tfsec"]
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.mark.parametrize(
@@ -78,25 +87,54 @@ def test_unknown_is_never_scored_below_an_observed_low() -> None:
 
 
 def test_the_reserved_none_band_is_recorded_as_unexercised() -> None:
-    """Level 1 exists so the scale need not shift later; corpus v0 never hits it."""
+    """Level 1 exists so the scale need not shift later; corpus v0 never hits it.
+
+    Checks the claim rather than restating it: NONE must appear in no scanner's
+    observed levels, which is what makes 'reserved' and 'unexercised' both true.
+    """
     table = rubric.severity_normalization()
 
     assert table["reserved_unexercised"] == ["NONE"]
+    assert table["token_scale"]["NONE"] == 1
+    for scanner, block in table["per_scanner"].items():
+        assert "NONE" not in block["observed_in_corpus_v0"], f"{scanner} observed NONE"
 
 
 def test_the_recorded_corpus_measurement_matches_the_harvest() -> None:
-    """Spec section 0: these are corpus v0 observations, and they must stay honest."""
+    """The recorded numbers are checked against the harvest, not against themselves.
+
+    Spec section 0: these are corpus v0 observations measured on this host. If the
+    corpus is re-harvested and the counts move, this fails and the recorded block
+    has to be updated - which is the drift the guard exists to catch.
+    """
+    inventory = json.loads(
+        (REPO_ROOT / "artifacts" / "rule-inventory.json").read_text(encoding="utf-8")
+    )
+    by_scanner = inventory["by_scanner"]
+    rows = sum(block["rows"] for block in by_scanner.values())
+    missing = sum(block["missing_severity_rows"] for block in by_scanner.values())
+
     corpus = rubric.severity_normalization()["corpus_v0"]
 
-    assert corpus["rows"] == 1055
-    assert corpus["missing_severity_rows"] == 489
+    assert corpus["rows"] == rows
+    assert corpus["missing_severity_rows"] == missing
     assert corpus["all_missing_are_checkov"] is True
+    assert by_scanner["checkov"]["missing_severity_rows"] == missing
 
 
 @pytest.mark.parametrize("scanner", SCANNERS)
 def test_every_pinned_scanner_has_a_recorded_vocabulary(scanner: str) -> None:
-    """The per-scanner block is what lets the unknown rate be reported per scanner."""
+    """The per-scanner block is what lets the unknown rate be reported per scanner.
+
+    Observed levels are compared against the harvest rather than merely asserted
+    present, so a re-harvest cannot leave this block stale.
+    """
+    inventory = json.loads(
+        (REPO_ROOT / "artifacts" / "rule-inventory.json").read_text(encoding="utf-8")
+    )
     per_scanner = rubric.severity_normalization()["per_scanner"]
 
     assert scanner in per_scanner
-    assert "observed_in_corpus_v0" in per_scanner[scanner]
+    recorded = per_scanner[scanner]["observed_in_corpus_v0"]
+    observed = inventory["by_scanner"][scanner]["observed_severity_levels"]
+    assert set(recorded) == set(observed)
