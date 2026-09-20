@@ -2332,6 +2332,10 @@
       "tfsec": 48,
       "trivy": 79
     },
-    "note": "255/255 mapped is a corpus observation, not a scanner contract."
+    "note": "255/255 mapped is a corpus observation, not a scanner contract.",
+    "note_glossary": {
+      "the tree": "The base 26-class issue-class tree produced by the S1 classification pass, before the three structural rulings in design spec section 1.3 took it to 28. A note saying a rule was or was not 'listed in the tree' is recording whether its placement agreed with that base tree.",
+      "proposed_new_classes": "Classes the classification pass proposed because the base tree had no home for a rule. All such proposals were adjudicated in design spec section 1.3; containers-image-vulnerability-scanning is the one adopted."
+    }
   }
 }
