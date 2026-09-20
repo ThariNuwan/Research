@@ -1,0 +1,2337 @@
+{
+  "schema_version": 1,
+  "frozen": true,
+  "categories": [
+    "storage",
+    "networking",
+    "iam",
+    "compute",
+    "containers"
+  ],
+  "classes": [
+    {
+      "id": "storage-data-lifecycle-hygiene",
+      "category": "storage",
+      "title": "Lifecycle / snapshot-tagging / patch-currency hygiene",
+      "definition": "Lower-severity data-store operational hygiene: lifecycle configuration, copy-tags-to-snapshots, event notifications, and automatic minor-version upgrades."
+    },
+    {
+      "id": "storage-data-recoverability",
+      "category": "storage",
+      "title": "Backup / durability / deletion-protection gaps",
+      "definition": "Backup, retention, versioning, replication, deletion protection, Multi-AZ, backtracking or HA controls that protect data recoverability are absent."
+    },
+    {
+      "id": "storage-encryption-at-rest",
+      "category": "storage",
+      "title": "Data-store encryption at rest missing",
+      "definition": "The stored data of a persistence resource (S3, EBS, RDS/Aurora, Neptune, Elasticsearch, ECR) is not encrypted at rest at all, independent of which key is used."
+    },
+    {
+      "id": "storage-key-management-cmk",
+      "category": "storage",
+      "title": "Weak encryption key ownership / rotation",
+      "definition": "Encryption exists but does not use a customer-managed KMS key, or the KMS key itself lacks rotation or a policy — a distinct property from whether data is encrypted at all."
+    },
+    {
+      "id": "storage-logging-audit",
+      "category": "storage",
+      "title": "Data-store logging / audit gaps",
+      "definition": "Access logging, audit logging, or performance/enhanced monitoring is not enabled on a data store, reducing forensic and audit visibility."
+    },
+    {
+      "id": "storage-public-accessibility",
+      "category": "storage",
+      "title": "Data store publicly accessible",
+      "definition": "A storage resource is reachable from the public internet via a missing/disabled S3 public-access-block, public ACL/policy, or a publicly_accessible database flag."
+    },
+    {
+      "id": "storage-transit-encryption",
+      "category": "storage",
+      "title": "Data-store transport encryption weak or absent",
+      "definition": "A data store accepts plaintext connections or uses an outdated TLS policy for client/node traffic (RDS in-transit, Elasticsearch HTTPS/node-to-node/TLS)."
+    },
+    {
+      "id": "networking-config-hygiene",
+      "category": "networking",
+      "title": "Security-group documentation hygiene",
+      "definition": "Security groups or their rules lack descriptions — a documentation/maintainability check with no direct exposure impact."
+    },
+    {
+      "id": "networking-egress-exposure",
+      "category": "networking",
+      "title": "Unrestricted outbound egress",
+      "definition": "A security group rule allows unrestricted egress to any destination, creating a data-exfiltration path (a distinct property from inbound exposure)."
+    },
+    {
+      "id": "networking-flow-logging",
+      "category": "networking",
+      "title": "Network flow / access logging gaps",
+      "definition": "VPC flow logging or load-balancer access logging is disabled, reducing network-level visibility."
+    },
+    {
+      "id": "networking-ingress-exposure",
+      "category": "networking",
+      "title": "Unrestricted inbound exposure",
+      "definition": "A security group, cluster endpoint, or load balancer accepts inbound traffic from 0.0.0.0/0 or an open CIDR, exposing an attack surface to the internet."
+    },
+    {
+      "id": "networking-isolation-segmentation",
+      "category": "networking",
+      "title": "Weak network isolation / segmentation",
+      "definition": "A resource is not placed behind proper network boundaries: default SG not locked down, subnets auto-assign public IPs, resource not in a VPC, uses the default SG, or pods lack a NetworkPolicy."
+    },
+    {
+      "id": "networking-transport-encryption",
+      "category": "networking",
+      "title": "Load-balancer / listener transport encryption",
+      "definition": "A network front-end (ELB) terminates or forwards traffic without TLS/SSL or without an ACM-provided certificate."
+    },
+    {
+      "id": "iam-authentication-controls",
+      "category": "iam",
+      "title": "Identity & authentication controls",
+      "definition": "Identity is managed weakly: direct user policies instead of SSO/groups, no instance profile/role attachment, or database IAM authentication disabled."
+    },
+    {
+      "id": "iam-hardcoded-secrets",
+      "category": "iam",
+      "title": "Hardcoded credentials & secret exposure",
+      "definition": "Access keys, secrets, or high-entropy strings are embedded in provider config, EC2 user data, Lambda env, or Kubernetes manifests."
+    },
+    {
+      "id": "iam-overpermissive-policy",
+      "category": "iam",
+      "title": "Over-permissive / wildcard permissions",
+      "definition": "An IAM policy or Kubernetes RBAC role grants wildcard actions/resources, unconstrained write/permission-management, or broad principals rather than least privilege."
+    },
+    {
+      "id": "iam-privilege-escalation-sensitive-perms",
+      "category": "iam",
+      "title": "Privilege escalation & sensitive-permission paths",
+      "definition": "A policy or binding enables privilege escalation, credential exposure, data exfiltration, cluster-admin, or reading all secrets — permission shapes that are dangerous beyond mere breadth."
+    },
+    {
+      "id": "compute-instance-metadata-hardening",
+      "category": "compute",
+      "title": "Instance metadata service hardening",
+      "definition": "An EC2 instance permits IMDSv1 (no required session tokens), exposing instance-role credentials to SSRF-style theft."
+    },
+    {
+      "id": "compute-managed-cluster-hardening",
+      "category": "compute",
+      "title": "Managed orchestration control-plane hardening",
+      "definition": "An IaC-provisioned managed cluster (EKS) has control-plane logging disabled or secrets encryption off at the cluster level."
+    },
+    {
+      "id": "compute-reliability-observability",
+      "category": "compute",
+      "title": "Compute reliability & observability gaps",
+      "definition": "Lower-severity operational hardening: detailed instance monitoring, EBS optimization, Lambda dead-letter queue, concurrency limit, or X-Ray tracing not configured."
+    },
+    {
+      "id": "compute-workload-integrity-patching",
+      "category": "compute",
+      "title": "Workload integrity & patch currency",
+      "definition": "A compute workload lacks code-signing validation, runs a deprecated runtime, or leaves environment secrets unencrypted — integrity/supply-chain and patching properties."
+    },
+    {
+      "id": "containers-host-isolation-breakout",
+      "category": "containers",
+      "title": "Host isolation / breakout surface",
+      "definition": "A workload shares host PID/IPC/network namespaces, mounts the Docker socket or hostPath volumes, or automounts service-account tokens — paths toward container escape or host compromise."
+    },
+    {
+      "id": "containers-image-supply-chain",
+      "category": "containers",
+      "title": "Image provenance & supply chain",
+      "definition": "A workload uses a mutable/latest image tag, no image digest, or an untrusted registry, weakening image provenance guarantees."
+    },
+    {
+      "id": "containers-image-vulnerability-scanning",
+      "category": "containers",
+      "title": "Registry image vulnerability scanning",
+      "definition": "Registry-side CVE scanning of pushed images is disabled (ECR scan-on-push) - a vulnerability-detection property distinct from image provenance."
+    },
+    {
+      "id": "containers-linux-capabilities",
+      "category": "containers",
+      "title": "Excess Linux capabilities",
+      "definition": "A container adds Linux capabilities (including NET_RAW) or fails to drop the default capability set to a least-privilege baseline."
+    },
+    {
+      "id": "containers-privileged-execution",
+      "category": "containers",
+      "title": "Privileged / root container execution",
+      "definition": "A container runs privileged, allows privilege escalation, runs as root or a low UID/GID, binds privileged ports, or (in a Dockerfile) declares no non-root user."
+    },
+    {
+      "id": "containers-securitycontext-hardening",
+      "category": "containers",
+      "title": "Missing security-context hardening",
+      "definition": "A container omits a read-only root filesystem, a seccomp profile, an explicit securityContext, or file-based secret mounting."
+    },
+    {
+      "id": "containers-workload-reliability",
+      "category": "containers",
+      "title": "Workload resource-limit & hygiene gaps",
+      "definition": "Lower-severity workload hygiene: unset CPU/memory requests or limits, missing liveness/readiness probes, use of the default namespace, or no Dockerfile HEALTHCHECK."
+    }
+  ],
+  "mapping": [
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_11",
+      "canonical_id": "CKV2_AWS_11",
+      "class_id": "networking-flow-logging",
+      "title": "Ensure VPC flow logging is enabled in all VPCs",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_12",
+      "canonical_id": "CKV2_AWS_12",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Ensure the default security group of every VPC restricts all traffic",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_2",
+      "canonical_id": "CKV2_AWS_2",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure that only encrypted EBS volumes are attached to EC2 instances",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_41",
+      "canonical_id": "CKV2_AWS_41",
+      "class_id": "iam-authentication-controls",
+      "title": "Ensure an IAM role is attached to EC2 instance",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_52",
+      "canonical_id": "CKV2_AWS_52",
+      "class_id": "iam-authentication-controls",
+      "title": "Ensure that AWS ElasticSearch/OpenSearch Fine-grained access control is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_58",
+      "canonical_id": "CKV2_AWS_58",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure AWS Neptune cluster deletion protection is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_59",
+      "canonical_id": "CKV2_AWS_59",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure ElasticSearch/OpenSearch has dedicated master node enabled",
+      "confidence": "medium",
+      "note": "Not listed in the tree. Dedicated-master-for-HA is an availability/recoverability property, sibling of the Multi-AZ and deletion-protection rules already in this class; placed here rather than inventing an HA class."
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_6",
+      "canonical_id": "CKV2_AWS_6",
+      "class_id": "storage-public-accessibility",
+      "title": "Ensure that S3 bucket has a Public Access block",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_60",
+      "canonical_id": "CKV2_AWS_60",
+      "class_id": "storage-data-lifecycle-hygiene",
+      "title": "Ensure RDS instance with copy tags to snapshots is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_61",
+      "canonical_id": "CKV2_AWS_61",
+      "class_id": "storage-data-lifecycle-hygiene",
+      "title": "Ensure that an S3 bucket has a lifecycle configuration",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_62",
+      "canonical_id": "CKV2_AWS_62",
+      "class_id": "storage-data-lifecycle-hygiene",
+      "title": "Ensure S3 buckets should have event notifications enabled",
+      "confidence": "medium",
+      "note": "Tree lists it here, but S3 event notifications are an operational/integration feature only loosely tied to data durability; flagged as a low-value class member and a candidate for the informational band."
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_64",
+      "canonical_id": "CKV2_AWS_64",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure KMS key Policy is defined",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_69",
+      "canonical_id": "CKV2_AWS_69",
+      "class_id": "storage-transit-encryption",
+      "title": "Ensure AWS RDS database instance configured with encryption in transit",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_AWS_8",
+      "canonical_id": "CKV2_AWS_8",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that RDS clusters has backup plan of AWS Backup",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_K8S_5",
+      "canonical_id": "CKV2_K8S_5",
+      "class_id": "iam-privilege-escalation-sensitive-perms",
+      "title": "No ServiceAccount/Node should be able to read all secrets",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV2_K8S_6",
+      "canonical_id": "CKV2_K8S_6",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Minimize the admission of pods which lack an associated NetworkPolicy",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_101",
+      "canonical_id": "CKV_AWS_101",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure Neptune logging is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_109",
+      "canonical_id": "CKV_AWS_109",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure IAM policies does not allow permissions management / resource exposure without constraints",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_111",
+      "canonical_id": "CKV_AWS_111",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure IAM policies does not allow write access without constraints",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_115",
+      "canonical_id": "CKV_AWS_115",
+      "class_id": "compute-reliability-observability",
+      "title": "Ensure that AWS Lambda function is configured for function-level concurrent execution limit",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_116",
+      "canonical_id": "CKV_AWS_116",
+      "class_id": "compute-reliability-observability",
+      "title": "Ensure that AWS Lambda function is configured for a Dead Letter Queue(DLQ)",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_117",
+      "canonical_id": "CKV_AWS_117",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Ensure that AWS Lambda function is configured inside a VPC",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_118",
+      "canonical_id": "CKV_AWS_118",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure that enhanced monitoring is enabled for Amazon RDS instances",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_126",
+      "canonical_id": "CKV_AWS_126",
+      "class_id": "compute-reliability-observability",
+      "title": "Ensure that detailed monitoring is enabled for EC2 instances",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_127",
+      "canonical_id": "CKV_AWS_127",
+      "class_id": "networking-transport-encryption",
+      "title": "Ensure that Elastic Load Balancer(s) uses SSL certificates provided by AWS Certificate Manager",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_129",
+      "canonical_id": "CKV_AWS_129",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure that respective logs of Amazon Relational Database Service (Amazon RDS) are enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_130",
+      "canonical_id": "CKV_AWS_130",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Ensure VPC subnets do not assign public IP by default",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_133",
+      "canonical_id": "CKV_AWS_133",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that RDS instances has backup policy",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_135",
+      "canonical_id": "CKV_AWS_135",
+      "class_id": "compute-reliability-observability",
+      "title": "Ensure that EC2 is EBS optimized",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_136",
+      "canonical_id": "CKV_AWS_136",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure that ECR repositories are encrypted using KMS",
+      "confidence": "high",
+      "note": "reconcile: key-choice, not encrypt-at-all"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_137",
+      "canonical_id": "CKV_AWS_137",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Ensure that Elasticsearch is configured inside a VPC",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_139",
+      "canonical_id": "CKV_AWS_139",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that RDS clusters have deletion protection enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_144",
+      "canonical_id": "CKV_AWS_144",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that S3 bucket has cross-region replication enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_145",
+      "canonical_id": "CKV_AWS_145",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure that S3 buckets are encrypted with KMS by default",
+      "confidence": "medium",
+      "note": "reconcile: key-choice, not encrypt-at-all"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_157",
+      "canonical_id": "CKV_AWS_157",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that RDS instances have Multi-AZ enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_16",
+      "canonical_id": "CKV_AWS_16",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure all data stored in the RDS is securely encrypted at rest",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_161",
+      "canonical_id": "CKV_AWS_161",
+      "class_id": "iam-authentication-controls",
+      "title": "Ensure RDS database has IAM authentication enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_162",
+      "canonical_id": "CKV_AWS_162",
+      "class_id": "iam-authentication-controls",
+      "title": "Ensure RDS cluster has IAM authentication enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_163",
+      "canonical_id": "CKV_AWS_163",
+      "class_id": "containers-image-vulnerability-scanning",
+      "title": "Ensure ECR image scanning on push is enabled",
+      "confidence": "medium",
+      "note": "Invented class (see proposed_new_classes). ECR registry CVE scanning is a vulnerability-detection property, not the tag/digest/registry-trust provenance that containers-image-supply-chain covers; trivy AWS-0030 is its cross-scanner sibling."
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_17",
+      "canonical_id": "CKV_AWS_17",
+      "class_id": "storage-public-accessibility",
+      "title": "Ensure all data stored in RDS is not publicly accessible",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_173",
+      "canonical_id": "CKV_AWS_173",
+      "class_id": "compute-workload-integrity-patching",
+      "title": "Check encryption settings for Lambda environmental variable",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_18",
+      "canonical_id": "CKV_AWS_18",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure the S3 bucket has access logging enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_186",
+      "canonical_id": "CKV_AWS_186",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure S3 bucket Object is encrypted by KMS using a customer managed Key (CMK)",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_189",
+      "canonical_id": "CKV_AWS_189",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure EBS Volume is encrypted by KMS using a customer managed Key (CMK)",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_21",
+      "canonical_id": "CKV_AWS_21",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure all data stored in the S3 bucket have versioning enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_226",
+      "canonical_id": "CKV_AWS_226",
+      "class_id": "storage-data-lifecycle-hygiene",
+      "title": "Ensure DB instance gets all minor upgrades automatically",
+      "confidence": "medium",
+      "note": "Tree lists it here, but auto minor-version upgrade is a patch-currency property (closer to compute-workload-integrity-patching); kept in the resilience class per the tree but flagged as a patching-vs-resilience tension."
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_228",
+      "canonical_id": "CKV_AWS_228",
+      "class_id": "storage-transit-encryption",
+      "title": "Verify Elasticsearch domain is using an up to date TLS policy",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_23",
+      "canonical_id": "CKV_AWS_23",
+      "class_id": "networking-config-hygiene",
+      "title": "Ensure every security group and rule has a description",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_24",
+      "canonical_id": "CKV_AWS_24",
+      "class_id": "networking-ingress-exposure",
+      "title": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 22",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_247",
+      "canonical_id": "CKV_AWS_247",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure all data stored in the Elasticsearch is encrypted with a CMK",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_248",
+      "canonical_id": "CKV_AWS_248",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Ensure that Elasticsearch is not using the default Security Group",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_260",
+      "canonical_id": "CKV_AWS_260",
+      "class_id": "networking-ingress-exposure",
+      "title": "Ensure no security groups allow ingress from 0.0.0.0:0 to port 80",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_272",
+      "canonical_id": "CKV_AWS_272",
+      "class_id": "compute-workload-integrity-patching",
+      "title": "Ensure AWS Lambda function is configured to validate code-signing",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_273",
+      "canonical_id": "CKV_AWS_273",
+      "class_id": "iam-authentication-controls",
+      "title": "Ensure access is controlled through SSO and not AWS IAM defined users",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_279",
+      "canonical_id": "CKV_AWS_279",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure Neptune snapshot is securely encrypted",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_280",
+      "canonical_id": "CKV_AWS_280",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure Neptune snapshot is encrypted by KMS using a customer managed Key (CMK)",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_283",
+      "canonical_id": "CKV_AWS_283",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure no IAM policies documents allow ALL or any AWS principal permissions to the resource",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_286",
+      "canonical_id": "CKV_AWS_286",
+      "class_id": "iam-privilege-escalation-sensitive-perms",
+      "title": "Ensure IAM policies does not allow privilege escalation",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_287",
+      "canonical_id": "CKV_AWS_287",
+      "class_id": "iam-privilege-escalation-sensitive-perms",
+      "title": "Ensure IAM policies does not allow credentials exposure",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_288",
+      "canonical_id": "CKV_AWS_288",
+      "class_id": "iam-privilege-escalation-sensitive-perms",
+      "title": "Ensure IAM policies does not allow data exfiltration",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_289",
+      "canonical_id": "CKV_AWS_289",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure IAM policies does not allow permissions management / resource exposure without constraints",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_290",
+      "canonical_id": "CKV_AWS_290",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure IAM policies does not allow write access without constraints",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_293",
+      "canonical_id": "CKV_AWS_293",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that AWS database instances have deletion protection enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_3",
+      "canonical_id": "CKV_AWS_3",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure all data stored in the EBS is securely encrypted",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_313",
+      "canonical_id": "CKV_AWS_313",
+      "class_id": "storage-data-lifecycle-hygiene",
+      "title": "Ensure RDS cluster configured to copy tags to snapshots",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_317",
+      "canonical_id": "CKV_AWS_317",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure Elasticsearch Domain Audit Logging is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_318",
+      "canonical_id": "CKV_AWS_318",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure Elasticsearch domains are configured with at least three dedicated master nodes for HA",
+      "confidence": "medium",
+      "note": "Not listed in the tree. HA/availability property, same family as Multi-AZ and CKV2_AWS_59; placed in the resilience class rather than inventing an HA class."
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_324",
+      "canonical_id": "CKV_AWS_324",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure that RDS Cluster log capture is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_325",
+      "canonical_id": "CKV_AWS_325",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure that RDS Cluster audit logging is enabled for MySQL engine",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_326",
+      "canonical_id": "CKV_AWS_326",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that RDS Aurora Clusters have backtracking enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_327",
+      "canonical_id": "CKV_AWS_327",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure RDS Clusters are encrypted using KMS CMKs",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_347",
+      "canonical_id": "CKV_AWS_347",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure Neptune is encrypted by KMS using a customer managed Key (CMK)",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_355",
+      "canonical_id": "CKV_AWS_355",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure no IAM policies documents allow \"*\" as a statement's resource for restrictable actions",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_356",
+      "canonical_id": "CKV_AWS_356",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Ensure no IAM policies documents allow \"*\" as a statement's resource for restrictable actions",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_359",
+      "canonical_id": "CKV_AWS_359",
+      "class_id": "iam-authentication-controls",
+      "title": "Neptune DB clusters should have IAM database authentication enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_361",
+      "canonical_id": "CKV_AWS_361",
+      "class_id": "storage-data-recoverability",
+      "title": "Ensure that Neptune DB cluster has automated backups enabled with adequate retention",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_362",
+      "canonical_id": "CKV_AWS_362",
+      "class_id": "storage-data-lifecycle-hygiene",
+      "title": "Neptune DB clusters should be configured to copy tags to snapshots",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_363",
+      "canonical_id": "CKV_AWS_363",
+      "class_id": "compute-workload-integrity-patching",
+      "title": "Ensure Lambda Runtime is not deprecated",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_37",
+      "canonical_id": "CKV_AWS_37",
+      "class_id": "compute-managed-cluster-hardening",
+      "title": "Ensure Amazon EKS control plane logging is enabled for all log types",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_376",
+      "canonical_id": "CKV_AWS_376",
+      "class_id": "networking-transport-encryption",
+      "title": "Ensure AWS Elastic Load Balancer listener uses TLS/SSL",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_38",
+      "canonical_id": "CKV_AWS_38",
+      "class_id": "networking-ingress-exposure",
+      "title": "Ensure Amazon EKS public endpoint not accessible to 0.0.0.0/0",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_382",
+      "canonical_id": "CKV_AWS_382",
+      "class_id": "networking-egress-exposure",
+      "title": "Ensure no security groups allow egress from 0.0.0.0:0 to port -1",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_39",
+      "canonical_id": "CKV_AWS_39",
+      "class_id": "networking-ingress-exposure",
+      "title": "Ensure Amazon EKS public endpoint disabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_41",
+      "canonical_id": "CKV_AWS_41",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "Ensure no hard coded AWS access key and secret key exists in provider",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_44",
+      "canonical_id": "CKV_AWS_44",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure Neptune storage is securely encrypted",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_45",
+      "canonical_id": "CKV_AWS_45",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "Ensure no hard-coded secrets exist in lambda environment",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_46",
+      "canonical_id": "CKV_AWS_46",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "Ensure no hard-coded secrets exist in EC2 user data",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_5",
+      "canonical_id": "CKV_AWS_5",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure all data stored in the Elasticsearch is securely encrypted at rest",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_50",
+      "canonical_id": "CKV_AWS_50",
+      "class_id": "compute-reliability-observability",
+      "title": "X-Ray tracing is enabled for Lambda",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_51",
+      "canonical_id": "CKV_AWS_51",
+      "class_id": "containers-image-supply-chain",
+      "title": "Ensure ECR Image Tags are immutable",
+      "confidence": "medium",
+      "note": "Not listed in the tree. Image-tag mutability is exactly this class's named property, but flagged on an ECR registry rather than a k8s workload; cross-resource placement, sibling of trivy AWS-0031."
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_58",
+      "canonical_id": "CKV_AWS_58",
+      "class_id": "compute-managed-cluster-hardening",
+      "title": "Ensure EKS Cluster has Secrets Encryption Enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_7",
+      "canonical_id": "CKV_AWS_7",
+      "class_id": "storage-key-management-cmk",
+      "title": "Ensure rotation for customer created CMKs is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_79",
+      "canonical_id": "CKV_AWS_79",
+      "class_id": "compute-instance-metadata-hardening",
+      "title": "Ensure Instance Metadata Service Version 1 is not enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_8",
+      "canonical_id": "CKV_AWS_8",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure all data stored in the Launch configuration or instance Elastic Blocks Store is securely encrypted",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_84",
+      "canonical_id": "CKV_AWS_84",
+      "class_id": "storage-logging-audit",
+      "title": "Ensure Elasticsearch Domain Logging is enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_92",
+      "canonical_id": "CKV_AWS_92",
+      "class_id": "networking-flow-logging",
+      "title": "Ensure the ELB has access logging enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_AWS_96",
+      "canonical_id": "CKV_AWS_96",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Ensure all data stored in Aurora is securely encrypted at rest",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_DOCKER_2",
+      "canonical_id": "CKV_DOCKER_2",
+      "class_id": "containers-workload-reliability",
+      "title": "Ensure that HEALTHCHECK instructions have been added to container images",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_DOCKER_3",
+      "canonical_id": "CKV_DOCKER_3",
+      "class_id": "containers-privileged-execution",
+      "title": "Ensure that a user for the container has been created",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_10",
+      "canonical_id": "CKV_K8S_10",
+      "class_id": "containers-workload-reliability",
+      "title": "CPU requests should be set",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_11",
+      "canonical_id": "CKV_K8S_11",
+      "class_id": "containers-workload-reliability",
+      "title": "CPU limits should be set",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_12",
+      "canonical_id": "CKV_K8S_12",
+      "class_id": "containers-workload-reliability",
+      "title": "Memory requests should be set",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_13",
+      "canonical_id": "CKV_K8S_13",
+      "class_id": "containers-workload-reliability",
+      "title": "Memory limits should be set",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_14",
+      "canonical_id": "CKV_K8S_14",
+      "class_id": "containers-image-supply-chain",
+      "title": "Image Tag should be fixed - not latest or blank",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_16",
+      "canonical_id": "CKV_K8S_16",
+      "class_id": "containers-privileged-execution",
+      "title": "Container should not be privileged",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_17",
+      "canonical_id": "CKV_K8S_17",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Containers should not share the host process ID namespace",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_18",
+      "canonical_id": "CKV_K8S_18",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Containers should not share the host IPC namespace",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_19",
+      "canonical_id": "CKV_K8S_19",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Containers should not share the host network namespace",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_20",
+      "canonical_id": "CKV_K8S_20",
+      "class_id": "containers-privileged-execution",
+      "title": "Containers should not run with allowPrivilegeEscalation",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_21",
+      "canonical_id": "CKV_K8S_21",
+      "class_id": "containers-workload-reliability",
+      "title": "The default namespace should not be used",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_22",
+      "canonical_id": "CKV_K8S_22",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Use read-only filesystem for containers where possible",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_23",
+      "canonical_id": "CKV_K8S_23",
+      "class_id": "containers-privileged-execution",
+      "title": "Minimize the admission of root containers",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_25",
+      "canonical_id": "CKV_K8S_25",
+      "class_id": "containers-linux-capabilities",
+      "title": "Minimize the admission of containers with added capability",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_27",
+      "canonical_id": "CKV_K8S_27",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Do not expose the docker daemon socket to containers",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_28",
+      "canonical_id": "CKV_K8S_28",
+      "class_id": "containers-linux-capabilities",
+      "title": "Minimize the admission of containers with the NET_RAW capability",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_29",
+      "canonical_id": "CKV_K8S_29",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Apply security context to your pods and containers",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_30",
+      "canonical_id": "CKV_K8S_30",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Apply security context to your containers",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_31",
+      "canonical_id": "CKV_K8S_31",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Ensure that the seccomp profile is set to docker/default or runtime/default",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_35",
+      "canonical_id": "CKV_K8S_35",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Prefer using secrets as files over secrets as environment variables",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_37",
+      "canonical_id": "CKV_K8S_37",
+      "class_id": "containers-linux-capabilities",
+      "title": "Minimize the admission of containers with capabilities assigned",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_38",
+      "canonical_id": "CKV_K8S_38",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Ensure that Service Account Tokens are only mounted where necessary",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_40",
+      "canonical_id": "CKV_K8S_40",
+      "class_id": "containers-privileged-execution",
+      "title": "Containers should run as a high UID to avoid host conflict",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_43",
+      "canonical_id": "CKV_K8S_43",
+      "class_id": "containers-image-supply-chain",
+      "title": "Image should use digest",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_49",
+      "canonical_id": "CKV_K8S_49",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Minimize wildcard use in Roles and ClusterRoles",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_8",
+      "canonical_id": "CKV_K8S_8",
+      "class_id": "containers-workload-reliability",
+      "title": "Liveness Probe Should be Configured",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_K8S_9",
+      "canonical_id": "CKV_K8S_9",
+      "class_id": "containers-workload-reliability",
+      "title": "Readiness Probe Should be Configured",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_SECRET_2",
+      "canonical_id": "CKV_SECRET_2",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "AWS Access Key",
+      "confidence": "high"
+    },
+    {
+      "scanner": "checkov",
+      "rule_id": "CKV_SECRET_6",
+      "canonical_id": "CKV_SECRET_6",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "Base64 High Entropy String",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0026",
+      "canonical_id": "AWS-0026",
+      "class_id": "storage-encryption-at-rest",
+      "title": "EBS volumes must be encrypted",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0027",
+      "canonical_id": "AWS-0027",
+      "class_id": "storage-key-management-cmk",
+      "title": "EBS volume encryption should use Customer Managed Keys",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0028",
+      "canonical_id": "AWS-0028",
+      "class_id": "compute-instance-metadata-hardening",
+      "title": "aws_instance should activate session tokens for Instance Metadata Service.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0029",
+      "canonical_id": "AWS-0029",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "User data for EC2 instances must not contain sensitive AWS keys",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0030",
+      "canonical_id": "AWS-0030",
+      "class_id": "containers-image-vulnerability-scanning",
+      "title": "ECR repository has image scans disabled.",
+      "confidence": "low",
+      "note": "No class in the tree covers image vulnerability scanning; provenance (containers-image-supply-chain) is a different property and encryption classes don't fit. Proposed a new class. Resource is aws_ecr_repository (a storage/registry resource) so the containers category is arguable — could sit in storage instead. Pairs with Checkov CKV_AWS_163 and trivy AWS-0030, both also absent from the tree."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0031",
+      "canonical_id": "AWS-0031",
+      "class_id": "containers-image-supply-chain",
+      "title": "ECR images tags shouldn't be mutable.",
+      "confidence": "medium",
+      "note": "Property-first fit: immutable-tag enforcement is exactly the mutable/latest-tag provenance concern the class defines, but the flagged resource is an aws_ecr_repository (registry/storage), not a k8s/Dockerfile workload — the class is stretched across category by property, matching the tree's stated classify-by-property mandate. Pairs with Checkov CKV_AWS_51 and trivy AWS-0031, both absent from the tree."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0033",
+      "canonical_id": "AWS-0033",
+      "class_id": "storage-key-management-cmk",
+      "title": "ECR Repository should use customer managed keys to allow more control",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0038",
+      "canonical_id": "AWS-0038",
+      "class_id": "compute-managed-cluster-hardening",
+      "title": "EKS Clusters should have cluster control plane logging turned on",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0039",
+      "canonical_id": "AWS-0039",
+      "class_id": "compute-managed-cluster-hardening",
+      "title": "EKS should have the encryption of secrets enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0040",
+      "canonical_id": "AWS-0040",
+      "class_id": "networking-ingress-exposure",
+      "title": "EKS Clusters should have the public access disabled",
+      "confidence": "high",
+      "note": "Placed in networking per the tree's tension #2 (EKS public-endpoint rules -> networking), not compute-managed-cluster-hardening. This is the tree's flagged-arguable boundary."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0041",
+      "canonical_id": "AWS-0041",
+      "class_id": "networking-ingress-exposure",
+      "title": "EKS cluster should not have open CIDR range for public access",
+      "confidence": "high",
+      "note": "Same EKS split as AVD-AWS-0040 (tree tension #2): public-endpoint/CIDR exposure reads as networking though the resource is aws_eks_cluster."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0042",
+      "canonical_id": "AWS-0042",
+      "class_id": "storage-logging-audit",
+      "title": "Domain logging should be enabled for Elastic Search domains",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0043",
+      "canonical_id": "AWS-0043",
+      "class_id": "storage-transit-encryption",
+      "title": "Elasticsearch domain uses plaintext traffic for node to node communication.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0046",
+      "canonical_id": "AWS-0046",
+      "class_id": "storage-transit-encryption",
+      "title": "Elasticsearch doesn't enforce HTTPS traffic.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0048",
+      "canonical_id": "AWS-0048",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Elasticsearch domain isn't encrypted at rest.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0053",
+      "canonical_id": "AWS-0053",
+      "class_id": "networking-ingress-exposure",
+      "title": "Load balancer is exposed to the internet.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0057",
+      "canonical_id": "AWS-0057",
+      "class_id": "iam-overpermissive-policy",
+      "title": "IAM policy should avoid use of wildcards and instead apply the principle of least privilege",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0065",
+      "canonical_id": "AWS-0065",
+      "class_id": "storage-key-management-cmk",
+      "title": "A KMS key is not configured to auto-rotate.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0066",
+      "canonical_id": "AWS-0066",
+      "class_id": "compute-reliability-observability",
+      "title": "Lambda functions should have X-Ray tracing enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0075",
+      "canonical_id": "AWS-0075",
+      "class_id": "storage-logging-audit",
+      "title": "Neptune logs export should be enabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0076",
+      "canonical_id": "AWS-0076",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Neptune storage must be encrypted at rest",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0077",
+      "canonical_id": "AWS-0077",
+      "class_id": "storage-data-recoverability",
+      "title": "RDS Cluster and RDS instance should have backup retention longer than default 1 day",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0079",
+      "canonical_id": "AWS-0079",
+      "class_id": "storage-encryption-at-rest",
+      "title": "There is no encryption specified or encryption is disabled on the RDS Cluster.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0080",
+      "canonical_id": "AWS-0080",
+      "class_id": "storage-encryption-at-rest",
+      "title": "RDS encryption has not been enabled at a DB Instance level.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0082",
+      "canonical_id": "AWS-0082",
+      "class_id": "storage-public-accessibility",
+      "title": "A database resource is marked as publicly accessible.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0086",
+      "canonical_id": "AWS-0086",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access block should block public ACL",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0087",
+      "canonical_id": "AWS-0087",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access block should block public policy",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0088",
+      "canonical_id": "AWS-0088",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Unencrypted S3 bucket.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0089",
+      "canonical_id": "AWS-0089",
+      "class_id": "storage-logging-audit",
+      "title": "S3 Bucket does not have logging enabled.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0090",
+      "canonical_id": "AWS-0090",
+      "class_id": "storage-data-recoverability",
+      "title": "S3 Data should be versioned",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0091",
+      "canonical_id": "AWS-0091",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access Block should Ignore Public Acl",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0093",
+      "canonical_id": "AWS-0093",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access block should restrict public bucket to limit access",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0094",
+      "canonical_id": "AWS-0094",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 buckets should each define an aws_s3_bucket_public_access_block",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0099",
+      "canonical_id": "AWS-0099",
+      "class_id": "networking-config-hygiene",
+      "title": "Missing description for security group.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0104",
+      "canonical_id": "AWS-0104",
+      "class_id": "networking-egress-exposure",
+      "title": "An egress security group rule allows traffic to /0.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0107",
+      "canonical_id": "AWS-0107",
+      "class_id": "networking-ingress-exposure",
+      "title": "An ingress security group rule allows traffic from /0.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0124",
+      "canonical_id": "AWS-0124",
+      "class_id": "networking-config-hygiene",
+      "title": "Missing description for security group rule.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0126",
+      "canonical_id": "AWS-0126",
+      "class_id": "storage-transit-encryption",
+      "title": "Elasticsearch domain endpoint is using outdated TLS policy.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0128",
+      "canonical_id": "AWS-0128",
+      "class_id": "storage-key-management-cmk",
+      "title": "Neptune encryption should use Customer Managed Keys",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0131",
+      "canonical_id": "AWS-0131",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Instance with unencrypted block device.",
+      "confidence": "high",
+      "note": "Flagged on aws_instance (compute) but the property is block-device encryption-at-rest of the attached store; kept in storage-encryption-at-rest consistent with the tree, which lists AVD-AWS-0131 there."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0132",
+      "canonical_id": "AWS-0132",
+      "class_id": "storage-key-management-cmk",
+      "title": "S3 encryption should use Customer Managed Keys",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0133",
+      "canonical_id": "AWS-0133",
+      "class_id": "storage-logging-audit",
+      "title": "Enable Performance Insights to detect potential problems",
+      "confidence": "high",
+      "note": "storage-logging-audit's definition explicitly includes performance/enhanced monitoring; Performance Insights fits there rather than in a resilience class."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0143",
+      "canonical_id": "AWS-0143",
+      "class_id": "iam-authentication-controls",
+      "title": "IAM policies should not be granted directly to users.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0164",
+      "canonical_id": "AWS-0164",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Instances in a subnet should not receive a public IP address by default.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0176",
+      "canonical_id": "AWS-0176",
+      "class_id": "iam-authentication-controls",
+      "title": "RDS IAM Database Authentication Disabled",
+      "confidence": "high",
+      "note": "Placed in IAM per tree tension #7 (DB IAM auth is an authentication-mechanism property, not storage); the tree flags this as arguable and lists AVD-AWS-0176 under iam-authentication-controls."
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0177",
+      "canonical_id": "AWS-0177",
+      "class_id": "storage-data-recoverability",
+      "title": "RDS Deletion Protection Disabled",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0178",
+      "canonical_id": "AWS-0178",
+      "class_id": "networking-flow-logging",
+      "title": "VPC Flow Logs ... recommended that VPC Flow Logs be enabled for packet Rejects for VPCs.",
+      "confidence": "high"
+    },
+    {
+      "scanner": "tfsec",
+      "rule_id": "AVD-AWS-0180",
+      "canonical_id": "AWS-0180",
+      "class_id": "storage-public-accessibility",
+      "title": "RDS Publicly Accessible",
+      "confidence": "high",
+      "note": "Reads as networking (public reachability) but attributed to storage per tree tension #1: the flagged resource is the data store and the property is 'this asset is exposed'."
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0026",
+      "canonical_id": "AWS-0026",
+      "class_id": "storage-encryption-at-rest",
+      "title": "EBS volumes must be encrypted",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0026"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0027",
+      "canonical_id": "AWS-0027",
+      "class_id": "storage-key-management-cmk",
+      "title": "EBS volume encryption should use Customer Managed Keys",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0027"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0028",
+      "canonical_id": "AWS-0028",
+      "class_id": "compute-instance-metadata-hardening",
+      "title": "aws_instance should activate session tokens for Instance Metadata Service.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0028"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0029",
+      "canonical_id": "AWS-0029",
+      "class_id": "iam-hardcoded-secrets",
+      "title": "User data for EC2 instances must not contain sensitive AWS keys",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0029"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0030",
+      "canonical_id": "AWS-0030",
+      "class_id": "containers-image-vulnerability-scanning",
+      "title": "ECR repository has image scans disabled.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0030"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0031",
+      "canonical_id": "AWS-0031",
+      "class_id": "containers-image-supply-chain",
+      "title": "ECR images tags shouldn't be mutable.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0031"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0033",
+      "canonical_id": "AWS-0033",
+      "class_id": "storage-key-management-cmk",
+      "title": "ECR Repository should use customer managed keys to allow more control",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0033"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0038",
+      "canonical_id": "AWS-0038",
+      "class_id": "compute-managed-cluster-hardening",
+      "title": "EKS Clusters should have cluster control plane logging turned on",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0038"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0039",
+      "canonical_id": "AWS-0039",
+      "class_id": "compute-managed-cluster-hardening",
+      "title": "EKS should have the encryption of secrets enabled",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0039"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0040",
+      "canonical_id": "AWS-0040",
+      "class_id": "networking-ingress-exposure",
+      "title": "EKS Clusters should have the public access disabled",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0040"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0041",
+      "canonical_id": "AWS-0041",
+      "class_id": "networking-ingress-exposure",
+      "title": "EKS cluster should not have open CIDR range for public access",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0041"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0042",
+      "canonical_id": "AWS-0042",
+      "class_id": "storage-logging-audit",
+      "title": "Domain logging should be enabled for Elastic Search domains",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0042"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0043",
+      "canonical_id": "AWS-0043",
+      "class_id": "storage-transit-encryption",
+      "title": "Elasticsearch domain uses plaintext traffic for node to node communication.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0043"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0046",
+      "canonical_id": "AWS-0046",
+      "class_id": "storage-transit-encryption",
+      "title": "Elasticsearch doesn't enforce HTTPS traffic.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0046"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0048",
+      "canonical_id": "AWS-0048",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Elasticsearch domain isn't encrypted at rest.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0048"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0053",
+      "canonical_id": "AWS-0053",
+      "class_id": "networking-ingress-exposure",
+      "title": "Load balancer is exposed to the internet.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0053"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0065",
+      "canonical_id": "AWS-0065",
+      "class_id": "storage-key-management-cmk",
+      "title": "A KMS key is not configured to auto-rotate.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0065"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0066",
+      "canonical_id": "AWS-0066",
+      "class_id": "compute-reliability-observability",
+      "title": "Lambda functions should have X-Ray tracing enabled",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0066"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0075",
+      "canonical_id": "AWS-0075",
+      "class_id": "storage-logging-audit",
+      "title": "Neptune logs export should be enabled",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0075"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0076",
+      "canonical_id": "AWS-0076",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Neptune storage must be encrypted at rest",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0076"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0077",
+      "canonical_id": "AWS-0077",
+      "class_id": "storage-data-recoverability",
+      "title": "RDS Cluster and RDS instance should have backup retention longer than default 1 day",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0077"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0079",
+      "canonical_id": "AWS-0079",
+      "class_id": "storage-encryption-at-rest",
+      "title": "There is no encryption specified or encryption is disabled on the RDS Cluster.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0079"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0080",
+      "canonical_id": "AWS-0080",
+      "class_id": "storage-encryption-at-rest",
+      "title": "RDS encryption has not been enabled at a DB Instance level.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0080"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0086",
+      "canonical_id": "AWS-0086",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access block should block public ACL",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0086"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0087",
+      "canonical_id": "AWS-0087",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access block should block public policy",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0087"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0089",
+      "canonical_id": "AWS-0089",
+      "class_id": "storage-logging-audit",
+      "title": "S3 Bucket Logging",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0089"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0090",
+      "canonical_id": "AWS-0090",
+      "class_id": "storage-data-recoverability",
+      "title": "S3 Data should be versioned",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0090"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0091",
+      "canonical_id": "AWS-0091",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access Block should Ignore Public ACL",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0091"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0093",
+      "canonical_id": "AWS-0093",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 Access block should restrict public bucket to limit access",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0093"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0094",
+      "canonical_id": "AWS-0094",
+      "class_id": "storage-public-accessibility",
+      "title": "S3 buckets should each define an aws_s3_bucket_public_access_block",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0094"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0099",
+      "canonical_id": "AWS-0099",
+      "class_id": "networking-config-hygiene",
+      "title": "Missing description for security group.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0099"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0104",
+      "canonical_id": "AWS-0104",
+      "class_id": "networking-egress-exposure",
+      "title": "A security group rule should not allow unrestricted egress to any IP address.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0104"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0107",
+      "canonical_id": "AWS-0107",
+      "class_id": "networking-ingress-exposure",
+      "title": "Security groups should not allow unrestricted ingress to SSH or RDP from any IP address.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0107"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0124",
+      "canonical_id": "AWS-0124",
+      "class_id": "networking-config-hygiene",
+      "title": "Missing description for security group rule.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0124"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0126",
+      "canonical_id": "AWS-0126",
+      "class_id": "storage-transit-encryption",
+      "title": "Elasticsearch domain endpoint is using outdated TLS policy.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0126"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0128",
+      "canonical_id": "AWS-0128",
+      "class_id": "storage-key-management-cmk",
+      "title": "Neptune encryption should use Customer Managed Keys",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0128"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0131",
+      "canonical_id": "AWS-0131",
+      "class_id": "storage-encryption-at-rest",
+      "title": "Instance with unencrypted block device.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0131"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0132",
+      "canonical_id": "AWS-0132",
+      "class_id": "storage-key-management-cmk",
+      "title": "S3 encryption should use Customer Managed Keys",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0132"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0133",
+      "canonical_id": "AWS-0133",
+      "class_id": "storage-logging-audit",
+      "title": "Enable Performance Insights to detect potential problems",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0133"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0143",
+      "canonical_id": "AWS-0143",
+      "class_id": "iam-authentication-controls",
+      "title": "IAM policies should not be granted directly to users.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0143"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0164",
+      "canonical_id": "AWS-0164",
+      "class_id": "networking-isolation-segmentation",
+      "title": "Instances in a subnet should not receive a public IP address by default.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0164"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0176",
+      "canonical_id": "AWS-0176",
+      "class_id": "iam-authentication-controls",
+      "title": "RDS IAM Database Authentication Disabled",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0176"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0177",
+      "canonical_id": "AWS-0177",
+      "class_id": "storage-data-recoverability",
+      "title": "RDS Deletion Protection Disabled",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0177"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0178",
+      "canonical_id": "AWS-0178",
+      "class_id": "networking-flow-logging",
+      "title": "VPC Flow Logs is a feature that enables you to capture information about the IP traffic going to and from network interfaces in your VPC. After you've created a flow log, you can view and retrieve its data in Amazon CloudWatch Logs. It is recommended that VPC Flow Logs be enabled for packet \"Rejects\" for VPCs.",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0178"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0180",
+      "canonical_id": "AWS-0180",
+      "class_id": "storage-public-accessibility",
+      "title": "RDS Publicly Accessible",
+      "confidence": "high",
+      "note": "derived: AVD-twin AVD-AWS-0180"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0343",
+      "canonical_id": "AWS-0343",
+      "class_id": "storage-data-recoverability",
+      "title": "RDS Cluster Deletion Protection Disabled",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "AWS-0345",
+      "canonical_id": "AWS-0345",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Disallow unrestricted S3 IAM Policies",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "DS-0002",
+      "canonical_id": "DS-0002",
+      "class_id": "containers-privileged-execution",
+      "title": "Image user should not be 'root'",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "DS-0026",
+      "canonical_id": "DS-0026",
+      "class_id": "containers-workload-reliability",
+      "title": "No HEALTHCHECK defined",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0001",
+      "canonical_id": "KSV-0001",
+      "class_id": "containers-privileged-execution",
+      "title": "Can elevate its own privileges",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0003",
+      "canonical_id": "KSV-0003",
+      "class_id": "containers-linux-capabilities",
+      "title": "Default capabilities: some containers do not drop all",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0004",
+      "canonical_id": "KSV-0004",
+      "class_id": "containers-linux-capabilities",
+      "title": "Default capabilities: some containers do not drop any",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0006",
+      "canonical_id": "KSV-0006",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "hostPath volume mounted with docker.sock",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0008",
+      "canonical_id": "KSV-0008",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Access to host IPC namespace",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0009",
+      "canonical_id": "KSV-0009",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Access to host network",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0010",
+      "canonical_id": "KSV-0010",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Access to host PID",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0011",
+      "canonical_id": "KSV-0011",
+      "class_id": "containers-workload-reliability",
+      "title": "CPU not limited",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0012",
+      "canonical_id": "KSV-0012",
+      "class_id": "containers-privileged-execution",
+      "title": "Runs as root user",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0013",
+      "canonical_id": "KSV-0013",
+      "class_id": "containers-image-supply-chain",
+      "title": "Image tag \":latest\" used",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0014",
+      "canonical_id": "KSV-0014",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Root file system is not read-only",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0015",
+      "canonical_id": "KSV-0015",
+      "class_id": "containers-workload-reliability",
+      "title": "CPU requests not specified",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0016",
+      "canonical_id": "KSV-0016",
+      "class_id": "containers-workload-reliability",
+      "title": "Memory requests not specified",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0017",
+      "canonical_id": "KSV-0017",
+      "class_id": "containers-privileged-execution",
+      "title": "Privileged",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0018",
+      "canonical_id": "KSV-0018",
+      "class_id": "containers-workload-reliability",
+      "title": "Memory not limited",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0020",
+      "canonical_id": "KSV-0020",
+      "class_id": "containers-privileged-execution",
+      "title": "Runs with UID <= 10000",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0021",
+      "canonical_id": "KSV-0021",
+      "class_id": "containers-privileged-execution",
+      "title": "Runs with GID <= 10000",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0022",
+      "canonical_id": "KSV-0022",
+      "class_id": "containers-linux-capabilities",
+      "title": "Specific capabilities added",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0023",
+      "canonical_id": "KSV-0023",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "hostPath volumes mounted",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0030",
+      "canonical_id": "KSV-0030",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Runtime/Default Seccomp profile not set",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0104",
+      "canonical_id": "KSV-0104",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Seccomp policies disabled",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0105",
+      "canonical_id": "KSV-0105",
+      "class_id": "containers-privileged-execution",
+      "title": "Containers must not set runAsUser to 0",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0106",
+      "canonical_id": "KSV-0106",
+      "class_id": "containers-linux-capabilities",
+      "title": "Container capabilities must only include NET_BIND_SERVICE",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0110",
+      "canonical_id": "KSV-0110",
+      "class_id": "containers-workload-reliability",
+      "title": "Workloads in the default namespace",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0111",
+      "canonical_id": "KSV-0111",
+      "class_id": "iam-privilege-escalation-sensitive-perms",
+      "title": "User with admin access",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0112",
+      "canonical_id": "KSV-0112",
+      "class_id": "iam-overpermissive-policy",
+      "title": "Manage all resources at the namespace",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0117",
+      "canonical_id": "KSV-0117",
+      "class_id": "containers-privileged-execution",
+      "title": "Prevent binding to privileged ports",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0118",
+      "canonical_id": "KSV-0118",
+      "class_id": "containers-securitycontext-hardening",
+      "title": "Default security context configured",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0121",
+      "canonical_id": "KSV-0121",
+      "class_id": "containers-host-isolation-breakout",
+      "title": "Kubernetes resource with disallowed volumes mounted",
+      "confidence": "high",
+      "note": "derived: tree example"
+    },
+    {
+      "scanner": "trivy",
+      "rule_id": "KSV-0125",
+      "canonical_id": "KSV-0125",
+      "class_id": "containers-image-supply-chain",
+      "title": "Restrict container images to trusted registries",
+      "confidence": "high",
+      "note": "derived: tree example"
+    }
+  ],
+  "unmapped_fallback": {
+    "class_id_format": "unmapped:<scanner>:<rule_id>",
+    "scoring": "severity-only, default context",
+    "surfaced_as": "baseline-only informational",
+    "counted_once": true,
+    "dropped": false,
+    "excluded_from_prioritization_quality_claims": true,
+    "authority": "PLAN.md Q8 #6 and Q7 #9; design spec section 2.4"
+  },
+  "provenance": {
+    "corpus": "corpus v0 as measured on this host",
+    "source_inventory": "artifacts/rule-inventory.json",
+    "distinct_rule_ids": {
+      "checkov": 128,
+      "tfsec": 48,
+      "trivy": 79
+    },
+    "note": "255/255 mapped is a corpus observation, not a scanner contract."
+  }
+}
