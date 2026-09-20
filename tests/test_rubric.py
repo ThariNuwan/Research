@@ -25,7 +25,7 @@ EXPECTED_FACTORS = {
 
 # The standards the spec section 3 anchors name. A level whose source cites none
 # of these is unanchored, which is the section 3.6 gate's failure mode.
-ANCHORS = ("CVSS", "NIST", "NSA", "OWASP", "FIPS", "PLAN.md")
+ANCHORS = ("CVSS", "NIST", "NSA", "OWASP", "FIPS")
 
 
 def test_the_six_factors_are_exactly_the_model_terms() -> None:
@@ -149,6 +149,9 @@ def test_the_model_is_equal_weighted_and_additive() -> None:
 
     assert model["equal_weighted"] is True
     assert "sensitivity analysis" in model["weighting"]
+    assert model["formula"] == (
+        "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk"
+    )
 
 
 def test_class_id_is_not_a_term_in_the_score() -> None:

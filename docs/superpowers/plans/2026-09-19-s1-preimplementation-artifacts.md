@@ -586,9 +586,11 @@ EXPECTED_FACTORS = {
     "encryption": (0, 3, 2, "conservative-scored"),
 }
 
-# The standards the spec section 3 anchors name. A level whose source cites none
-# of these is unanchored, which is the section 3.6 gate's failure mode.
-ANCHORS = ("CVSS", "NIST", "NSA", "OWASP", "FIPS", "PLAN.md")
+# The external standards the spec section 3 anchors name. A level whose source
+# cites none of these is unanchored, which is the section 3.6 gate's failure mode.
+# PLAN.md is deliberately absent: the project's own planning document is not an
+# external standard, and letting it count would let a level self-anchor.
+ANCHORS = ("CVSS", "NIST", "NSA", "OWASP", "FIPS")
 
 
 def test_the_six_factors_are_exactly_the_model_terms() -> None:
@@ -707,9 +709,16 @@ def test_a_score_outside_the_model_is_rejected_not_silently_banded(score: int) -
 
 
 def test_the_model_is_equal_weighted_and_additive() -> None:
-    """Spec section 3.6: the equal-weighted additive sum is the primary model."""
+    """Spec section 3.6: the equal-weighted additive sum is the primary model.
+
+    The formula assertion is the half that earns the word "additive" in this
+    test's name. Without it the test would claim coverage it does not have.
+    """
     model = rubric.model()
 
+    assert model["formula"] == (
+        "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk"
+    )
     assert model["equal_weighted"] is True
     assert "sensitivity analysis" in model["weighting"]
 
@@ -2591,12 +2600,15 @@ def test_gate_2_every_rubric_score_point_is_anchored_and_the_model_is_additive()
     justifiable; the equal-weighted additive sum is the primary model; weighting
     is a tunable framed as sensitivity analysis.
     """
-    anchors = ("CVSS", "NIST", "NSA", "OWASP", "FIPS", "PLAN.md")
+    anchors = ("CVSS", "NIST", "NSA", "OWASP", "FIPS")
     for factor in rubric.factors().values():
         for level in factor.levels:
             assert any(anchor in level.source for anchor in anchors)
             assert level.justification.strip()
 
+    assert rubric.model()["formula"] == (
+        "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk"
+    )
     assert rubric.model()["equal_weighted"] is True
     assert "sensitivity analysis" in rubric.model()["weighting"]
 
