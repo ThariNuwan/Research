@@ -181,8 +181,8 @@ def test_no_class_is_empty() -> None:
 @pytest.mark.parametrize(
     ("rule_id", "expected"),
     [
-        ("AVD-AWS-0088", "AWS-0088"),  # tfsec form
-        ("AWS-0088", "AWS-0088"),  # trivy form - already canonical
+        ("AVD-AWS-0026", "AWS-0026"),  # tfsec form
+        ("AWS-0026", "AWS-0026"),  # trivy form of the same Aqua rule - already canonical
         ("CKV_AWS_3", "CKV_AWS_3"),  # checkov ids are their own canonical form
         ("CKV2_AWS_8", "CKV2_AWS_8"),
         ("AVD-AVD-1", "AVD-1"),  # strips exactly one leading prefix, not all of them
@@ -1604,8 +1604,8 @@ def test_an_unknown_top_level_key_is_rejected() -> None:
         validate(document)
 
 
-def test_a_non_object_document_is_rejected_with_a_clear_message() -> None:
-    with pytest.raises(GroundTruthError):
+def test_a_non_object_document_is_rejected() -> None:
+    with pytest.raises(GroundTruthError, match="schema validation"):
         validate([1, 2, 3])
 
 
@@ -2286,7 +2286,8 @@ def test_dedupe_key_is_the_three_spec_components() -> None:
 def test_cross_scanner_twins_on_one_resource_collapse_to_one_key() -> None:
     """The deduplication half of the Q7/Q8 alert-reduction number.
 
-    trivy AWS-0088 and tfsec AVD-AWS-0088 share a class by the section 2.2
+    trivy AWS-0026 and tfsec AVD-AWS-0026 are a verified twin pair in corpus v0
+    and share the class storage-encryption-at-rest by the section 2.2
     co-location guarantee, so on one resource with one fingerprint they produce
     one key - which is what makes the reduction real rather than arithmetic.
     """
@@ -2551,6 +2552,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from eval.ground_truth import GroundTruthError, load_and_validate, validate
 from iacrisk import identity, rubric, taxonomy
 
@@ -2625,12 +2628,8 @@ def test_gate_4_the_schema_validates_good_records_and_rejects_bad_ones() -> None
 
     broken = json.loads(json.dumps(document))
     del broken["cases"][0]["expected"]
-    try:
+    with pytest.raises(GroundTruthError):
         validate(broken)
-    except GroundTruthError:
-        pass
-    else:  # pragma: no cover - the gate is that this branch is unreachable
-        raise AssertionError("a case with no expected block was accepted")
 
 
 def test_gate_5_every_corpus_resource_shape_has_a_defined_identity() -> None:
@@ -2760,7 +2759,23 @@ context extractor, and the scoring engine that enforces the coherence rules S1
 carries as data.
 ```
 
-- [ ] **Step 5: Mark the spec approved**
+- [ ] **Step 5: Correct the §2.2 twin example (verified erratum)**
+
+The spec illustrates `canonical_id` with a twin pair that corpus v0 does not contain. Measured against `artifacts/rule-inventory.json`: there are exactly 45 trivy/tfsec twin pairs, and `AWS-0057`, `AWS-0082` and `AWS-0088` are the three tfsec-only rules — trivy never emits `AWS-0088`. The canonicalization rule itself is correct and unchanged; only the example is wrong. Leaving it is precisely the §G3 defect class the spec defines.
+
+In `docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md` §2.2, replace:
+
+```markdown
+`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0088`, tfsec emits `AVD-AWS-0088`, both are the same Aqua rule → `canonical_id = AWS-0088`.
+```
+
+with:
+
+```markdown
+`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0026`, tfsec emits `AVD-AWS-0026`, both are the same Aqua rule → `canonical_id = AWS-0026`. (Corpus v0 holds 45 such twin pairs; `AWS-0057`, `AWS-0082` and `AWS-0088` are tfsec-only and have no trivy counterpart, so they canonicalize without pairing.)
+```
+
+- [ ] **Step 6: Mark the spec approved**
 
 In `docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md`, change the status line:
 
@@ -2774,7 +2789,7 @@ to:
 **Status:** approved at the review gate; implemented by `docs/superpowers/plans/2026-09-19-s1-preimplementation-artifacts.md`
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add tests/test_s1_gates.py CLAUDE.md docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md
