@@ -103,6 +103,29 @@ def test_only_exposure_carries_a_sensitivity_sweep() -> None:
             assert rubric.factors()[key].sensitivity_sweep is None
 
 
+def test_the_structural_freeze_and_the_citation_audit_are_separate_claims() -> None:
+    """One flag covering both is how a real defect survived six reviews.
+
+    The structure - six factors, their ranges, the 1-28 bounds, the bands - was
+    fixed before any scoring output existed and is pinned by computation, so it
+    is genuinely frozen. The per-level source strings are a different claim with
+    different evidence: the verification pass's corrections lived in spec prose
+    and did not reach this artifact, and nothing caught it because every check
+    compared the artifact to a design input carrying the same uncorrected text.
+
+    So the two are asserted separately, and this test is what stops them being
+    merged back into a single reassuring boolean. `citations_audited` flips only
+    when an independent re-verification against the primary sources is
+    committed - not when the suite is green, because no test here can read a
+    standard.
+    """
+    assert rubric.structure_frozen() is True
+    assert rubric.citations_audited() is False, (
+        "citations_audited is True - if an audit was genuinely committed, update this "
+        "test and cite it; if not, the flag is overclaiming"
+    )
+
+
 def test_only_exposure_carries_a_precedence_rule() -> None:
     """Spec section 3.4: a `0.0.0.0/0` opening forces exposure to at least 4.
 

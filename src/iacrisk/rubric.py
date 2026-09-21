@@ -144,6 +144,33 @@ def coherence_rules() -> MappingProxyType[str, str]:
     return MappingProxyType(dict(_document()["coherence_rules"]))
 
 
+def structure_frozen() -> bool:
+    """Whether the six factors, their ranges, the bounds and the bands are frozen.
+
+    True from the end of S1. This is the claim the freeze actually earns: those
+    values were fixed before any scoring output existed, were computed rather
+    than asserted, and are pinned by tests.
+    """
+    return bool(_document()["structure_frozen"])
+
+
+def citations_audited() -> bool:
+    """Whether the per-level `source` strings have been independently re-verified.
+
+    Deliberately separate from `structure_frozen`, because conflating the two is
+    how a real defect survived: the corrections from the verification pass
+    (design spec section 3.4) were written into the spec prose and never reached
+    this artifact, and every check asserted the artifact matched its design
+    input - which carried the same uncorrected text. A byte-comparison cannot
+    tell a sound citation from a fabricated one, and neither can the anchor test,
+    which only looks for a standard's name in the string.
+
+    False until an audit of all 33 levels against the primary sources is
+    committed. Treat a quoted `source` as unwarranted while this is False.
+    """
+    return bool(_document()["citations_audited"])
+
+
 def score_bounds() -> tuple[int, int]:
     """The reachable total-score range: (1, 28) under the frozen ranges."""
     block = _document()["model"]

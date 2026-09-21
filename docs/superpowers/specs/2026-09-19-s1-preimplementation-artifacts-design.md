@@ -147,9 +147,19 @@ Coverage is 255/255 **for corpus v0 as measured on this host** — a corpus obse
 
 Six factors, per-level definitions source-anchored to CVSS v3.1 / NIST SP 800-30 Rev.1 / FIPS 199 / OWASP Top 10 2021 / OWASP Risk Rating Methodology / NSA-CISA Kubernetes Hardening Guidance. Rubric ships in a shared config file, mirrored verbatim in the dissertation (PLAN Q5).
 
-### 3.1 Verification provenance
+### 3.1 Verification provenance, and its limits
 
-The rubric was adversarially verified by 8 web-grounded agents (6 per-factor citation/boundary/unresolved checks + 2 cross-factor coherence passes). **Result: no fabricated or misattributed standard** — every CVSS band and NIST tier verifies exactly against the primary sources. The corrections in §3.4 and the coherence resolutions in §3.5 are the pass's actionable output and are folded into the authored rubric.
+The rubric's per-level anchors were checked during design by an adversarial verification pass — 6 per-factor citation/boundary/unresolved checks plus 2 cross-factor coherence passes. Its actionable output is the corrections in §3.4 and the coherence resolutions in §3.5. **Result: no *fabricated* standard** — every CVSS band and NIST tier named corresponds to a real published tier.
+
+Three limits bound what that pass warrants. They are stated because the alternative is a claim the record cannot support, which is the §G3 defect class this document defines for itself.
+
+1. **It did find misattributions, so "verified" is not unqualified.** §3.4 records one directly: Criticality L3 sourced the pre-prod-touches-prod-data elevation to NSA-CISA, which is silent on environment ladders. An earlier version of this section claimed "no fabricated **or misattributed** standard", which its own §3.4 contradicted. The accurate claim is the narrower one above.
+
+2. **The corrections did not reach the artifact for a month.** §3.4 was written as *applied*, but the edits were made to this prose only. `rubric.json` shipped with all fourteen still present and was marked frozen, and six task reviews missed it — because every check asserted the artifact was byte-identical to its design input, and that input carried the same uncorrected text. The check compared uncorrected text against itself and could not fail for the reason that mattered. Applied to the artifact in commit `bf72673`.
+
+3. **The pass's raw output is not in this repository, and no audit of the shipped text exists.** The pass ran against a design-time working file; what survives is this section's summary. A reader can check that §3.4's corrections are applied to `rubric.json`; they cannot re-derive the pass. Accordingly `rubric.json` carries `citations_audited: false` **separately from** `structure_frozen: true`. The structural freeze is earned — the six factors, their ranges, the 1–28 bounds and the bands were computed before any scoring output existed and are pinned by tests. The citation text is not, and no test can make it so: the anchor gate only checks that a standard's *name* appears in the string, which cannot distinguish a correct citation from a plausible one.
+
+**Consequence for the dissertation.** Any text quoting a `source` string needs an independent audit of all 33 levels against the primary sources, committed as its own artifact, before it can be relied on. That audit is scoped work, not a test.
 
 ### 3.2 The six factors and unresolved policies
 

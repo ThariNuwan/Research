@@ -93,17 +93,34 @@ output exists. Later movement is reported as sensitivity analysis (PLAN Q10),
 never tuned to fit the test data. `tests/test_s1_gates.py` holds the five
 acceptance gates and the freeze.
 
+**What the freeze does and does not cover.** `rubric.json` asserts
+`structure_frozen: true` and `citations_audited: false`, and they are separate
+claims on purpose. The structure — six factors, their ranges, the 1–28 bounds,
+the bands — was fixed before any scoring output existed, computed rather than
+asserted, and is pinned by tests. The per-level `source` strings are **not**
+audited: the verification pass behind them ran at design time, and its
+corrections sat in spec prose for a month before reaching the artifact. **Do not
+quote a `source` string in the dissertation until an audit of all 33 levels
+against the primary sources is committed.** A green suite is not that audit —
+the anchor test only checks that a standard's *name* appears in the string.
+
 Two sub-projects draw on this. **S2** authors the evaluation corpus and its
 ground truth against `eval/ground_truth.schema.json` — gate 4 is met for the
 schema and the validator, not for a corpus of real cases, which do not exist
-yet. **S3** builds the scanner adapters under `src/iacrisk/scanners/`, the
-bounded context extractor, and the scoring engine that enforces the coherence
-rules and the exposure precedence rule S1 carries as data.
+yet. When authoring, use `defaulted_factors` and `unresolved_factors` as the
+distinct fields they are: PLAN Q4's missing-declared-value and PLAN Q9's
+extractor-failure are reported as separate rates, and merging them makes that
+report impossible after the fact. **S3** builds the scanner adapters under
+`src/iacrisk/scanners/`, the bounded context extractor, and the scoring engine
+that enforces the coherence rules and the exposure precedence rule S1 carries as
+data. One trap to carry forward: `normalize_severity` returns `int | str`, where
+the string is the explicit `unknown` state — every call site must branch on it
+before arithmetic, or an unguarded `+` concatenates or raises rather than
+scoring.
 
-One caveat S3 should carry forward: `normalize_severity` returns `int | str`,
-where the string is the explicit `unknown` state. Every call site must branch on
-it before arithmetic — an unguarded `+` would concatenate or raise rather than
-score.
+`docs/superpowers/specs/2026-09-19-s1-handoff.md` records these and five more
+residual risks in full, with what each one costs if ignored. Read it before
+starting either sub-project.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

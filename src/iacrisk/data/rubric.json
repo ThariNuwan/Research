@@ -1,7 +1,9 @@
 {
   "schema_version": 1,
-  "frozen": true,
-  "freeze_note": "Ranges and bands freeze at the end of S1, before any scoring output is generated. Later movement is reported as sensitivity analysis (PLAN Q10), never tuned to fit test data.",
+  "structure_frozen": true,
+  "freeze_note": "The STRUCTURE is frozen: the six factors, their ranges, the 1-28 bounds and the band boundaries, fixed at the end of S1 before any scoring output exists. Later movement is reported as sensitivity analysis (PLAN Q10), never tuned to fit test data. This flag does not cover the per-level citation text - see citations_audited.",
+  "citations_audited": false,
+  "citations_note": "The per-level source strings are NOT independently audited as shipped. They were produced by the verification pass design spec section 3.1 describes, but that pass's corrections (section 3.4) were written into the spec prose and did not reach this artifact until commit bf72673 - a gap that survived six task reviews because every check asserted this file was byte-identical to its design input, and the input carried the same uncorrected text. The 14 corrections section 3.4 enumerates are now applied. What has not happened is an independent re-verification of all 33 levels against the primary sources, so the structural freeze above must not be read as a warrant for the citations. Any dissertation text quoting a source string needs that audit first; flip this flag when its output is committed.",
   "model": {
     "formula": "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk",
     "equal_weighted": true,
