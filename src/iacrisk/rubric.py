@@ -57,6 +57,15 @@ class Factor:
     unresolved_policy: str
     unresolved_rationale: str
     sensitivity_sweep: tuple[int, int] | None
+    precedence_rule: str | None
+    """A constraint that overrides level selection, or None where the factor has one.
+
+    Only exposure carries one (spec section 3.4): a `0.0.0.0/0` network-layer
+    opening forces the factor to at least 4, and identity-gating may modulate
+    only within a network-openness tier, never across it. Carried here rather
+    than left in spec prose so S3 cannot reinvent it - the same discipline that
+    puts the section 3.5 coherence rules in the artifact.
+    """
 
 
 @dataclass(frozen=True)
@@ -99,6 +108,7 @@ def factors() -> MappingProxyType[str, Factor]:
             unresolved_policy=entry["unresolved_policy"],
             unresolved_rationale=entry["unresolved_rationale"],
             sensitivity_sweep=None if sweep is None else (sweep[0], sweep[1]),
+            precedence_rule=entry.get("precedence_rule"),
         )
     return MappingProxyType(built)
 

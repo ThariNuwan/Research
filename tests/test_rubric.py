@@ -103,6 +103,25 @@ def test_only_exposure_carries_a_sensitivity_sweep() -> None:
             assert rubric.factors()[key].sensitivity_sweep is None
 
 
+def test_only_exposure_carries_a_precedence_rule() -> None:
+    """Spec section 3.4: a `0.0.0.0/0` opening forces exposure to at least 4.
+
+    Carried on the factor rather than left in spec prose, so S3 cannot reinvent
+    it - the same discipline that puts the section 3.5 coherence rules in the
+    artifact. No other factor has an override of this kind, and asserting that
+    keeps one from being added without a decision.
+    """
+    exposure = rubric.factors()["exposure"]
+
+    assert exposure.precedence_rule is not None
+    assert "0.0.0.0/0" in exposure.precedence_rule
+    assert "never across it" in exposure.precedence_rule
+
+    for key, factor in rubric.factors().items():
+        if key != "exposure":
+            assert factor.precedence_rule is None, f"{key} gained an undeclared override"
+
+
 def test_score_bounds_are_the_frozen_1_to_28() -> None:
     """Sum of the factor ranges. Changing any range must move this number."""
     assert rubric.score_bounds() == (1, 28)

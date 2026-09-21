@@ -92,6 +92,13 @@
           "$ref": "#/$defs/band"
         },
         "unresolved_factors": {
+          "description": "Code-derived factors the bounded extractor could not resolve from literals (PLAN Q9). Distinct from defaulted_factors: this is an extraction failure, not an absent declaration.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/factor_key" },
+          "uniqueItems": true
+        },
+        "defaulted_factors": {
+          "description": "Declared-context factors that took the documented default because no declared value was supplied (PLAN Q4). PLAN Q4 requires this rate be reported separately from the Q9 unresolved rate, so the two are recorded in separate fields rather than merged.",
           "type": "array",
           "items": { "$ref": "#/$defs/factor_key" },
           "uniqueItems": true

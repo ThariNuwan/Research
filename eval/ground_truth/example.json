@@ -25,7 +25,7 @@
           {
             "resource_identity": "aws_s3_bucket.financials",
             "issue_class": "storage-encryption-at-rest",
-            "unresolved_factors": ["sensitivity", "criticality"],
+            "defaulted_factors": ["sensitivity", "criticality"],
             "excluded_from_quality_claims": true
           }
         ],

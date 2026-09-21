@@ -259,6 +259,36 @@ def test_load_and_validate_rejects_malformed_json(tmp_path: Path) -> None:
         load_and_validate(broken)
 
 
+def test_defaulted_and_unresolved_factors_are_separate_fields() -> None:
+    """PLAN Q4 requires the two rates be reported separately, so they are separate fields.
+
+    A missing *declared* sensitivity or criticality takes the documented default
+    and counts in the default-fallback rate. An extractor failure on a
+    code-derived factor is `unresolved` under Q9. Merging them into one field
+    would make the split report Q4 promises impossible to produce from ground
+    truth, which is why the schema carries both and the harness can tell them
+    apart.
+    """
+    document = _document()
+    finding = document["cases"][0]["expected"]["findings"][0]
+
+    finding["defaulted_factors"] = ["sensitivity", "criticality"]
+    finding["unresolved_factors"] = ["exposure"]
+
+    validate(document)
+
+    assert finding["defaulted_factors"] != finding["unresolved_factors"]
+
+
+def test_a_defaulted_factor_must_be_a_real_factor_key() -> None:
+    """The new field is constrained like its sibling, not a free-text escape hatch."""
+    document = _document()
+    document["cases"][0]["expected"]["findings"][0]["defaulted_factors"] = ["vibes"]
+
+    with pytest.raises(GroundTruthError):
+        validate(document)
+
+
 def test_the_schema_file_is_itself_valid_json() -> None:
     path = REPO_ROOT / "eval" / "ground_truth.schema.json"
     schema = json.loads(path.read_text(encoding="utf-8"))
