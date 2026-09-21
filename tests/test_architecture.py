@@ -76,47 +76,72 @@ def test_no_module_imports_checkov() -> None:
     assert offenders == [], f"checkov imported as a library in: {offenders}"
 
 
-def test_eval_does_not_import_scoring() -> None:
+def test_eval_does_not_import_the_framework() -> None:
     """The harness may not share code with what it grades (PLAN.md Q7).
 
-    Uses the same `_matches` predicate as the checkov guard: an exact match
-    or a dotted-prefix match. A bare `startswith("iacrisk.scoring")` would
-    also flag `iacrisk.scoring_utils`, which violates nothing.
+    Guards the whole `iacrisk` package, not just `iacrisk.scoring`. The narrower
+    form was the boundary in name only: `eval/` could import `iacrisk.taxonomy`
+    or `iacrisk.rubric` and stay green, which is precisely the coupling S1's
+    ground-truth schema avoids by *duplicating* the class-id pattern and the
+    factor-key enum as literal values rather than importing them. A guard that
+    permits the import the duplication exists to avoid is not guarding anything.
+
+    The import that would trip this is a convenience one - reaching for
+    `iacrisk.taxonomy` to validate a class id rather than restating its shape.
+    That is exactly the decision that should be explicit and reviewed rather
+    than silent, so the guard is wholesale and a genuine shared need has to
+    argue for itself by turning this test red.
+
+    Uses the same `_matches` predicate as the checkov guard, so
+    `iacrisk_helper` does not match while `iacrisk.anything` does.
     """
     offenders: list[tuple[str, list[str]]] = []
     for path in (REPO_ROOT / "eval").rglob("*.py"):
-        leaked = {m for m in _imported_modules(path) if _matches(m, "iacrisk.scoring")}
+        leaked = {m for m in _imported_modules(path) if _matches(m, "iacrisk")}
         if leaked:
             offenders.append((path.relative_to(REPO_ROOT).as_posix(), sorted(leaked)))
-    assert offenders == [], f"eval/ imports scoring internals: {offenders}"
+    assert offenders == [], f"eval/ imports the framework it grades: {offenders}"
 
 
-# (source, matches iacrisk.scoring, matches checkov)
+# (source, matches iacrisk.scoring, matches iacrisk, matches checkov)
+#
+# The middle column is what `test_eval_does_not_import_the_framework` rests on.
+# It is here because that guard was widened from `iacrisk.scoring` to the whole
+# package: a guard-the-guard matrix that only proves the narrower root would
+# leave the wider one unproven, which is the dormant-guard failure this matrix
+# exists to prevent.
 IMPORT_MATRIX = [
-    ("import iacrisk.scoring", True, False),
-    ("from iacrisk.scoring import score", True, False),
-    ("from iacrisk import scoring", True, False),
-    ("from iacrisk import scoring as s", True, False),
-    ("from iacrisk import scoring_utils", False, False),
-    ("import iacrisk.scoring_utils", False, False),
-    ("from checkov import x", False, True),
-    ("import checkov", False, True),
-    ("from checkov.common.y import z", False, True),
-    ("import checkov_helper", False, False),
+    ("import iacrisk.scoring", True, True, False),
+    ("from iacrisk.scoring import score", True, True, False),
+    ("from iacrisk import scoring", True, True, False),
+    ("from iacrisk import scoring as s", True, True, False),
+    ("from iacrisk import scoring_utils", False, True, False),
+    ("import iacrisk.scoring_utils", False, True, False),
+    # The convenience imports the widened guard exists to catch.
+    ("from iacrisk import taxonomy", False, True, False),
+    ("import iacrisk.rubric", False, True, False),
+    ("from iacrisk import identity", False, True, False),
+    ("import iacrisk", False, True, False),
+    # Precision: a package merely named like ours is not ours.
+    ("import iacrisk_helper", False, False, False),
+    ("from checkov import x", False, False, True),
+    ("import checkov", False, False, True),
+    ("from checkov.common.y import z", False, False, True),
+    ("import checkov_helper", False, False, False),
 ]
 
 
-@pytest.mark.parametrize(("source", "scoring_hit", "checkov_hit"), IMPORT_MATRIX)
+@pytest.mark.parametrize(("source", "scoring_hit", "framework_hit", "checkov_hit"), IMPORT_MATRIX)
 def test_import_matcher_resolves_every_import_form(
-    source: str, scoring_hit: bool, checkov_hit: bool, tmp_path: Path
+    source: str, scoring_hit: bool, framework_hit: bool, checkov_hit: bool, tmp_path: Path
 ) -> None:
     """Guard the guard: both import guards rest entirely on this one predicate.
 
     `_imported_modules` is the single thing `test_no_module_imports_checkov`
-    and `test_eval_does_not_import_scoring` depend on. If a refactor stopped
-    it emitting `a.b` for `from a import b`, both guards would keep reporting
-    green while catching nothing - the dormant-guard failure mode again, but
-    silent, because there would be no skip to notice.
+    and `test_eval_does_not_import_the_framework` depend on. If a refactor
+    stopped it emitting `a.b` for `from a import b`, both guards would keep
+    reporting green while catching nothing - the dormant-guard failure mode
+    again, but silent, because there would be no skip to notice.
 
     `from iacrisk import scoring` is the case that motivates this: it is the
     most idiomatic way to write the violation PLAN.md Q7 forbids, and it was
@@ -135,6 +160,9 @@ def test_import_matcher_resolves_every_import_form(
 
     assert any(_matches(m, "iacrisk.scoring") for m in modules) is scoring_hit, (
         f"iacrisk.scoring match wrong for {source!r}; emitted {sorted(modules)}"
+    )
+    assert any(_matches(m, "iacrisk") for m in modules) is framework_hit, (
+        f"iacrisk match wrong for {source!r}; emitted {sorted(modules)}"
     )
     assert any(_matches(m, "checkov") for m in modules) is checkov_hit, (
         f"checkov match wrong for {source!r}; emitted {sorted(modules)}"

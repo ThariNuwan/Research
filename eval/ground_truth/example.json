@@ -13,7 +13,7 @@
       },
       "declared_context": {
         "aws_s3_bucket.data": { "sensitivity": 4, "criticality": 4 },
-        "aws_s3_bucket.scratch": { "sensitivity": null, "criticality": null }
+        "aws_s3_bucket.financials": { "sensitivity": null, "criticality": null }
       },
       "expected": {
         "findings": [
@@ -23,7 +23,7 @@
             "expected_band": "Critical"
           },
           {
-            "resource_identity": "aws_s3_bucket.scratch",
+            "resource_identity": "aws_s3_bucket.financials",
             "issue_class": "storage-encryption-at-rest",
             "unresolved_factors": ["sensitivity", "criticality"],
             "excluded_from_quality_claims": true
@@ -61,7 +61,7 @@
         "path": "scenarios/system-monitor/deployment.yaml"
       },
       "declared_context": {
-        "apps/v1/Deployment/default/system-monitor [container=system-monitor]": {
+        "apps/v1/Deployment/default/system-monitor-deployment [container=system-monitor]": {
           "sensitivity": 5,
           "criticality": 4
         }
@@ -69,7 +69,7 @@
       "expected": {
         "findings": [
           {
-            "resource_identity": "apps/v1/Deployment/default/system-monitor [container=system-monitor]",
+            "resource_identity": "apps/v1/Deployment/default/system-monitor-deployment [container=system-monitor]",
             "issue_class": "containers-privileged-execution",
             "expected_band": "Critical"
           }

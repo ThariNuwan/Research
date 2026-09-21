@@ -15,7 +15,10 @@ Two layers, because one is not enough:
 
 This module deliberately imports nothing from `iacrisk`: the harness may not share
 code with what it grades (PLAN Q7), a boundary
-`tests/test_architecture.py::test_eval_does_not_import_scoring` enforces.
+`tests/test_architecture.py::test_eval_does_not_import_the_framework` enforces
+across the whole package, not merely against `iacrisk.scoring`. That is why the
+schema restates the taxonomy's class-id shape and the rubric's factor keys as
+literal values instead of importing them.
 """
 
 from __future__ import annotations
