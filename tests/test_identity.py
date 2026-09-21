@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from iacrisk import identity
+from iacrisk import identity, taxonomy
 
 
 @pytest.mark.parametrize(
@@ -182,13 +182,24 @@ def test_dedupe_key_is_the_three_spec_components() -> None:
 def test_cross_scanner_twins_on_one_resource_collapse_to_one_key() -> None:
     """The deduplication half of the Q7/Q8 alert-reduction number.
 
-    trivy AWS-0026 and tfsec AVD-AWS-0026 are a verified twin pair in corpus v0
-    and share the class storage-encryption-at-rest by the section 2.2
-    co-location guarantee, so on one resource with one fingerprint they produce
-    one key - which is what makes the reduction real rather than arithmetic.
+    The two scanners emit different rule ids for the same Aqua rule, so the
+    collapse cannot come from this key alone - it comes from the taxonomy mapping
+    both ids to one class (the section 2.2 co-location guarantee), and from this
+    key carrying the class rather than the rule id. Deriving each class from its
+    own scanner's rule id is what makes this a real check: passing the same class
+    string twice by hand would assert nothing but that equal inputs compare equal.
+
+    This is the necessary condition, not the whole claim. Demonstrating that two
+    scanners' actual output for one violation produces matching triples needs a
+    caller that computes the fingerprint, which is S3's job.
     """
-    trivy = identity.dedupe_key("aws_s3_bucket.data", "storage-encryption-at-rest", "sse")
-    tfsec = identity.dedupe_key("aws_s3_bucket.data", "storage-encryption-at-rest", "sse")
+    trivy_class = taxonomy.class_for("trivy", "AWS-0026")
+    tfsec_class = taxonomy.class_for("tfsec", "AVD-AWS-0026")
+
+    assert trivy_class == tfsec_class == "storage-encryption-at-rest"
+
+    trivy = identity.dedupe_key("aws_s3_bucket.data", trivy_class, "sse")
+    tfsec = identity.dedupe_key("aws_s3_bucket.data", tfsec_class, "sse")
 
     assert trivy == tfsec
     assert len({trivy, tfsec}) == 1
@@ -208,7 +219,12 @@ def test_different_violations_on_one_resource_stay_distinct() -> None:
 
 @pytest.mark.parametrize("position", [0, 1, 2])
 def test_an_empty_dedupe_component_is_rejected(position: int) -> None:
-    """An empty fingerprint would over-collapse exactly what section 5.4 protects."""
+    """No component may be empty; the parametrize covers all three positions.
+
+    An empty fingerprint would collapse materially different violations on one
+    resource, and an empty identity or class would merge unrelated findings -
+    both are the over-collapse this key exists to prevent.
+    """
     parts = ["aws_s3_bucket.data", "storage-encryption-at-rest", "sse"]
     parts[position] = ""
 
