@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "description": "Schema exemplar, not corpus ground truth. It exists to exercise all three record types against eval/ground_truth.schema.json, and every case id carries an example- prefix to mark it as illustrative. The authored corpus cases are written in S2 against this same schema.",
   "cases": [
     {
       "case_id": "example-s3-public",

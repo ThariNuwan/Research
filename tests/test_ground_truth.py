@@ -1,8 +1,10 @@
 """A malformed ground-truth record is a hard reject, never a skip (spec section 4.5).
 
-A harness that skips a bad case silently shrinks its own denominator and reports
-a better number than it earned. Every test here is about the reject path being
-loud.
+A harness that skips a bad case silently shrinks its own denominator and reports a
+better number than it earned. Most tests here are about that reject path being
+loud. The rest are the other half of the contract: a validator that refused
+legitimate ground truth would be just as useless, so the accept path is asserted
+too - null declared context, an omitted expected_band, an unmapped issue class.
 """
 
 from __future__ import annotations
@@ -99,6 +101,16 @@ def test_a_well_formed_document_validates() -> None:
 def test_the_committed_example_validates() -> None:
     """The shipped exemplar has to be an example of something that actually passes."""
     assert load_and_validate(EXAMPLE)["schema_version"] == 1
+
+
+def test_the_document_description_is_optional() -> None:
+    """The exemplar labels itself in-band; authored ground truth need not."""
+    document = _document()
+    assert "description" not in document
+    validate(document)
+
+    document["description"] = "Authored corpus ground truth for corpus v0."
+    validate(document)
 
 
 def test_a_case_with_no_expected_block_is_rejected() -> None:

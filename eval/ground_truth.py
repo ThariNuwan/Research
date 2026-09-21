@@ -27,7 +27,7 @@ from typing import Any
 
 import jsonschema  # type: ignore[import-untyped]  # no py.typed marker; stub package not added
 
-SCHEMA_PATH = Path(__file__).resolve().parent / "ground_truth.schema.json"
+SCHEMA_PATH: Path = Path(__file__).resolve().parent / "ground_truth.schema.json"
 
 
 class GroundTruthError(ValueError):

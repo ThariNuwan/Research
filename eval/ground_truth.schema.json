@@ -8,6 +8,10 @@
   "required": ["schema_version", "cases", "contrastive_pairs", "scenarios"],
   "properties": {
     "schema_version": { "const": 1 },
+    "description": {
+      "description": "Free text saying what this document is. Present so a reader can tell a schema exemplar from authored corpus ground truth without opening another file.",
+      "type": "string"
+    },
     "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
     "contrastive_pairs": { "type": "array", "items": { "$ref": "#/$defs/contrastive_pair" } },
     "scenarios": { "type": "array", "items": { "$ref": "#/$defs/scenario" } }
