@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Schema exemplar, not corpus ground truth. It exists to exercise all three record types against eval/ground_truth.schema.json, and every case id carries an example- prefix to mark it as illustrative. The authored corpus cases are written in S2 against this same schema.",
+  "description": "Schema exemplar, not corpus ground truth. It exists to exercise all three record types against eval/ground_truth.schema.json, and every case id carries an example- prefix to mark it as illustrative. The authored corpus cases are written in S2 against this same schema. expected_band is deliberately absent throughout: design spec section 4.4 makes relative ordering the primary signal and the band a secondary, optional field, and S1 has no scoring engine with which to verify a band, so asserting one here would be a claim this artifact cannot support.",
   "cases": [
     {
       "case_id": "example-s3-public",
@@ -12,20 +12,28 @@
         "path": "terraform/aws/s3.tf"
       },
       "declared_context": {
-        "aws_s3_bucket.data": { "sensitivity": 4, "criticality": 4 },
-        "aws_s3_bucket.financials": { "sensitivity": null, "criticality": null }
+        "aws_s3_bucket.data": {
+          "sensitivity": 4,
+          "criticality": 4
+        },
+        "aws_s3_bucket.financials": {
+          "sensitivity": null,
+          "criticality": null
+        }
       },
       "expected": {
         "findings": [
           {
             "resource_identity": "aws_s3_bucket.data",
-            "issue_class": "storage-public-accessibility",
-            "expected_band": "Critical"
+            "issue_class": "storage-public-accessibility"
           },
           {
             "resource_identity": "aws_s3_bucket.financials",
             "issue_class": "storage-encryption-at-rest",
-            "defaulted_factors": ["sensitivity", "criticality"],
+            "defaulted_factors": [
+              "sensitivity",
+              "criticality"
+            ],
             "excluded_from_quality_claims": true
           }
         ],
@@ -38,17 +46,19 @@
       "domain": "storage",
       "source": "hand-crafted",
       "declared_context": {
-        "aws_s3_bucket.data": { "sensitivity": 4, "criticality": 4 }
+        "aws_s3_bucket.data": {
+          "sensitivity": 4,
+          "criticality": 4
+        }
       },
       "expected": {
         "findings": [
           {
             "resource_identity": "aws_s3_bucket.data",
-            "issue_class": "storage-encryption-at-rest",
-            "expected_band": "Medium"
+            "issue_class": "storage-encryption-at-rest"
           }
         ],
-        "notes": "Identical to example-s3-public but with the public-access-block enabled."
+        "notes": "Identical to example-s3-public but with the public-access-block enabled. Its ordering against example-s3-public is what the contrastive pair asserts; neither case claims an absolute band."
       }
     },
     {
@@ -70,8 +80,7 @@
         "findings": [
           {
             "resource_identity": "apps/v1/Deployment/default/system-monitor-deployment [container=system-monitor]",
-            "issue_class": "containers-privileged-execution",
-            "expected_band": "Critical"
+            "issue_class": "containers-privileged-execution"
           }
         ]
       }
@@ -92,7 +101,14 @@
     {
       "scenario_id": "example-storage-triage-order",
       "domain": "storage",
-      "expected_ordering": [["example-s3-public"], ["example-s3-locked"]],
+      "expected_ordering": [
+        [
+          "example-s3-public"
+        ],
+        [
+          "example-s3-locked"
+        ]
+      ],
       "rationale": "A world-readable bucket holding regulated data must be triaged before the same bucket with public access blocked.",
       "oracle": {
         "author": "258243J",
