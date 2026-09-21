@@ -1,6 +1,6 @@
 # S1 — Phase-1 Pre-Implementation Specification Artifacts (Design)
 
-**Status:** design, awaiting review-gate approval
+**Status:** approved at the review gate; implemented by `docs/superpowers/plans/2026-09-19-s1-preimplementation-artifacts.md`
 **Author:** Jayathissa E.A.T.N. (258243J)
 **Date:** 2026-09-19
 **Spec authority:** `docs/PLAN.md` (locked, Codex R4 APPROVED) — "Pre-implementation deliverables" and Q1–Q10.
@@ -125,7 +125,7 @@ Keying on the raw `(scanner, rule_id)` as-emitted (not a pre-normalized key) kee
 
 ### 2.2 Canonical identity for cross-scanner equality
 
-`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0088`, tfsec emits `AVD-AWS-0088`, both are the same Aqua rule → `canonical_id = AWS-0088`. Checkov IDs (`CKV_AWS_*`, `CKV2_AWS_*`, `CKV_K8S_*`, `CKV_DOCKER_*`, `CKV_SECRET_*`) are their own canonical form.
+`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0026`, tfsec emits `AVD-AWS-0026`, both are the same Aqua rule → `canonical_id = AWS-0026`. (Corpus v0 holds 45 such twin pairs; `AWS-0057`, `AWS-0082` and `AWS-0088` are tfsec-only and have no trivy counterpart, so they canonicalize without pairing.) Checkov IDs (`CKV_AWS_*`, `CKV2_AWS_*`, `CKV_K8S_*`, `CKV_DOCKER_*`, `CKV_SECRET_*`) are their own canonical form.
 
 Two guarantees asserted as tests:
 - **Co-location.** Every trivy `AWS-####` and its tfsec `AVD-AWS-####` twin map to the same `class_id`. True by construction for the 45 twin pairs (trivy took tfsec's class directly during derivation); the test locks it so no future edit can split a twin.
@@ -182,7 +182,7 @@ A per-scanner **raw-token → 1–5** table, version-controlled, so the baseline
 
 ### 3.4 Citation corrections applied (from the verification pass)
 
-- **Severity level-1 "informational" → UNKNOWN (grave, and exactly the phase0 warning).** Trivy's fifth level is `UNKNOWN` (severity-undetermined), not a benign informational/None band. Fixed: `UNKNOWN` routes to the unresolved default (4), not level-1/score-1 — captured in the §3.3 table. Level 1 remains reserved for a genuine CVSS None/0.0.
+- **Severity level-1 "informational" → UNKNOWN (grave, and the question phase0 left to S1).** Phase0 §A.3 item 4 recorded only four observed levels and required S1 to "say what the fifth level is for, or drop to four"; it did not itself warn against reading the fifth level as informational. This bullet is that answer. Trivy's fifth level is `UNKNOWN` (severity-undetermined), not a benign informational/None band. Fixed: `UNKNOWN` routes to the unresolved default (4), not level-1/score-1 — captured in the §3.3 table. Level 1 remains reserved for a genuine CVSS None/0.0.
 - **IAM levels 1/2/5:** drop the CVSS `PR:` parentheticals (PR = attacker prerequisite, not authority granted); the NSA-CISA / NIST anchors that carry those levels are correct and stay.
 - **Criticality L3:** the "pre-prod that touches prod data is elevated" claim is re-sourced from NSA-CISA (which is silent on environment ladders) to OWASP A05 environment-parity + NIST Moderate/CVSS CR:Medium.
 - **Encryption L0:** "Appendix G" → "Appendix H, Table H-3" (impact scale; the rest of the doc already cites H-3). **L1:** CVSS C:L quote fixed to "…the amount or kind of **loss** is limited" (not "information obtained"). **L3:** NSA-CISA framed as recommended hardening, not hard "required controls."

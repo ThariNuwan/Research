@@ -69,9 +69,31 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0 complete: a pinned toolchain plus an empirical rule-ID inventory over a
-vendored corpus. Phase 1 (the five specification artifacts) is next — see
-`docs/superpowers/specs/` and `docs/superpowers/plans/`.
+S0 and S1 complete. S0 pinned the toolchain and harvested an empirical rule-ID
+inventory over a vendored corpus. S1 authored the five specification artifacts the
+runtime and the harness are built against:
+
+- `src/iacrisk/data/taxonomy.json` — 28 issue classes over the five tested
+  categories, plus one mapping row per observed `(scanner, rule_id)`. All 255
+  rule IDs in corpus v0 map; an unseen rule takes an explicit
+  `unmapped:<scanner>:<rule_id>` class rather than a guess.
+- `src/iacrisk/data/rubric.json` — the six source-anchored factors, the frozen
+  1–28 bounds and priority bands, the per-scanner severity-normalization table,
+  and the four coherence rules from the design spec.
+- `eval/ground_truth.schema.json` + `eval/ground_truth.py` — the three
+  ground-truth record types and a validator that hard-rejects a malformed case
+  rather than skipping it.
+- `src/iacrisk/identity.py` — canonical Terraform and Kubernetes identity, path
+  normalization, and the dedupe key.
+
+**Factor ranges and priority bands are frozen** as of S1, before any scoring
+output exists. Later movement is reported as sensitivity analysis (PLAN Q10),
+never tuned to fit the test data. `tests/test_s1_gates.py` holds the five
+acceptance gates and the freeze.
+
+S3 is next: the scanner adapters under `src/iacrisk/scanners/`, the bounded
+context extractor, and the scoring engine that enforces the coherence rules S1
+carries as data.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four
