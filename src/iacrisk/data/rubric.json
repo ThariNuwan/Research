@@ -44,9 +44,9 @@
       "levels": [
         {
           "score": 1,
-          "meaning": "Reserved for an informational / None band NOT exercised by corpus v0. Trivy's severity vocabulary carries a fifth (informational) level this corpus does not trigger; the slot is defined a priori so the scale need not shift if such a finding appears.",
+          "meaning": "Reserved for a genuine CVSS None / 0.0 band, NOT exercised by corpus v0. Trivy's fifth level is UNKNOWN, which means severity-undetermined rather than benign, and it routes to the unresolved default rather than to this slot (design spec section 3.3). The slot is defined a priori so the scale need not shift if a true CVSS None finding ever appears.",
           "justification": "Bottom CVSS band ('None') maps to the bottom integer, keeping the scale complete and future-proof without disturbing the four observed levels above it.",
-          "source": "CVSS v3.1 'None' band (score 0.0); OWASP Risk Rating Methodology 'Note / informational' finding; NIST SP 800-30 Rev.1 'Very Low' (0–4 / representative value 0)."
+          "source": "CVSS v3.1 'None' band (score 0.0); OWASP Risk Rating Methodology 'Note' finding; NIST SP 800-30 Rev.1 'Very Low' (0–4 / representative value 0)."
         },
         {
           "score": 2,
@@ -86,7 +86,7 @@
       "levels": [
         {
           "score": 0,
-          "meaning": "No exposure surface. Not network-reachable via any supported pattern; resource is internal-only (e.g. private subnet with no open ingress, K8s ClusterIP, storage with public-access-block enabled and no public ACL/policy).",
+          "meaning": "No exposure surface. Not network-reachable via any supported pattern; resource is internal-only (e.g. private subnet with no open ingress, storage with public-access-block enabled and no public ACL/policy).",
           "justification": "Reachability requires local/physical access rather than the network stack, so CVSS places it at the bottom AV tier and NIST rates initiation likelihood Very Low.",
           "source": "CVSS v3.1 Attack Vector = Physical/Local (AV:P 0.20 / AV:L 0.55), the lowest-exploitability vector tier; NIST SP 800-30 Rev.1 App. G Table G-2 likelihood of initiation = Very Low."
         },
@@ -100,7 +100,7 @@
           "score": 2,
           "meaning": "Internet-reachable in principle but access is materially constrained/mediated: ingress limited to a narrow public CIDR, or K8s NodePort exposed only through a node firewall.",
           "justification": "The vector is Network per CVSS, but the documented mediating control (narrow CIDR / node firewall that NSA-CISA calls out for NodePort) holds initiation likelihood below a wide-open path.",
-          "source": "CVSS v3.1 Attack Vector = Network (AV:N 0.85) tempered by a restricting control; NSA-CISA Kubernetes Hardening Guidance (network-separation): NodePort publishes the service on every node's IP as a reachable but firewall-mediated surface; NIST SP 800-30 App. G likelihood = Low-to-Moderate."
+          "source": "CVSS v3.1 Attack Vector = Network (AV:N 0.85) tempered by a restricting control; NSA-CISA Kubernetes Hardening Guidance (network-separation): NodePort publishes the service on every node's IP as a reachable but firewall-mediated surface; NIST SP 800-30 App. G likelihood interpolated between Low and Moderate; the scale defines no intermediate tier, so this is an ordinal placement rather than a quoted tier."
         },
         {
           "score": 3,
@@ -145,13 +145,13 @@
           "score": 1,
           "meaning": "Minimal, read-only or single-resource permission. A narrowly scoped principal: read/list on one resource or a single non-mutating verb, with no ability to alter identity or escalate.",
           "justification": "Blast radius is bounded to observation of one resource with no cross-resource or mutating authority, the least-privilege ideal the guidance endorses.",
-          "source": "NSA-CISA Kubernetes Hardening Guidance (v1.2) least-privilege RBAC — a Role scoped to specific verbs on specific resources; aligns with CVSS PR:High (the grant confers only low authority) and NIST 800-30 impact 'Low'."
+          "source": "NSA-CISA Kubernetes Hardening Guidance (v1.2) least-privilege RBAC — a Role scoped to specific verbs on specific resources; aligns with NIST 800-30 impact 'Low'. CVSS Privileges Required is deliberately not cited here: PR describes what an attacker must already hold, not the authority a grant confers."
         },
         {
           "score": 2,
           "meaning": "Moderate, service-scoped write permission without escalation paths. Modify/create on a bounded resource set within a single service; no identity mutation and no privilege-granting actions (no iam:*, PassRole, or policy attach).",
           "justification": "Meaningful mutating capability but contained to one service and structurally unable to self-escalate, matching a moderate contained-impact tier.",
-          "source": "NIST SP 800-30 Rev.1 App. H impact 'Moderate'; OWASP Top 10 2021 A01:2021 Broken Access Control — authorization confined to the function's intended scope (CVSS PR:Low)."
+          "source": "NIST SP 800-30 Rev.1 App. H impact 'Moderate'; OWASP Top 10 2021 A01:2021 Broken Access Control — authorization confined to the function's intended scope."
         },
         {
           "score": 3,
@@ -163,13 +163,13 @@
           "score": 4,
           "meaning": "Cross-service / cross-namespace sensitive privilege or direct escalation enabler. Wildcard actions across multiple services, unrestricted iam:PassRole / CreatePolicyVersion / sts:AssumeRole, or RBAC that can create/bind roles, read secrets cluster-wide, or exec into pods.",
           "justification": "A principal holding this can pivot toward full control across the account or cluster, the standards' defining condition for an escalation-capable grant just below total compromise.",
-          "source": "NSA-CISA Kubernetes Hardening Guidance — permissions to create/bind RBAC, access secrets, or pods/exec are named escalation paths; CVSS S:C with high subsequent-system impact; NIST 800-30 upper 'High'."
+          "source": "NSA-CISA Kubernetes Hardening Guidance — permissions to create/bind RBAC, access secrets, or pods/exec are named escalation paths; CVSS S:C with high subsequent-system impact; NIST 800-30 'High', placed at the upper end of that tier; the scale defines no separate tier above it."
         },
         {
           "score": 5,
           "meaning": "Full administrative / unbounded authority. Action=\"*\" Resource=\"*\" (AWS admin), cluster-admin ClusterRoleBinding, or wildcard RBAC (verbs:[\"*\"], resources:[\"*\"]) — unbounded root-equivalent control.",
           "justification": "Unbounded blast radius with no containment is the maximum privilege risk the standards recognise, so it anchors the factor's ceiling.",
-          "source": "NSA-CISA Kubernetes Hardening Guidance explicit cluster-admin / wildcard-RBAC prohibition; CVSS S:C + PR:None enabling total system compromise; OWASP A01:2021 (top-ranked risk); NIST 800-30 'Very High' (severe, multiple/all functions)."
+          "source": "NSA-CISA Kubernetes Hardening Guidance explicit cluster-admin / wildcard-RBAC prohibition; CVSS Scope = Changed (S:C), enabling total system compromise; OWASP A01:2021 (top-ranked risk); NIST 800-30 'Very High' (severe, multiple/all functions)."
         }
       ],
       "unresolved_default": 4,
@@ -211,7 +211,7 @@
           "score": 4,
           "meaning": "High sensitivity — sensitive regulated data (PII/PHI, PCI cardholder data, confidential IP/trade secrets).",
           "justification": "High = severe adverse effect; CR:High and OWASP's high data-sensitivity technical-impact score both denote disclosure of extensive sensitive data.",
-          "source": "NIST SP 800-30 Table H-3 impact = High (severe adverse effect), cross-anchored to CVSS CR:High and OWASP Risk Rating Methodology loss-of-confidentiality (extensive sensitive data disclosed)."
+          "source": "NIST SP 800-30 Table H-3 impact = High (severe adverse effect), cross-anchored to CVSS CR:High and OWASP Risk Rating Methodology loss-of-confidentiality (extensive critical data disclosed, value 7)."
         },
         {
           "score": 5,
@@ -253,7 +253,7 @@
           "score": 3,
           "meaning": "Staging / pre-production / UAT: production-like, may carry copies of production data or gate the production release; a compromise is a credible stepping-stone into production.",
           "justification": "800-30 'Moderate' captures 'serious' but not severe impact; CVSS Environmental CR/IR/AR=Medium encodes that the asset supports the mission indirectly, matching staging's role as a gate to prod.",
-          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Moderate' (serious adverse effect); CVSS v3.1/v4.0 Environmental Security Requirements (CR/IR/AR) = Medium; NSA-CISA guidance treating pre-prod that touches prod data as elevated."
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Moderate' (serious adverse effect); CVSS v3.1/v4.0 Environmental Security Requirements (CR/IR/AR) = Medium; OWASP Top 10 A05:2021 Security Misconfiguration, whose environment-parity finding (non-uniform hardening across the dev/QA/prod ladder) is what carries the elevation of pre-production that touches production data. NSA-CISA is silent on environment ladders and is deliberately not cited at this level."
         },
         {
           "score": 4,
@@ -283,13 +283,13 @@
           "score": 0,
           "meaning": "No encryption risk: the required encryption / data-protection control is present and satisfied, or the flagged resource holds no data-at-rest or data-in-transit that requires protection. No loss of confidentiality follows from this finding's encryption dimension.",
           "justification": "C:N is the exact standard concept for a resource whose confidentiality is not degraded, so a satisfied/not-applicable encryption control scores 0.",
-          "source": "CVSS v3.1 base metric Confidentiality Impact = None (C:N): \"There is no loss of confidentiality within the impacted component.\" Corroborated by NIST SP 800-30 Rev.1 Appendix G impact scale \"Very Low\" (negligible adverse effect)."
+          "source": "CVSS v3.1 base metric Confidentiality Impact = None (C:N): \"There is no loss of confidentiality within the impacted component.\" Corroborated by NIST SP 800-30 Rev.1 Appendix H, Table H-3 impact scale \"Very Low\" (negligible adverse effect)."
         },
         {
           "score": 1,
           "meaning": "Low encryption risk: a defense-in-depth encryption gap where a compensating control exists or exposure is inherently limited (e.g. platform-default at-rest encryption still applies, or optional in-transit encryption on an internal-only path). Confidentiality loss is bounded and partial.",
           "justification": "C:L is defined as bounded, limited confidentiality loss, which is exactly the compensating-control / limited-exposure encryption gap, so it anchors score 1.",
-          "source": "CVSS v3.1 Confidentiality Impact = Low (C:L): \"There is some loss of confidentiality ... the amount or kind of information obtained is limited.\" Aligns with NIST SP 800-30 Rev.1 impact \"Low\"."
+          "source": "CVSS v3.1 Confidentiality Impact = Low (C:L): \"There is some loss of confidentiality ... the amount or kind of loss is limited.\" Aligns with NIST SP 800-30 Rev.1 impact \"Low\"."
         },
         {
           "score": 2,
@@ -301,7 +301,7 @@
           "score": 3,
           "meaning": "Critical encryption risk: an explicitly required encryption / data-protection control is missing where the requirement is positively established, either by a standard-mandated hardening control (e.g. etcd Secret encryption at rest, TLS for traffic crossing a trust boundary) or by regulated/customer-managed-key requirements. This is the factor's \"required ... missing\" case.",
           "justification": "NSA-CISA states these encryption controls as requirements rather than recommendations, so a missing mandated control at NIST \"High\" impact is the only level that satisfies the word \"required\" and thus scores the 0-3 ceiling of 3.",
-          "source": "NSA-CISA Kubernetes Hardening Guidance (encryption of Secrets at rest via etcd encryption and TLS for all in-transit traffic stated as required controls) and NSA-CISA cloud guidance \"encrypt data at rest and in transit\"; combined with NIST SP 800-30 Rev.1 impact \"High\" (severe or catastrophic loss of confidentiality) where the control is mandated."
+          "source": "NSA-CISA Kubernetes Hardening Guidance (encryption of Secrets at rest via etcd encryption and TLS for all in-transit traffic stated as recommended hardening controls) and NSA-CISA cloud guidance \"encrypt data at rest and in transit\"; combined with NIST SP 800-30 Rev.1 impact \"High\" (severe or catastrophic loss of confidentiality) where the control is mandated."
         }
       ],
       "unresolved_default": 2,
