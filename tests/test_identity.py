@@ -120,15 +120,53 @@ def test_two_containers_in_one_pod_get_distinct_identities() -> None:
     assert first != second
 
 
-def test_kubernetes_omitted_namespace_uses_the_documented_default() -> None:
-    """Spec section 5.2: an omitted metadata.namespace takes the documented default."""
+def test_kubernetes_namespace_none_omits_the_component() -> None:
+    """`namespace=None` renders cluster-scoped; it does not apply the default.
+
+    This module formats, it does not decide. Spec section 5.2 gives two different
+    outcomes for a missing namespace and only the caller knows which applies: a
+    genuinely cluster-scoped kind omits the component, while a namespaced kind
+    whose metadata.namespace was absent takes the documented default and is
+    flagged. Passing None means the former. S3 is what knows the kind, so S3
+    chooses - collapsing the two here would be the silent default Q9 forbids.
+    """
+    result = identity.kubernetes_identity("apps/v1", "Deployment", "api", namespace=None)
+
+    assert result == "apps/v1/Deployment/api"
+
+
+def test_kubernetes_default_namespace_renders_like_any_other_namespace() -> None:
+    """The documented default is chosen by the caller, then rendered unremarkably.
+
+    Spec section 5.2: a namespaced resource whose metadata.namespace was omitted
+    takes `default` and is flagged by the caller. Once chosen it is not special to
+    this module - it renders exactly as `prod` would.
+    """
     assert identity.DEFAULT_NAMESPACE == "default"
 
-    result = identity.kubernetes_identity(
+    defaulted = identity.kubernetes_identity(
+        "apps/v1", "Deployment", "api", namespace=identity.DEFAULT_NAMESPACE
+    )
+    explicit = identity.kubernetes_identity("apps/v1", "Deployment", "api", namespace="prod")
+
+    assert defaulted == "apps/v1/Deployment/default/api"
+    assert defaulted != explicit
+
+
+def test_cluster_scoped_and_default_namespaced_are_distinct_identities() -> None:
+    """The conflation that would corrupt the context-join, pinned as distinct.
+
+    A cluster-scoped resource and a namespaced one that fell back to `default` are
+    different resources. If they rendered alike, the context-join would attach one
+    resource's declared sensitivity and criticality to the other, and nothing would
+    error - it would just be wrong.
+    """
+    cluster_scoped = identity.kubernetes_identity("apps/v1", "Deployment", "api", namespace=None)
+    defaulted = identity.kubernetes_identity(
         "apps/v1", "Deployment", "api", namespace=identity.DEFAULT_NAMESPACE
     )
 
-    assert result == "apps/v1/Deployment/default/api"
+    assert cluster_scoped != defaulted
 
 
 @pytest.mark.parametrize(

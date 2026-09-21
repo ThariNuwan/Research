@@ -36,8 +36,11 @@ def normalize_path(raw: str) -> str:
     Windows, so a path library would leave `\\ec2.tf` intact.
 
     Leading separators are stripped with `lstrip`, which also folds the `//`
-    form. These are scanner-emitted relative paths; no UNC or absolute path
-    reaches this function.
+    form.
+
+    Scoped to scanner-emitted relative paths. UNC and absolute paths are out of
+    scope rather than handled: nothing here rejects one, so a caller that passes
+    an absolute path gets a best-effort result, not a guarantee.
     """
     return raw.replace("\\", "/").lstrip("/")
 
