@@ -181,8 +181,8 @@ def test_no_class_is_empty() -> None:
 @pytest.mark.parametrize(
     ("rule_id", "expected"),
     [
-        ("AVD-AWS-0088", "AWS-0088"),  # tfsec form
-        ("AWS-0088", "AWS-0088"),  # trivy form - already canonical
+        ("AVD-AWS-0026", "AWS-0026"),  # tfsec form
+        ("AWS-0026", "AWS-0026"),  # trivy form of the same Aqua rule - already canonical
         ("CKV_AWS_3", "CKV_AWS_3"),  # checkov ids are their own canonical form
         ("CKV2_AWS_8", "CKV2_AWS_8"),
         ("AVD-AVD-1", "AVD-1"),  # strips exactly one leading prefix, not all of them
@@ -486,8 +486,11 @@ def fallback_contract() -> MappingProxyType[str, Any]:
 def canonical_rule_id(rule_id: str) -> str:
     """The cross-scanner form of a rule id: one leading ``AVD-`` removed.
 
-    trivy emits ``AWS-0088`` and tfsec emits ``AVD-AWS-0088`` for the same Aqua
-    rule (spec section 2.2). Checkov ids carry no such prefix and are returned
+    trivy emits ``AWS-0026`` and tfsec emits ``AVD-AWS-0026`` for the same Aqua
+    rule (spec section 2.2), and corpus v0 holds 45 such twin pairs. Not every
+    ``AVD-`` id has a trivy counterpart - ``AVD-AWS-0057``, ``AVD-AWS-0082`` and
+    ``AVD-AWS-0088`` are tfsec-only - so canonicalization is a normalization, not
+    evidence that a twin exists. Checkov ids carry no such prefix and are returned
     unchanged. `removeprefix` strips exactly one occurrence, which is why
     ``AVD-AVD-1`` becomes ``AVD-1`` rather than ``1``.
     """
@@ -586,9 +589,11 @@ EXPECTED_FACTORS = {
     "encryption": (0, 3, 2, "conservative-scored"),
 }
 
-# The standards the spec section 3 anchors name. A level whose source cites none
-# of these is unanchored, which is the section 3.6 gate's failure mode.
-ANCHORS = ("CVSS", "NIST", "NSA", "OWASP", "FIPS", "PLAN.md")
+# The external standards the spec section 3 anchors name. A level whose source
+# cites none of these is unanchored, which is the section 3.6 gate's failure mode.
+# PLAN.md is deliberately absent: the project's own planning document is not an
+# external standard, and letting it count would let a level self-anchor.
+ANCHORS = ("CVSS", "NIST", "NSA", "OWASP", "FIPS")
 
 
 def test_the_six_factors_are_exactly_the_model_terms() -> None:
@@ -707,9 +712,16 @@ def test_a_score_outside_the_model_is_rejected_not_silently_banded(score: int) -
 
 
 def test_the_model_is_equal_weighted_and_additive() -> None:
-    """Spec section 3.6: the equal-weighted additive sum is the primary model."""
+    """Spec section 3.6: the equal-weighted additive sum is the primary model.
+
+    The formula assertion is the half that earns the word "additive" in this
+    test's name. Without it the test would claim coverage it does not have.
+    """
     model = rubric.model()
 
+    assert model["formula"] == (
+        "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk"
+    )
     assert model["equal_weighted"] is True
     assert "sensitivity analysis" in model["weighting"]
 
@@ -1122,16 +1134,25 @@ Create `tests/test_severity_normalization.py`:
 The load-bearing case is `unknown`. Trivy's fifth level is UNKNOWN - severity
 undetermined, NOT a benign informational band - and 489 of corpus v0's 1055 rows
 carry no severity at all, every one of them Checkov. Both route to the explicit
-unknown state and take the conservative default of 4. Neither is ever scored low:
-that is the exact failure the phase0 review warned about.
+unknown state and take the conservative default of 4. Neither is ever scored low.
+Phase0 section A.3 item 4 left this open rather than warning about it: it recorded
+that only four levels were observed across the 566 rows carrying a severity, and
+required S1's normalization spec to say what the fifth level is for or drop to
+four. This table is that answer - the fifth slot is UNKNOWN, routed to the
+unresolved default, with level 1 held in reserve for a CVSS None the corpus never
+exercised.
 """
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import pytest
 
 from iacrisk import rubric
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
 SCANNERS = ["checkov", "trivy", "tfsec"]
 
 
@@ -1197,28 +1218,60 @@ def test_unknown_is_never_scored_below_an_observed_low() -> None:
 
 
 def test_the_reserved_none_band_is_recorded_as_unexercised() -> None:
-    """Level 1 exists so the scale need not shift later; corpus v0 never hits it."""
+    """Level 1 exists so the scale need not shift later; corpus v0 never hits it.
+
+    Checks the claim rather than restating it: NONE must appear in no scanner's
+    observed levels, which is what makes 'reserved' and 'unexercised' both true.
+    """
     table = rubric.severity_normalization()
 
     assert table["reserved_unexercised"] == ["NONE"]
+    assert table["token_scale"]["NONE"] == 1
+    for scanner, block in table["per_scanner"].items():
+        assert "NONE" not in block["observed_in_corpus_v0"], f"{scanner} observed NONE"
 
 
 def test_the_recorded_corpus_measurement_matches_the_harvest() -> None:
-    """Spec section 0: these are corpus v0 observations, and they must stay honest."""
+    """The recorded numbers are checked against the harvest, not against themselves.
+
+    Spec section 0: these are corpus v0 observations measured on this host. If the
+    corpus is re-harvested and the counts move, this fails and the recorded block
+    has to be updated - which is the drift the guard exists to catch. Comparing
+    against literals typed into the test would make it a dormant guard: it could
+    never fail for the reason its name promises.
+    """
+    inventory = json.loads(
+        (REPO_ROOT / "artifacts" / "rule-inventory.json").read_text(encoding="utf-8")
+    )
+    by_scanner = inventory["by_scanner"]
+    rows = sum(block["rows"] for block in by_scanner.values())
+    missing = sum(block["missing_severity_rows"] for block in by_scanner.values())
+
     corpus = rubric.severity_normalization()["corpus_v0"]
 
-    assert corpus["rows"] == 1055
-    assert corpus["missing_severity_rows"] == 489
+    assert corpus["rows"] == rows
+    assert corpus["missing_severity_rows"] == missing
     assert corpus["all_missing_are_checkov"] is True
+    assert by_scanner["checkov"]["missing_severity_rows"] == missing
 
 
 @pytest.mark.parametrize("scanner", SCANNERS)
 def test_every_pinned_scanner_has_a_recorded_vocabulary(scanner: str) -> None:
-    """The per-scanner block is what lets the unknown rate be reported per scanner."""
+    """The per-scanner block is what lets the unknown rate be reported per scanner.
+
+    Observed levels are compared against the harvest rather than merely asserted
+    present, so a re-harvest cannot leave this block stale. The comparison is on
+    sets: the rubric records levels in severity order, the inventory alphabetically.
+    """
+    inventory = json.loads(
+        (REPO_ROOT / "artifacts" / "rule-inventory.json").read_text(encoding="utf-8")
+    )
     per_scanner = rubric.severity_normalization()["per_scanner"]
 
     assert scanner in per_scanner
-    assert "observed_in_corpus_v0" in per_scanner[scanner]
+    recorded = per_scanner[scanner]["observed_in_corpus_v0"]
+    observed = inventory["by_scanner"][scanner]["observed_severity_levels"]
+    assert set(recorded) == set(observed)
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -1371,9 +1424,11 @@ Create `tests/test_ground_truth.py`:
 ```python
 """A malformed ground-truth record is a hard reject, never a skip (spec section 4.5).
 
-A harness that skips a bad case silently shrinks its own denominator and reports
-a better number than it earned. Every test here is about the reject path being
-loud.
+A harness that skips a bad case silently shrinks its own denominator and reports a
+better number than it earned. Most tests here are about that reject path being
+loud. The rest are the other half of the contract: a validator that refused
+legitimate ground truth would be just as useless, so the accept path is asserted
+too - null declared context, an omitted expected_band, an unmapped issue class.
 """
 
 from __future__ import annotations
@@ -1604,8 +1659,8 @@ def test_an_unknown_top_level_key_is_rejected() -> None:
         validate(document)
 
 
-def test_a_non_object_document_is_rejected_with_a_clear_message() -> None:
-    with pytest.raises(GroundTruthError):
+def test_a_non_object_document_is_rejected() -> None:
+    with pytest.raises(GroundTruthError, match="schema validation"):
         validate([1, 2, 3])
 
 
@@ -1616,6 +1671,16 @@ def test_load_and_validate_rejects_malformed_json(tmp_path: Path) -> None:
 
     with pytest.raises(GroundTruthError, match="not valid JSON"):
         load_and_validate(broken)
+
+
+def test_the_document_description_is_optional() -> None:
+    """The exemplar labels itself in-band; authored ground truth need not."""
+    document = _document()
+    assert "description" not in document
+    validate(document)
+
+    document["description"] = "Authored corpus ground truth for corpus v0."
+    validate(document)
 
 
 def test_the_schema_file_is_itself_valid_json() -> None:
@@ -1648,6 +1713,10 @@ Create `eval/ground_truth.schema.json`:
   "required": ["schema_version", "cases", "contrastive_pairs", "scenarios"],
   "properties": {
     "schema_version": { "const": 1 },
+    "description": {
+      "description": "Free text saying what this document is. Present so a reader can tell a schema exemplar from authored corpus ground truth without opening another file.",
+      "type": "string"
+    },
     "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
     "contrastive_pairs": { "type": "array", "items": { "$ref": "#/$defs/contrastive_pair" } },
     "scenarios": { "type": "array", "items": { "$ref": "#/$defs/scenario" } }
@@ -1843,7 +1912,7 @@ from typing import Any
 
 import jsonschema
 
-SCHEMA_PATH = Path(__file__).resolve().parent / "ground_truth.schema.json"
+SCHEMA_PATH: Path = Path(__file__).resolve().parent / "ground_truth.schema.json"
 
 
 class GroundTruthError(ValueError):
@@ -1942,6 +2011,7 @@ Create `eval/ground_truth/example.json`. This is a schema exemplar, not corpus g
 
 ```json
 {
+  "description": "Schema exemplar, not corpus ground truth. It exists to exercise all three record types against eval/ground_truth.schema.json, and every case id carries an example- prefix to mark it as illustrative. The authored corpus cases are written in S2 against this same schema.",
   "schema_version": 1,
   "cases": [
     {
@@ -2224,15 +2294,53 @@ def test_two_containers_in_one_pod_get_distinct_identities() -> None:
     assert first != second
 
 
-def test_kubernetes_omitted_namespace_uses_the_documented_default() -> None:
-    """Spec section 5.2: an omitted metadata.namespace takes the documented default."""
+def test_kubernetes_namespace_none_omits_the_component() -> None:
+    """`namespace=None` renders cluster-scoped; it does not apply the default.
+
+    This module formats, it does not decide. Spec section 5.2 gives two different
+    outcomes for a missing namespace and only the caller knows which applies: a
+    genuinely cluster-scoped kind omits the component, while a namespaced kind
+    whose metadata.namespace was absent takes the documented default and is
+    flagged. Passing None means the former. S3 is what knows the kind, so S3
+    chooses - collapsing the two here would be the silent default Q9 forbids.
+    """
+    result = identity.kubernetes_identity("apps/v1", "Deployment", "api", namespace=None)
+
+    assert result == "apps/v1/Deployment/api"
+
+
+def test_kubernetes_default_namespace_renders_like_any_other_namespace() -> None:
+    """The documented default is chosen by the caller, then rendered unremarkably.
+
+    Spec section 5.2: a namespaced resource whose metadata.namespace was omitted
+    takes `default` and is flagged by the caller. Once chosen it is not special to
+    this module - it renders exactly as `prod` would.
+    """
     assert identity.DEFAULT_NAMESPACE == "default"
 
-    result = identity.kubernetes_identity(
+    defaulted = identity.kubernetes_identity(
+        "apps/v1", "Deployment", "api", namespace=identity.DEFAULT_NAMESPACE
+    )
+    explicit = identity.kubernetes_identity("apps/v1", "Deployment", "api", namespace="prod")
+
+    assert defaulted == "apps/v1/Deployment/default/api"
+    assert defaulted != explicit
+
+
+def test_cluster_scoped_and_default_namespaced_are_distinct_identities() -> None:
+    """The conflation that would corrupt the context-join, pinned as distinct.
+
+    A cluster-scoped resource and a namespaced one that fell back to `default` are
+    different resources. If they rendered alike, the context-join would attach one
+    resource's declared sensitivity and criticality to the other, and nothing would
+    error - it would just be wrong.
+    """
+    cluster_scoped = identity.kubernetes_identity("apps/v1", "Deployment", "api", namespace=None)
+    defaulted = identity.kubernetes_identity(
         "apps/v1", "Deployment", "api", namespace=identity.DEFAULT_NAMESPACE
     )
 
-    assert result == "apps/v1/Deployment/default/api"
+    assert cluster_scoped != defaulted
 
 
 @pytest.mark.parametrize(
@@ -2286,7 +2394,8 @@ def test_dedupe_key_is_the_three_spec_components() -> None:
 def test_cross_scanner_twins_on_one_resource_collapse_to_one_key() -> None:
     """The deduplication half of the Q7/Q8 alert-reduction number.
 
-    trivy AWS-0088 and tfsec AVD-AWS-0088 share a class by the section 2.2
+    trivy AWS-0026 and tfsec AVD-AWS-0026 are a verified twin pair in corpus v0
+    and share the class storage-encryption-at-rest by the section 2.2
     co-location guarantee, so on one resource with one fingerprint they produce
     one key - which is what makes the reduction real rather than arithmetic.
     """
@@ -2370,8 +2479,11 @@ def normalize_path(raw: str) -> str:
     Windows, so a path library would leave `\\ec2.tf` intact.
 
     Leading separators are stripped with `lstrip`, which also folds the `//`
-    form. These are scanner-emitted relative paths; no UNC or absolute path
-    reaches this function.
+    form.
+
+    Scoped to scanner-emitted relative paths. UNC and absolute paths are out of
+    scope rather than handled: nothing here rejects one, so a caller that passes
+    an absolute path gets a best-effort result, not a guarantee.
     """
     return raw.replace("\\", "/").lstrip("/")
 
@@ -2551,6 +2663,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from eval.ground_truth import GroundTruthError, load_and_validate, validate
 from iacrisk import identity, rubric, taxonomy
 
@@ -2588,12 +2702,15 @@ def test_gate_2_every_rubric_score_point_is_anchored_and_the_model_is_additive()
     justifiable; the equal-weighted additive sum is the primary model; weighting
     is a tunable framed as sensitivity analysis.
     """
-    anchors = ("CVSS", "NIST", "NSA", "OWASP", "FIPS", "PLAN.md")
+    anchors = ("CVSS", "NIST", "NSA", "OWASP", "FIPS")
     for factor in rubric.factors().values():
         for level in factor.levels:
             assert any(anchor in level.source for anchor in anchors)
             assert level.justification.strip()
 
+    assert rubric.model()["formula"] == (
+        "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk"
+    )
     assert rubric.model()["equal_weighted"] is True
     assert "sensitivity analysis" in rubric.model()["weighting"]
 
@@ -2616,21 +2733,18 @@ def test_gate_4_the_schema_validates_good_records_and_rejects_bad_ones() -> None
     missing/ill-formed expected outputs rather than skipping it."
 
     The reject half is asserted here in full. The "all corpus cases" half is
-    asserted against the committed exemplar, because the corpus ground truth
-    itself is authored in S2 against this schema - see
-    `test_deferred_gate_items_are_named`.
+    asserted against the committed exemplar rather than against authored corpus
+    ground truth, because that ground truth is S2's to write - it does not exist
+    yet. Stating that plainly is the point: this gate is met for the schema and
+    the validator, not for a corpus of real cases.
     """
     document = load_and_validate(REPO_ROOT / "eval" / "ground_truth" / "example.json")
     assert document["cases"]
 
     broken = json.loads(json.dumps(document))
     del broken["cases"][0]["expected"]
-    try:
+    with pytest.raises(GroundTruthError):
         validate(broken)
-    except GroundTruthError:
-        pass
-    else:  # pragma: no cover - the gate is that this branch is unreachable
-        raise AssertionError("a case with no expected block was accepted")
 
 
 def test_gate_5_every_corpus_resource_shape_has_a_defined_identity() -> None:
@@ -2760,7 +2874,53 @@ context extractor, and the scoring engine that enforces the coherence rules S1
 carries as data.
 ```
 
-- [ ] **Step 5: Mark the spec approved**
+- [ ] **Step 5: Correct two verified errata in the spec**
+
+**Erratum 1 — §2.2 twin example.** The spec illustrates `canonical_id` with a twin pair that corpus v0 does not contain. Measured against `artifacts/rule-inventory.json`: there are exactly 45 trivy/tfsec twin pairs, and `AWS-0057`, `AWS-0082` and `AWS-0088` are the three tfsec-only rules — trivy never emits `AWS-0088`. The canonicalization rule itself is correct and unchanged; only the example is wrong. Leaving it is precisely the §G3 defect class the spec defines.
+
+In `docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md` §2.2, replace:
+
+```markdown
+`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0088`, tfsec emits `AVD-AWS-0088`, both are the same Aqua rule → `canonical_id = AWS-0088`.
+```
+
+with:
+
+```markdown
+`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0026`, tfsec emits `AVD-AWS-0026`, both are the same Aqua rule → `canonical_id = AWS-0026`. (Corpus v0 holds 45 such twin pairs; `AWS-0057`, `AWS-0082` and `AWS-0088` are tfsec-only and have no trivy counterpart, so they canonicalize without pairing.)
+```
+
+The same wrong value appears in §2.1's row-schema example three lines above. Correcting only the sentence that surfaced the problem leaves the document contradicting itself, so grep the whole spec for the value before calling an erratum closed. In §2.1, replace:
+
+```json
+{ "scanner": "trivy", "rule_id": "AWS-0088", "canonical_id": "AWS-0088",
+  "class_id": "storage-encryption-at-rest", "title": "..." }
+```
+
+with:
+
+```json
+{ "scanner": "tfsec", "rule_id": "AVD-AWS-0026", "canonical_id": "AWS-0026",
+  "class_id": "storage-encryption-at-rest", "title": "..." }
+```
+
+Two reasons for the tfsec form: it is a row that genuinely exists in the committed mapping, and it is the case where `canonical_id` actually differs from `rule_id` — the old example had them identical and so illustrated nothing about the field it exists to explain. Verify all four values against `src/iacrisk/data/taxonomy.json` before writing.
+
+**Erratum 2 — §3.4 misattributes a warning to phase0.** The spec's first §3.4 bullet calls the severity-level-1 defect "grave, and exactly the phase0 warning". Phase0 issued no such warning. Its §A.3 item 4 records that only four levels were observed across the 566 severity-carrying rows and then *hands the decision to S1*: "S1's normalization spec has to say what the fifth level is for, or drop to four." The defect was real and the correction stands; only the attribution is wrong — a citation the cited artifact does not support, which is §G3.
+
+In §3.4, replace:
+
+```markdown
+- **Severity level-1 "informational" → UNKNOWN (grave, and exactly the phase0 warning).**
+```
+
+with:
+
+```markdown
+- **Severity level-1 "informational" → UNKNOWN (grave, and the question phase0 left to S1).** Phase0 §A.3 item 4 recorded only four observed levels and required S1 to "say what the fifth level is for, or drop to four"; it did not itself warn against reading the fifth level as informational. This bullet is that answer.
+```
+
+- [ ] **Step 6: Mark the spec approved**
 
 In `docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md`, change the status line:
 
@@ -2774,7 +2934,7 @@ to:
 **Status:** approved at the review gate; implemented by `docs/superpowers/plans/2026-09-19-s1-preimplementation-artifacts.md`
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add tests/test_s1_gates.py CLAUDE.md docs/superpowers/specs/2026-09-19-s1-preimplementation-artifacts-design.md

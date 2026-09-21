@@ -1,0 +1,361 @@
+{
+  "schema_version": 1,
+  "structure_frozen": true,
+  "freeze_note": "The STRUCTURE is frozen: the six factors, their ranges, the 1-28 bounds and the band boundaries, fixed at the end of S1 before any scoring output exists. Later movement is reported as sensitivity analysis (PLAN Q10), never tuned to fit test data. This flag does not cover the per-level citation text - see citations_audited.",
+  "citations_audited": false,
+  "citations_note": "The per-level source strings are NOT independently audited as shipped. They were produced by the verification pass design spec section 3.1 describes, but that pass's corrections (section 3.4) were written into the spec prose and did not reach this artifact until commit bf72673 - a gap that survived six task reviews because every check asserted this file was byte-identical to its design input, and the input carried the same uncorrected text. The 14 corrections section 3.4 enumerates are now applied. What has not happened is an independent re-verification of all 33 levels against the primary sources, so the structural freeze above must not be read as a warrant for the citations. Any dissertation text quoting a source string needs that audit first; flip this flag when its output is committed.",
+  "model": {
+    "formula": "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk",
+    "equal_weighted": true,
+    "minimum_score": 1,
+    "maximum_score": 28,
+    "weighting": "Equal weights are the primary model; any weighting scheme is a tunable reported as sensitivity analysis (PLAN Q10)."
+  },
+  "bands": [
+    {
+      "name": "Critical",
+      "minimum": 22,
+      "maximum": 28,
+      "action": "Block deployment, remediate immediately"
+    },
+    {
+      "name": "High",
+      "minimum": 16,
+      "maximum": 21,
+      "action": "Fix before production / require approval"
+    },
+    {
+      "name": "Medium",
+      "minimum": 9,
+      "maximum": 15,
+      "action": "Schedule in normal sprint/backlog"
+    },
+    {
+      "name": "Low",
+      "minimum": 1,
+      "maximum": 8,
+      "action": "Monitor / document / fix when convenient"
+    }
+  ],
+  "factors": [
+    {
+      "key": "severity",
+      "name": "Scanner severity (baseline)",
+      "minimum": 1,
+      "maximum": 5,
+      "levels": [
+        {
+          "score": 1,
+          "meaning": "Reserved for a genuine CVSS None / 0.0 band, NOT exercised by corpus v0. Trivy's fifth level is UNKNOWN, which means severity-undetermined rather than benign, and it routes to the unresolved default rather than to this slot (design spec section 3.3). The slot is defined a priori so the scale need not shift if a true CVSS None finding ever appears.",
+          "justification": "Bottom CVSS band ('None') maps to the bottom integer, keeping the scale complete and future-proof without disturbing the four observed levels above it.",
+          "source": "CVSS v3.1 'None' band (score 0.0); OWASP Risk Rating Methodology 'Note' finding; NIST SP 800-30 Rev.1 'Very Low' (0–4 / representative value 0)."
+        },
+        {
+          "score": 2,
+          "meaning": "Scanner-native LOW. Minor baseline urgency; observed lowest level in corpus v0.",
+          "justification": "Fourth CVSS band maps to score 2; it is the lowest severity actually exercised by corpus v0 (Trivy/tfsec four-level vocabulary: CRITICAL/HIGH/MEDIUM/LOW).",
+          "source": "CVSS v3.1 'Low' band (0.1–3.9); NIST SP 800-30 Rev.1 'Low' (5–20 / representative value 2)."
+        },
+        {
+          "score": 3,
+          "meaning": "Scanner-native MEDIUM. Mid-scale baseline urgency.",
+          "justification": "Central CVSS band maps to the central integer, keeping the 5-point scale monotonic and evenly ordered against the source bands.",
+          "source": "CVSS v3.1 'Medium' band (4.0–6.9); NIST SP 800-30 Rev.1 'Moderate' (21–79 / representative value 5)."
+        },
+        {
+          "score": 4,
+          "meaning": "Scanner-native HIGH. Serious but below the maximum urgency band.",
+          "justification": "Second CVSS band maps to score 4; the one-band gap below Critical mirrors the 7.0–8.9 vs 9.0–10.0 boundary in the source scale.",
+          "source": "CVSS v3.1 'High' band (7.0–8.9); NIST SP 800-30 Rev.1 App. I qualitative value 'High' (80–95 / representative value 8)."
+        },
+        {
+          "score": 5,
+          "meaning": "Scanner-native CRITICAL. Highest baseline urgency the scanner asserts about the finding.",
+          "justification": "Top band of the standardized 5-level CVSS severity scale maps to the top integer, preserving the scanner's most-urgent label 1:1.",
+          "source": "CVSS v3.1 Qualitative Severity Rating Scale — 'Critical' band (base score 9.0–10.0); corroborated by NIST SP 800-30 Rev.1 Appendix I semi-quantitative crosswalk, 'Very High' (96–100 / representative value 10)."
+        }
+      ],
+      "unresolved_default": 4,
+      "unresolved_policy": "conservative-scored",
+      "unresolved_rationale": "severity=unknown is scored as 4 (HIGH), not dropped. This governs the 489 of 1055 rows (46.4%) in corpus v0 that carry null native severity — every one of them a Checkov row, whose severity reaches JSON only via the API-key policyMetadata path (the public path leaves it null). Conservative because a code-derived absence of severity must never read as safe (scoring it 2/LOW or excluding it would falsely reassure, violating PLAN Q9's 'never silently defaulted to low'); yet defaulting to 5/CRITICAL would push ~46% of the corpus into the Critical band and destroy the prioritization signal the framework exists to add. HIGH=4 places unknowns in the 'fix before production / require approval' band — above the neutral midpoint, below the deployment-blocking ceiling. The per-scanner unknown-severity rate is reported as an evaluation-integrity metric (PLAN Q3 R3 #4), and unknown remains an explicit first-class state in the finding record and output JSON, distinct from unmapped:* findings which are separately excluded from prioritization-quality claims (PLAN Q7 R2 #9). The exact numeric value 4 is a rubric-author input pending independent supervisor review and is a candidate for the Q10 sensitivity analysis; it is not tuned to fit test data.",
+      "sensitivity_sweep": null
+    },
+    {
+      "key": "exposure",
+      "name": "Public Exposure (internet/network reachability of the flagged resource, integer 0-5); resolved only over the closed supported-pattern list in PLAN.md Q9: SG/NSG ingress open to 0.0.0.0/0 or ::/0 attached to the target, public-IP / publicly_accessible / public-endpoint flags, public storage (public-access-block disabled or public ACL/policy), and Kubernetes Service LoadBalancer/NodePort and Ingress. Multi-hop routing, VPC peering/transit-gateway, and DNS-based reachability are explicitly unsupported and marked unresolved, never low.",
+      "minimum": 0,
+      "maximum": 5,
+      "levels": [
+        {
+          "score": 0,
+          "meaning": "No exposure surface. Not network-reachable via any supported pattern; resource is internal-only (e.g. private subnet with no open ingress, storage with public-access-block enabled and no public ACL/policy).",
+          "justification": "Reachability requires local/physical access rather than the network stack, so CVSS places it at the bottom AV tier and NIST rates initiation likelihood Very Low.",
+          "source": "CVSS v3.1 Attack Vector = Physical/Local (AV:P 0.20 / AV:L 0.55), the lowest-exploitability vector tier; NIST SP 800-30 Rev.1 App. G Table G-2 likelihood of initiation = Very Low."
+        },
+        {
+          "score": 1,
+          "meaning": "Network-reachable only within a private/adjacent trust boundary; not internet-facing (e.g. intra-VPC-only resource, ClusterIP service reachable from the local subnet/VPN only).",
+          "justification": "A network path exists but is confined to the trusted adjacent network, matching CVSS AV:A (0.62) which sits below Network (0.85), so initiation likelihood is Low.",
+          "source": "CVSS v3.1 Attack Vector = Adjacent (AV:A, 0.62): exploitable only from a logically adjacent topology (shared local network/VPN); NIST SP 800-30 App. G likelihood = Low."
+        },
+        {
+          "score": 2,
+          "meaning": "Internet-reachable in principle but access is materially constrained/mediated: ingress limited to a narrow public CIDR, or K8s NodePort exposed only through a node firewall.",
+          "justification": "The vector is Network per CVSS, but the documented mediating control (narrow CIDR / node firewall that NSA-CISA calls out for NodePort) holds initiation likelihood below a wide-open path.",
+          "source": "CVSS v3.1 Attack Vector = Network (AV:N 0.85) tempered by a restricting control; NSA-CISA Kubernetes Hardening Guidance (network-separation): NodePort publishes the service on every node's IP as a reachable but firewall-mediated surface; NIST SP 800-30 App. G likelihood interpolated between Low and Moderate; the scale defines no intermediate tier, so this is an ordinal placement rather than a quoted tier."
+        },
+        {
+          "score": 3,
+          "meaning": "Directly internet-exposed managed endpoint via a public flag, with access still gated by identity/authentication (e.g. publicly_accessible=true database, public-endpoint flag, K8s Service type LoadBalancer).",
+          "justification": "A public endpoint/IP is present (OWASP A05 misconfiguration; NSA-CISA external LoadBalancer) making the surface internet-facing, but a remaining authn/authz layer (CVSS PR:not-None) keeps initiation likelihood Moderate rather than High.",
+          "source": "OWASP Top 10 A05:2021 Security Misconfiguration (unnecessary public endpoints enabled); NSA-CISA Kubernetes Hardening Guidance: type LoadBalancer publishes the service externally; CVSS v3.1 AV:N with Privileges Required present; NIST SP 800-30 App. G likelihood = Moderate."
+        },
+        {
+          "score": 4,
+          "meaning": "Broad, unauthenticated open network path to the resource: security-group / NSG ingress open to 0.0.0.0/0 (or ::/0) attached to a compute/storage target, port reachable by any internet host with no network-layer gate.",
+          "justification": "Any internet host can reach the port with no network-layer restriction (CVSS AV:N + PR:None; NSA/OWASP any-source-ingress misconfiguration), so NIST initiation likelihood is High and only application-layer authn (if any) remains.",
+          "source": "PLAN.md Q9 open-ingress pattern; NSA cloud/network guidance on restricting inbound from any source (0.0.0.0/0); OWASP A05:2021 Security Misconfiguration; CVSS v3.1 AV:N with Privileges Required: None; NIST SP 800-30 App. G likelihood = High."
+        },
+        {
+          "score": 5,
+          "meaning": "Public asset exposure fully realized: the resource content itself is world-readable/writable with no authentication (e.g. storage bucket with public-access-block disabled plus a public ACL or public policy statement, serving anonymous internet users).",
+          "justification": "Anonymous internet users can access the data with zero authentication (OWASP A01 broken access control; CVSS AV:N/PR:None/S:C), the reasonable worst case, so it takes the ladder ceiling and NIST Very High likelihood.",
+          "source": "OWASP Top 10 A01:2021 Broken Access Control and OWASP IaC Security (public object storage); PLAN.md Q9 enumerated public-bucket combination; CVSS v3.1 AV:N + Privileges Required: None + Scope: Changed; NIST SP 800-30 App. G likelihood = Very High."
+        }
+      ],
+      "unresolved_default": 3,
+      "unresolved_policy": "sensitivity-analysed",
+      "unresolved_rationale": "Concrete value = 3. An unresolved exposure factor (a reachability path outside the closed supported-pattern list, or a literals-only parse that hits a variable/interpolated/unresolved value per Q9) is scored at 3 — the \"directly internet-exposed, access-gated\" point — in the frozen primary model, never at 0 or 1, satisfying Q9's hard rule that unresolved is never scored as low-exposure. The evaluation then reports a bounded sensitivity sweep across the plausible internet-reachable range [2..5] showing how rankings move, per Q9 option (c) and Q10's sensitivity framing. Why 3 is conservative and not distorting: it sits strictly above the internal/adjacent tier (0-1) so an unknown never falsely reassures, following CVSS's reasonable-worst-case convention of assuming Network reachability for an unspecified vector; but it stops short of the ceiling (5), which asserts confirmed anonymous public access — a stronger claim than an unresolved parse can support — thereby avoiding the ranking distortion Q9 warns a fixed maximal default would introduce for exposure. Sensitivity-analysed is chosen over conservative-scored precisely because Q9 names exposure as a factor where a single fixed numeric default distorts rankings, and over excluded-from-claims because dropping unresolved-exposure findings would understate serious real reachability; the sweep keeps them in the ranking while quantifying the uncertainty.",
+      "precedence_rule": "A 0.0.0.0/0 (or ::/0) network-layer opening forces exposure >= 4. Identity-gating modulates only within a network-openness tier, never across it: an authentication layer can move a finding between levels inside a tier, but can never pull an any-source opening below 4. Design spec section 3.4.",
+      "sensitivity_sweep": [
+        2,
+        5
+      ]
+    },
+    {
+      "key": "privilege",
+      "name": "IAM Privilege Scope (privilege) — breadth of administrative/sensitive permission granted by the flagged principal, policy, RBAC binding, or workload security context; integer 0-5, additive.",
+      "minimum": 0,
+      "maximum": 5,
+      "levels": [
+        {
+          "score": 0,
+          "meaning": "Not applicable / no privilege dimension. The finding touches no identity, policy, role, RBAC binding, or workload capability; no permission is granted beyond the resource's own self-contained authority.",
+          "justification": "With no permission construct in the finding there is nothing to score on this axis, so any value above 0 would double-count risk already captured by other factors.",
+          "source": "CVSS v3.1/v4.0 Scope = Unchanged (S:U) — the vulnerable component grants no authority over any component beyond its own security scope; corroborated by NIST SP 800-30 Rev.1 App. H impact tier 'Very Low' (negligible)."
+        },
+        {
+          "score": 1,
+          "meaning": "Minimal, read-only or single-resource permission. A narrowly scoped principal: read/list on one resource or a single non-mutating verb, with no ability to alter identity or escalate.",
+          "justification": "Blast radius is bounded to observation of one resource with no cross-resource or mutating authority, the least-privilege ideal the guidance endorses.",
+          "source": "NSA-CISA Kubernetes Hardening Guidance (v1.2) least-privilege RBAC — a Role scoped to specific verbs on specific resources; aligns with NIST 800-30 impact 'Low'. CVSS Privileges Required is deliberately not cited here: PR describes what an attacker must already hold, not the authority a grant confers."
+        },
+        {
+          "score": 2,
+          "meaning": "Moderate, service-scoped write permission without escalation paths. Modify/create on a bounded resource set within a single service; no identity mutation and no privilege-granting actions (no iam:*, PassRole, or policy attach).",
+          "justification": "Meaningful mutating capability but contained to one service and structurally unable to self-escalate, matching a moderate contained-impact tier.",
+          "source": "NIST SP 800-30 Rev.1 App. H impact 'Moderate'; OWASP Top 10 2021 A01:2021 Broken Access Control — authorization confined to the function's intended scope."
+        },
+        {
+          "score": 3,
+          "meaning": "Broad single-service control OR an escalation-adjacent action. Full control of one service (e.g. s3:*) or an action that indirectly enables escalation (scoped iam:PassRole, attach a scoped policy, assume a specific role).",
+          "justification": "Crosses a trust/scope boundary via broad service authority or an indirect escalation vector, but stops short of account- or cluster-wide reach.",
+          "source": "CVSS Scope = Changed (S:C) — authority can affect resources beyond the vulnerable component's own scope; OWASP A01:2021 privilege-escalation; NSA-CISA over-permissive service account exceeding namespace need; NIST 800-30 'High'."
+        },
+        {
+          "score": 4,
+          "meaning": "Cross-service / cross-namespace sensitive privilege or direct escalation enabler. Wildcard actions across multiple services, unrestricted iam:PassRole / CreatePolicyVersion / sts:AssumeRole, or RBAC that can create/bind roles, read secrets cluster-wide, or exec into pods.",
+          "justification": "A principal holding this can pivot toward full control across the account or cluster, the standards' defining condition for an escalation-capable grant just below total compromise.",
+          "source": "NSA-CISA Kubernetes Hardening Guidance — permissions to create/bind RBAC, access secrets, or pods/exec are named escalation paths; CVSS S:C with high subsequent-system impact; NIST 800-30 'High', placed at the upper end of that tier; the scale defines no separate tier above it."
+        },
+        {
+          "score": 5,
+          "meaning": "Full administrative / unbounded authority. Action=\"*\" Resource=\"*\" (AWS admin), cluster-admin ClusterRoleBinding, or wildcard RBAC (verbs:[\"*\"], resources:[\"*\"]) — unbounded root-equivalent control.",
+          "justification": "Unbounded blast radius with no containment is the maximum privilege risk the standards recognise, so it anchors the factor's ceiling.",
+          "source": "NSA-CISA Kubernetes Hardening Guidance explicit cluster-admin / wildcard-RBAC prohibition; CVSS Scope = Changed (S:C), enabling total system compromise; OWASP A01:2021 (top-ranked risk); NIST 800-30 'Very High' (severe, multiple/all functions)."
+        }
+      ],
+      "unresolved_default": 4,
+      "unresolved_policy": "conservative-scored",
+      "unresolved_rationale": "Concrete default = 4. When privilege scope cannot be resolved from literals — wildcards behind variables/interpolation, indirect or managed-policy attachment, RBAC via aggregated ClusterRoles, or conditions the bounded extractor cannot evaluate — the finding is marked `unresolved` (first-class in the record, never silently defaulted low) and conservatively scored at 4, i.e. treated as escalation-enabling pending proof. This is conservative because PLAN.md Q9 requires IAM unresolved states to be 'not low-risk' so the score never falsely reassures, yet 4 (not the ceiling 5) is used because 5 is reserved for confirmed unbounded admin/cluster-admin literals and inflating every unresolved case to the ceiling would distort the Critical band. Per-factor unresolved rate is reported (PLAN.md #10) and high-unresolved cases are analysed separately; the 4-vs-5 choice for unresolved IAM is additionally carried into the Q10 model-sensitivity analysis rather than tuned to fit.",
+      "sensitivity_sweep": null
+    },
+    {
+      "key": "sensitivity",
+      "name": "Resource Sensitivity",
+      "minimum": 0,
+      "maximum": 5,
+      "levels": [
+        {
+          "score": 0,
+          "meaning": "No confidential data at stake — public-by-design or non-data resource (public static-site bucket, non-sensitive telemetry/log sink, empty scaffolding resource).",
+          "justification": "C:N defines a loss with no impact to confidentiality; an asset holding no protected data maps to the scale floor.",
+          "source": "CVSS v3.1 Base metric — Confidentiality Impact = None (C:N)."
+        },
+        {
+          "score": 1,
+          "meaning": "Minimal sensitivity — low-value internal data whose disclosure is inconsequential (build artifacts, ephemeral dev scratch, non-sensitive static config).",
+          "justification": "Very Low = negligible adverse effect on operations/assets, matching disclosure of low-value internal data.",
+          "source": "NIST SP 800-30 Rev.1, Appendix H, Table H-3 — impact = Very Low (negligible adverse effect)."
+        },
+        {
+          "score": 2,
+          "meaning": "Limited sensitivity — internal business data whose disclosure causes limited operational harm (internal metrics, non-PII application data).",
+          "justification": "800-30 Low = limited adverse effect and CVSS CR:Low marks an asset of limited confidentiality importance — the same tier from both standards.",
+          "source": "NIST SP 800-30 Table H-3 impact = Low, cross-anchored to CVSS v3.1 Environmental metric Confidentiality Requirement CR:Low."
+        },
+        {
+          "score": 3,
+          "meaning": "Moderate sensitivity — regulated-but-standard business data (internal PII, customer records, ordinary financial records).",
+          "justification": "Moderate = serious adverse effect and CR:Medium marks an asset whose confidentiality loss carries serious business impact.",
+          "source": "NIST SP 800-30 Table H-3 impact = Moderate (serious adverse effect), cross-anchored to CVSS Confidentiality Requirement CR:Medium."
+        },
+        {
+          "score": 4,
+          "meaning": "High sensitivity — sensitive regulated data (PII/PHI, PCI cardholder data, confidential IP/trade secrets).",
+          "justification": "High = severe adverse effect; CR:High and OWASP's high data-sensitivity technical-impact score both denote disclosure of extensive sensitive data.",
+          "source": "NIST SP 800-30 Table H-3 impact = High (severe adverse effect), cross-anchored to CVSS CR:High and OWASP Risk Rating Methodology loss-of-confidentiality (extensive critical data disclosed, value 7)."
+        },
+        {
+          "score": 5,
+          "meaning": "Maximal sensitivity — crown-jewel secrets whose compromise cascades: credentials, private keys, KMS master key material, token/secret stores.",
+          "justification": "Very High = catastrophic effect; NSA-CISA and OWASP both treat secrets/key material as the highest-protection data class whose exposure enables cascading compromise (CVSS scope change).",
+          "source": "NIST SP 800-30 Table H-3 impact = Very High (multiple severe or catastrophic effects), cross-anchored to NSA-CISA Kubernetes Hardening Guidance (Secrets management) and OWASP A02:2021 Cryptographic Failures."
+        }
+      ],
+      "unresolved_default": 3,
+      "unresolved_policy": "conservative-scored",
+      "unresolved_rationale": "3 (NIST SP 800-30 Moderate / CVSS CR:Medium), applied when no declared-context match exists, with the default-fallback rate reported separately per PLAN Q4. Conservative in the security direction: an undeclared asset is assumed to hold serious-impact business data (never treated as no-data 0, which would falsely reassure), yet not flattened to crown-jewel 5, which would inflate every finding into Critical/High and destroy the factor's rank-separation power. Consistent with Q9's literals-only rule — Resource Sensitivity is a declared-context factor with no code literal to read, so its absence takes a documented conservative default rather than a silent low.",
+      "sensitivity_sweep": null
+    },
+    {
+      "key": "criticality",
+      "name": "Environment Criticality (declared-context; production vs staging vs development)",
+      "minimum": 0,
+      "maximum": 5,
+      "levels": [
+        {
+          "score": 0,
+          "meaning": "No production relevance: ephemeral/throwaway sandbox, scratch, or decommissioned resource that never holds real data and serves no users. Not part of the deployment promotion ladder.",
+          "justification": "Anchors the score floor to 800-30's lowest defined impact tier: a compromise here has negligible mission/business consequence, so it should contribute nothing to environment-driven priority.",
+          "source": "NIST SP 800-30 Rev 1, Appendix H, Table H-3 — impact tier 'Very Low' (negligible adverse effect on operations/assets/individuals); FIPS 199 — below the 'Low' security-categorization floor (no meaningful confidentiality/integrity/availability objective)."
+        },
+        {
+          "score": 1,
+          "meaning": "Development / local-dev environment: individual developer work, synthetic or seeded data, no external users, no path to live traffic.",
+          "justification": "Dev is the lowest real environment on the promotion ladder; 800-30 'Low' impact matches a breach that is contained to developer-controlled, non-authoritative data.",
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Low' (limited adverse effect); FIPS 199 'Low' potential impact; OWASP A05:2021 Security Misconfiguration — dev sits at the base of the dev/QA/prod environment ladder whose non-uniform hardening it names as a root cause."
+        },
+        {
+          "score": 2,
+          "meaning": "Integration / QA / automated-test environment: shared non-production, test data, may mirror production topology but not production data or real users.",
+          "justification": "One step above dev because QA is shared and prod-shaped (wider blast radius than a single dev box), but NSA-CISA workload isolation keeps it below any prod-data-bearing tier.",
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — 'Low'→'Moderate' boundary; NSA-CISA Kubernetes Hardening Guidance — namespace / network-policy separation of non-production from production workloads."
+        },
+        {
+          "score": 3,
+          "meaning": "Staging / pre-production / UAT: production-like, may carry copies of production data or gate the production release; a compromise is a credible stepping-stone into production.",
+          "justification": "800-30 'Moderate' captures 'serious' but not severe impact; CVSS Environmental CR/IR/AR=Medium encodes that the asset supports the mission indirectly, matching staging's role as a gate to prod.",
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Moderate' (serious adverse effect); CVSS v3.1/v4.0 Environmental Security Requirements (CR/IR/AR) = Medium; OWASP Top 10 A05:2021 Security Misconfiguration, whose environment-parity finding (non-uniform hardening across the dev/QA/prod ladder) is what carries the elevation of pre-production that touches production data. NSA-CISA is silent on environment ladders and is deliberately not cited at this level."
+        },
+        {
+          "score": 4,
+          "meaning": "Production (standard): live environment serving real users and authoritative data, no special regulatory or existential status.",
+          "justification": "Live prod maps to 800-30 'High' (severe effect on operations/assets/individuals) and to CVSS Environmental CR/IR/AR=High; this is the point at which environment criticality should materially raise priority.",
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'High' (severe adverse effect); FIPS 199 'Moderate'→'High' categorization; CVSS v3.1/v4.0 Environmental Security Requirements (CR/IR/AR) = High (asset supports a live mission function)."
+        },
+        {
+          "score": 5,
+          "meaning": "Production, business-critical / regulated / crown-jewel: revenue-critical, safety-critical, or in regulatory scope (e.g. PCI-DSS, HIPAA); outage or breach is catastrophic or existential.",
+          "justification": "Reserves the ceiling for 800-30's top impact tier — catastrophic organizational consequence — so it is not spent on ordinary production; requires an explicit declared crown-jewel/regulated designation.",
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Very High' (multiple severe or catastrophic adverse effects); FIPS 199 'High' potential impact; CVSS Environmental group at maximum (CR/IR/AR=High combined with elevated Modified Base metrics)."
+        }
+      ],
+      "unresolved_default": 4,
+      "unresolved_policy": "conservative-scored",
+      "unresolved_rationale": "Concrete default = 4 (Production, standard). Environment Criticality is a Q4 declared-context factor, so an absent/undeclared value takes a documented default and is counted in the default-fallback rate (kept separate from the Q9 extractor `unresolved` rate). The default is set to 4 rather than 0/1 because the governing rule (PLAN Q4/Q9, CLAUDE.md) forbids silently treating a missing contextual value as low — under-scoring an actually-production resource is the false-reassurance failure mode the framework exists to prevent. It is set to 4 (Production, standard = NIST 800-30 'High' impact), not 5, because level 5 requires an explicit declared regulated/crown-jewel designation; fabricating the catastrophic ceiling from missing data would over-inflate the top priority band and distort the ranking. Thus 4 is the conservative-but-not-maximal assumption: 'assume the risk-relevant (live-production) value pending proof' without inventing the highest tier. Chosen as conservative-scored (not excluded-from-claims or sensitivity-analysed) because, unlike exposure/IAM where a numeric default can silently distort code-derived rankings, criticality's declared-context seam already reports its fallback rate as an evaluation-integrity metric, so the assumption is transparent and auditable rather than hidden.",
+      "sensitivity_sweep": null
+    },
+    {
+      "key": "encryption",
+      "name": "Encryption Risk (required encryption / data-protection missing)",
+      "minimum": 0,
+      "maximum": 3,
+      "levels": [
+        {
+          "score": 0,
+          "meaning": "No encryption risk: the required encryption / data-protection control is present and satisfied, or the flagged resource holds no data-at-rest or data-in-transit that requires protection. No loss of confidentiality follows from this finding's encryption dimension.",
+          "justification": "C:N is the exact standard concept for a resource whose confidentiality is not degraded, so a satisfied/not-applicable encryption control scores 0.",
+          "source": "CVSS v3.1 base metric Confidentiality Impact = None (C:N): \"There is no loss of confidentiality within the impacted component.\" Corroborated by NIST SP 800-30 Rev.1 Appendix H, Table H-3 impact scale \"Very Low\" (negligible adverse effect)."
+        },
+        {
+          "score": 1,
+          "meaning": "Low encryption risk: a defense-in-depth encryption gap where a compensating control exists or exposure is inherently limited (e.g. platform-default at-rest encryption still applies, or optional in-transit encryption on an internal-only path). Confidentiality loss is bounded and partial.",
+          "justification": "C:L is defined as bounded, limited confidentiality loss, which is exactly the compensating-control / limited-exposure encryption gap, so it anchors score 1.",
+          "source": "CVSS v3.1 Confidentiality Impact = Low (C:L): \"There is some loss of confidentiality ... the amount or kind of loss is limited.\" Aligns with NIST SP 800-30 Rev.1 impact \"Low\"."
+        },
+        {
+          "score": 2,
+          "meaning": "Moderate-to-high encryption risk: encryption of data-at-rest or in-transit is genuinely missing on a data-bearing resource with no confirmed compensating control, where the data is not positively established as regulated/mandated. Total loss of confidentiality of the protected data is possible.",
+          "justification": "A02:2021 names the unencrypted data-store/transport as the vulnerability class and C:H sets the impact to total-but-unscoped, which together define a confirmed gap without a mandate, scoring 2.",
+          "source": "OWASP Top 10 2021 A02:2021 Cryptographic Failures (formerly A03:2017 Sensitive Data Exposure): failure to encrypt data at rest / in transit; combined with CVSS v3.1 Confidentiality Impact = High (C:H), \"total loss of confidentiality.\" NIST SP 800-30 Rev.1 impact \"Moderate.\""
+        },
+        {
+          "score": 3,
+          "meaning": "Critical encryption risk: an explicitly required encryption / data-protection control is missing where the requirement is positively established, either by a standard-mandated hardening control (e.g. etcd Secret encryption at rest, TLS for traffic crossing a trust boundary) or by regulated/customer-managed-key requirements. This is the factor's \"required ... missing\" case.",
+          "justification": "NSA-CISA states these encryption controls as requirements rather than recommendations, so a missing mandated control at NIST \"High\" impact is the only level that satisfies the word \"required\" and thus scores the 0-3 ceiling of 3.",
+          "source": "NSA-CISA Kubernetes Hardening Guidance (encryption of Secrets at rest via etcd encryption and TLS for all in-transit traffic stated as recommended hardening controls) and NSA-CISA cloud guidance \"encrypt data at rest and in transit\"; combined with NIST SP 800-30 Rev.1 impact \"High\" (severe or catastrophic loss of confidentiality) where the control is mandated."
+        }
+      ],
+      "unresolved_default": 2,
+      "unresolved_policy": "conservative-scored",
+      "unresolved_rationale": "2. When the encryption state cannot be read from a literal (attribute set via variable/interpolation, or dependent on an unresolvable separate KMS-key resource), the control is treated as missing on a data-bearing resource (CVSS C:H, no compensating control confirmable) rather than assumed satisfied. It is bounded at 2 and never escalated to 3, because level 3 requires positively-established mandate evidence that a non-literal read cannot supply. Conservative-scored (not excluded-from-claims) is defensible here because the encryption gap itself is already confirmed by the scanner finding that produced the record; only the degree is uncertain, and across the narrow 0-3 range a conservative point estimate does not distort ranking the way an unresolved exposure/IAM value would (the Q9 caveat that singles out exposure and IAM). The unresolved state remains first-class in the finding record and output JSON.",
+      "sensitivity_sweep": null
+    }
+  ],
+  "coherence_rules": {
+    "iam_governed_resource_inheritance": "For a resource-attached IAM finding, Sensitivity and Criticality are inherited from the governed resource's declared context (available via the Q4 context-join, no graph resolve). A pure account-level policy with no attachment keeps the band cap and is documented as a stated limitation of the transparent additive model. Design spec section 3.5(1).",
+    "unresolved_default_reporting": "Band distribution is reported split by count-of-defaulted-factors; findings above a defaulted-factor threshold are flagged low-confidence and excluded from prioritization-quality claims; the stacked-default total is carried into the Q10 sensitivity analysis. Design spec section 3.5(2).",
+    "severity_context_fencing": "Scanner severity is a context-free rule baseline. The five context factors are instance-level deltas scored only from resolved instance evidence and are never re-derived from the rule. class_id is never a term in the score. Design spec section 3.5(3).",
+    "encryption_sensitivity_orthogonality": "Encryption level 3 keys only on the control-mandate being an established engineering requirement; the data's regulated status raises Sensitivity alone, so the two axes share no input. Design spec section 3.5."
+  },
+  "severity_normalization": {
+    "unknown_state": "unknown",
+    "unknown_resolves_to": 4,
+    "token_scale": {
+      "CRITICAL": 5,
+      "HIGH": 4,
+      "MEDIUM": 3,
+      "LOW": 2,
+      "NONE": 1
+    },
+    "unknown_tokens": ["UNKNOWN"],
+    "null_routes_to": "unknown",
+    "reserved_unexercised": ["NONE"],
+    "per_scanner": {
+      "checkov": {
+        "vocabulary": [],
+        "observed_in_corpus_v0": [],
+        "note": "Severity reaches checkov's JSON only through the API-key policyMetadata path; the public path fills guideline and id and leaves severity null. 489 of 489 rows null in corpus v0."
+      },
+      "trivy": {
+        "vocabulary": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"],
+        "observed_in_corpus_v0": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "note": "UNKNOWN is severity-undetermined, not an informational band. It routes to the unknown state, never to level 1."
+      },
+      "tfsec": {
+        "vocabulary": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "observed_in_corpus_v0": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "note": "119 rows in corpus v0, all four levels exercised."
+      }
+    },
+    "corpus_v0": {
+      "rows": 1055,
+      "missing_severity_rows": 489,
+      "missing_severity_rate": 0.464,
+      "all_missing_are_checkov": true,
+      "note": "A corpus observation measured on this host, not a scanner contract."
+    },
+    "reporting": "The per-scanner unknown-severity rate is reported as an evaluation-integrity metric (PLAN Q3 #4); unknown stays a first-class state in the finding record and the output JSON."
+  }
+}

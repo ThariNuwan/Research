@@ -1,6 +1,6 @@
 # S1 — Phase-1 Pre-Implementation Specification Artifacts (Design)
 
-**Status:** design, awaiting review-gate approval
+**Status:** approved at the review gate; implemented by `docs/superpowers/plans/2026-09-19-s1-preimplementation-artifacts.md`
 **Author:** Jayathissa E.A.T.N. (258243J)
 **Date:** 2026-09-19
 **Spec authority:** `docs/PLAN.md` (locked, Codex R4 APPROVED) — "Pre-implementation deliverables" and Q1–Q10.
@@ -117,7 +117,7 @@ Met in corpus v0: 255/255 mapped, 0 unmapped, all five categories populated.
 `taxonomy.json` carries one row per observed `(scanner, rule_id)` — 255 rows. Each row:
 
 ```json
-{ "scanner": "trivy", "rule_id": "AWS-0088", "canonical_id": "AWS-0088",
+{ "scanner": "tfsec", "rule_id": "AVD-AWS-0026", "canonical_id": "AWS-0026",
   "class_id": "storage-encryption-at-rest", "title": "..." }
 ```
 
@@ -125,11 +125,13 @@ Keying on the raw `(scanner, rule_id)` as-emitted (not a pre-normalized key) kee
 
 ### 2.2 Canonical identity for cross-scanner equality
 
-`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0088`, tfsec emits `AVD-AWS-0088`, both are the same Aqua rule → `canonical_id = AWS-0088`. Checkov IDs (`CKV_AWS_*`, `CKV2_AWS_*`, `CKV_K8S_*`, `CKV_DOCKER_*`, `CKV_SECRET_*`) are their own canonical form.
+`canonical_id` strips a leading `AVD-`: trivy emits `AWS-0026`, tfsec emits `AVD-AWS-0026`, both are the same Aqua rule → `canonical_id = AWS-0026`. (Corpus v0 holds 45 such twin pairs; `AWS-0057`, `AWS-0082` and `AWS-0088` are tfsec-only and have no trivy counterpart, so they canonicalize without pairing.) Checkov IDs (`CKV_AWS_*`, `CKV2_AWS_*`, `CKV_K8S_*`, `CKV_DOCKER_*`, `CKV_SECRET_*`) are their own canonical form.
 
 Two guarantees asserted as tests:
 - **Co-location.** Every trivy `AWS-####` and its tfsec `AVD-AWS-####` twin map to the same `class_id`. True by construction for the 45 twin pairs (trivy took tfsec's class directly during derivation); the test locks it so no future edit can split a twin.
-- **Dedupe key.** `canonical_id` + resource identity (§5) is what recognizes a trivy finding and its tfsec twin on one resource as one logical finding (the deduplication half of the Q7/Q8 alert-reduction number).
+- **Dedupe key.** The key itself is defined in §5.4 — `(canonical resource identity, normalized issue-class, violation fingerprint)` — and that is what the implementation uses. `canonical_id` is not a term in it. Its role here is upstream: the co-location guarantee above is what makes a trivy finding and its tfsec twin carry the *same* `class_id`, which is what lets the §5.4 key recognise them as one logical finding (the deduplication half of the Q7/Q8 alert-reduction number).
+
+  Note the consequence, because it is a reported metric: keying on issue-class rather than on `canonical_id` collapses **any** two findings sharing a class on one resource with one fingerprint, not only Aqua twins. That is the intended behaviour — two rules flagging the same missing control on the same attribute are one remediation — but it means the dedup number measures class-level collapse, and it must be described that way rather than as twin-level collapse.
 
 ### 2.3 Provenance
 
@@ -145,9 +147,19 @@ Coverage is 255/255 **for corpus v0 as measured on this host** — a corpus obse
 
 Six factors, per-level definitions source-anchored to CVSS v3.1 / NIST SP 800-30 Rev.1 / FIPS 199 / OWASP Top 10 2021 / OWASP Risk Rating Methodology / NSA-CISA Kubernetes Hardening Guidance. Rubric ships in a shared config file, mirrored verbatim in the dissertation (PLAN Q5).
 
-### 3.1 Verification provenance
+### 3.1 Verification provenance, and its limits
 
-The rubric was adversarially verified by 8 web-grounded agents (6 per-factor citation/boundary/unresolved checks + 2 cross-factor coherence passes). **Result: no fabricated or misattributed standard** — every CVSS band and NIST tier verifies exactly against the primary sources. The corrections in §3.4 and the coherence resolutions in §3.5 are the pass's actionable output and are folded into the authored rubric.
+The rubric's per-level anchors were checked during design by an adversarial verification pass — 6 per-factor citation/boundary/unresolved checks plus 2 cross-factor coherence passes. Its actionable output is the corrections in §3.4 and the coherence resolutions in §3.5. **Result: no *fabricated* standard** — every CVSS band and NIST tier named corresponds to a real published tier.
+
+Three limits bound what that pass warrants. They are stated because the alternative is a claim the record cannot support, which is the §G3 defect class this document defines for itself.
+
+1. **It did find misattributions, so "verified" is not unqualified.** §3.4 records one directly: Criticality L3 sourced the pre-prod-touches-prod-data elevation to NSA-CISA, which is silent on environment ladders. An earlier version of this section claimed "no fabricated **or misattributed** standard", which its own §3.4 contradicted. The accurate claim is the narrower one above.
+
+2. **The corrections did not reach the artifact for a month.** §3.4 was written as *applied*, but the edits were made to this prose only. `rubric.json` shipped with all fourteen still present and was marked frozen, and six task reviews missed it — because every check asserted the artifact was byte-identical to its design input, and that input carried the same uncorrected text. The check compared uncorrected text against itself and could not fail for the reason that mattered. Applied to the artifact in commit `bf72673`.
+
+3. **The pass's raw output is not in this repository, and no audit of the shipped text exists.** The pass ran against a design-time working file; what survives is this section's summary. A reader can check that §3.4's corrections are applied to `rubric.json`; they cannot re-derive the pass. Accordingly `rubric.json` carries `citations_audited: false` **separately from** `structure_frozen: true`. The structural freeze is earned — the six factors, their ranges, the 1–28 bounds and the bands were computed before any scoring output existed and are pinned by tests. The citation text is not, and no test can make it so: the anchor gate only checks that a standard's *name* appears in the string, which cannot distinguish a correct citation from a plausible one.
+
+**Consequence for the dissertation.** Any text quoting a `source` string needs an independent audit of all 33 levels against the primary sources, committed as its own artifact, before it can be relied on. That audit is scoped work, not a test.
 
 ### 3.2 The six factors and unresolved policies
 
@@ -182,7 +194,7 @@ A per-scanner **raw-token → 1–5** table, version-controlled, so the baseline
 
 ### 3.4 Citation corrections applied (from the verification pass)
 
-- **Severity level-1 "informational" → UNKNOWN (grave, and exactly the phase0 warning).** Trivy's fifth level is `UNKNOWN` (severity-undetermined), not a benign informational/None band. Fixed: `UNKNOWN` routes to the unresolved default (4), not level-1/score-1 — captured in the §3.3 table. Level 1 remains reserved for a genuine CVSS None/0.0.
+- **Severity level-1 "informational" → UNKNOWN (grave, and the question phase0 left to S1).** Phase0 §A.3 item 4 recorded only four observed levels and required S1 to "say what the fifth level is for, or drop to four"; it did not itself warn against reading the fifth level as informational. This bullet is that answer. Trivy's fifth level is `UNKNOWN` (severity-undetermined), not a benign informational/None band. Fixed: `UNKNOWN` routes to the unresolved default (4), not level-1/score-1 — captured in the §3.3 table. Level 1 remains reserved for a genuine CVSS None/0.0.
 - **IAM levels 1/2/5:** drop the CVSS `PR:` parentheticals (PR = attacker prerequisite, not authority granted); the NSA-CISA / NIST anchors that carry those levels are correct and stay.
 - **Criticality L3:** the "pre-prod that touches prod data is elevated" claim is re-sourced from NSA-CISA (which is silent on environment ladders) to OWASP A05 environment-parity + NIST Moderate/CVSS CR:Medium.
 - **Encryption L0:** "Appendix G" → "Appendix H, Table H-3" (impact scale; the rest of the doc already cites H-3). **L1:** CVSS C:L quote fixed to "…the amount or kind of **loss** is limited" (not "information obtained"). **L3:** NSA-CISA framed as recommended hardening, not hard "required controls."

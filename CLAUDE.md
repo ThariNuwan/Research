@@ -69,9 +69,58 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0 complete: a pinned toolchain plus an empirical rule-ID inventory over a
-vendored corpus. Phase 1 (the five specification artifacts) is next — see
-`docs/superpowers/specs/` and `docs/superpowers/plans/`.
+S0 and S1 complete. S0 pinned the toolchain and harvested an empirical rule-ID
+inventory over a vendored corpus. S1 authored the five specification artifacts the
+runtime and the harness are built against:
+
+- `src/iacrisk/data/taxonomy.json` — 28 issue classes over the five tested
+  categories, plus one mapping row per observed `(scanner, rule_id)`. All 255
+  rule IDs in corpus v0 map; an unseen rule takes an explicit
+  `unmapped:<scanner>:<rule_id>` class rather than a guess.
+- `src/iacrisk/data/rubric.json` — the six source-anchored factors, the frozen
+  1–28 bounds and priority bands, the per-scanner severity-normalization table,
+  and the design spec's three structural coherence rules plus its orthogonality
+  note, carried as data so the scoring engine enforces them rather than
+  reinventing them.
+- `eval/ground_truth.schema.json` + `eval/ground_truth.py` — the three
+  ground-truth record types and a validator that hard-rejects a malformed case
+  rather than skipping it.
+- `src/iacrisk/identity.py` — canonical Terraform and Kubernetes identity, path
+  normalization, and the dedupe key.
+
+**Factor ranges and priority bands are frozen** as of S1, before any scoring
+output exists. Later movement is reported as sensitivity analysis (PLAN Q10),
+never tuned to fit the test data. `tests/test_s1_gates.py` holds the five
+acceptance gates and the freeze.
+
+**What the freeze does and does not cover.** `rubric.json` asserts
+`structure_frozen: true` and `citations_audited: false`, and they are separate
+claims on purpose. The structure — six factors, their ranges, the 1–28 bounds,
+the bands — was fixed before any scoring output existed, computed rather than
+asserted, and is pinned by tests. The per-level `source` strings are **not**
+audited: the verification pass behind them ran at design time, and its
+corrections sat in spec prose for a month before reaching the artifact. **Do not
+quote a `source` string in the dissertation until an audit of all 33 levels
+against the primary sources is committed.** A green suite is not that audit —
+the anchor test only checks that a standard's *name* appears in the string.
+
+Two sub-projects draw on this. **S2** authors the evaluation corpus and its
+ground truth against `eval/ground_truth.schema.json` — gate 4 is met for the
+schema and the validator, not for a corpus of real cases, which do not exist
+yet. When authoring, use `defaulted_factors` and `unresolved_factors` as the
+distinct fields they are: PLAN Q4's missing-declared-value and PLAN Q9's
+extractor-failure are reported as separate rates, and merging them makes that
+report impossible after the fact. **S3** builds the scanner adapters under
+`src/iacrisk/scanners/`, the bounded context extractor, and the scoring engine
+that enforces the coherence rules and the exposure precedence rule S1 carries as
+data. One trap to carry forward: `normalize_severity` returns `int | str`, where
+the string is the explicit `unknown` state — every call site must branch on it
+before arithmetic, or an unguarded `+` concatenates or raises rather than
+scoring.
+
+`docs/superpowers/specs/2026-09-19-s1-handoff.md` records these and five more
+residual risks in full, with what each one costs if ignored. Read it before
+starting either sub-project.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

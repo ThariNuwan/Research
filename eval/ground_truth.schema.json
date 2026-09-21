@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/258243J/iacrisk/eval/ground_truth.schema.json",
+  "title": "S1 evaluation ground truth",
+  "description": "Three record types, never merged: cases, contrastive pairs (mechanism tests), and scenario orderings (realistic tests). Design spec section 4.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "cases", "contrastive_pairs", "scenarios"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "description": {
+      "description": "Free text saying what this document is. Present so a reader can tell a schema exemplar from authored corpus ground truth without opening another file.",
+      "type": "string"
+    },
+    "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
+    "contrastive_pairs": { "type": "array", "items": { "$ref": "#/$defs/contrastive_pair" } },
+    "scenarios": { "type": "array", "items": { "$ref": "#/$defs/scenario" } }
+  },
+  "$defs": {
+    "domain": { "enum": ["storage", "networking", "iam", "compute", "containers"] },
+    "factor_key": {
+      "enum": ["severity", "exposure", "privilege", "sensitivity", "criticality", "encryption"]
+    },
+    "band": { "enum": ["Critical", "High", "Medium", "Low"] },
+    "context_value": {
+      "description": "A declared 0-5 context value, or null to exercise the default-fallback path.",
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 5
+    },
+    "issue_class": {
+      "description": "A taxonomy class id, or the explicit unmapped:<scanner>:<rule_id> fallback.",
+      "type": "string",
+      "pattern": "^(unmapped:[^:]+:.+|[a-z0-9]+(-[a-z0-9]+)+)$"
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "platform", "domain", "source", "declared_context", "expected"],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1 },
+        "platform": { "enum": ["terraform", "kubernetes"] },
+        "domain": { "$ref": "#/$defs/domain" },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["repo", "commit", "path"],
+              "properties": {
+                "repo": { "type": "string", "minLength": 1 },
+                "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+                "path": { "type": "string", "minLength": 1 }
+              }
+            },
+            { "const": "hand-crafted" }
+          ]
+        },
+        "declared_context": {
+          "description": "Keyed on canonical resource identity (design spec section 5).",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sensitivity", "criticality"],
+            "properties": {
+              "sensitivity": { "$ref": "#/$defs/context_value" },
+              "criticality": { "$ref": "#/$defs/context_value" }
+            }
+          }
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["findings"],
+          "properties": {
+            "findings": { "type": "array", "items": { "$ref": "#/$defs/expected_finding" } },
+            "notes": { "type": "string" }
+          }
+        }
+      }
+    },
+    "expected_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_identity", "issue_class"],
+      "properties": {
+        "resource_identity": { "type": "string", "minLength": 1 },
+        "issue_class": { "$ref": "#/$defs/issue_class" },
+        "expected_band": {
+          "description": "Secondary and optional. Ordering is the primary signal (spec 4.4).",
+          "$ref": "#/$defs/band"
+        },
+        "unresolved_factors": {
+          "description": "Code-derived factors the bounded extractor could not resolve from literals (PLAN Q9). Distinct from defaulted_factors: this is an extraction failure, not an absent declaration.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/factor_key" },
+          "uniqueItems": true
+        },
+        "defaulted_factors": {
+          "description": "Declared-context factors that took the documented default because no declared value was supplied (PLAN Q4). PLAN Q4 requires this rate be reported separately from the Q9 unresolved rate, so the two are recorded in separate fields rather than merged.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/factor_key" },
+          "uniqueItems": true
+        },
+        "excluded_from_quality_claims": { "type": "boolean" }
+      }
+    },
+    "contrastive_pair": {
+      "description": "Mechanism test. The differs-in-exactly-one-factor invariant is machine-checked by the harness against the two cases' resolved factors (spec 4.2).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pair_id",
+        "factor_under_test",
+        "case_high",
+        "case_low",
+        "expected_rank_order",
+        "expected_score_delta_sign"
+      ],
+      "properties": {
+        "pair_id": { "type": "string", "minLength": 1 },
+        "factor_under_test": { "$ref": "#/$defs/factor_key" },
+        "case_high": { "type": "string", "minLength": 1 },
+        "case_low": { "type": "string", "minLength": 1 },
+        "expected_rank_order": { "const": "high_above_low" },
+        "expected_score_delta_sign": {
+          "description": "Fixed positive by the case_high/case_low orientation. Stated in the data rather than left implicit in harness code, so the assertion the pair rests on is one the artifact carries.",
+          "const": "positive"
+        },
+        "rationale": { "type": "string" }
+      }
+    },
+    "scenario": {
+      "description": "Realistic test: a pre-registered partial order over cases, with a two-person oracle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "domain", "expected_ordering", "rationale", "oracle"],
+      "properties": {
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "domain": { "$ref": "#/$defs/domain" },
+        "expected_ordering": {
+          "description": "Tiers, highest first. Cases inside one tier are unordered with respect to each other.",
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          }
+        },
+        "rationale": { "type": "string", "minLength": 1 },
+        "oracle": { "$ref": "#/$defs/oracle" }
+      }
+    },
+    "oracle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["author", "reviewer", "registered_at", "reviewer_verdict"],
+      "properties": {
+        "author": { "type": "string", "minLength": 1 },
+        "reviewer": { "type": "string", "minLength": 1 },
+        "registered_at": {
+          "description": "Must precede any scoring output. Pre-registration is what makes the ordering an oracle rather than a post-hoc rationalisation.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "reviewer_verdict": { "enum": ["agree", "disagree", "partial"] },
+        "disagreement_note": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "reviewer_verdict": { "enum": ["disagree", "partial"] } } },
+          "then": { "required": ["disagreement_note"] }
+        }
+      ]
+    }
+  }
+}
