@@ -486,8 +486,11 @@ def fallback_contract() -> MappingProxyType[str, Any]:
 def canonical_rule_id(rule_id: str) -> str:
     """The cross-scanner form of a rule id: one leading ``AVD-`` removed.
 
-    trivy emits ``AWS-0088`` and tfsec emits ``AVD-AWS-0088`` for the same Aqua
-    rule (spec section 2.2). Checkov ids carry no such prefix and are returned
+    trivy emits ``AWS-0026`` and tfsec emits ``AVD-AWS-0026`` for the same Aqua
+    rule (spec section 2.2), and corpus v0 holds 45 such twin pairs. Not every
+    ``AVD-`` id has a trivy counterpart - ``AVD-AWS-0057``, ``AVD-AWS-0082`` and
+    ``AVD-AWS-0088`` are tfsec-only - so canonicalization is a normalization, not
+    evidence that a twin exists. Checkov ids carry no such prefix and are returned
     unchanged. `removeprefix` strips exactly one occurrence, which is why
     ``AVD-AVD-1`` becomes ``AVD-1`` rather than ``1``.
     """
@@ -2730,9 +2733,10 @@ def test_gate_4_the_schema_validates_good_records_and_rejects_bad_ones() -> None
     missing/ill-formed expected outputs rather than skipping it."
 
     The reject half is asserted here in full. The "all corpus cases" half is
-    asserted against the committed exemplar, because the corpus ground truth
-    itself is authored in S2 against this schema - see
-    `test_deferred_gate_items_are_named`.
+    asserted against the committed exemplar rather than against authored corpus
+    ground truth, because that ground truth is S2's to write - it does not exist
+    yet. Stating that plainly is the point: this gate is met for the schema and
+    the validator, not for a corpus of real cases.
     """
     document = load_and_validate(REPO_ROOT / "eval" / "ground_truth" / "example.json")
     assert document["cases"]
@@ -2885,6 +2889,22 @@ with:
 ```markdown
 `canonical_id` strips a leading `AVD-`: trivy emits `AWS-0026`, tfsec emits `AVD-AWS-0026`, both are the same Aqua rule → `canonical_id = AWS-0026`. (Corpus v0 holds 45 such twin pairs; `AWS-0057`, `AWS-0082` and `AWS-0088` are tfsec-only and have no trivy counterpart, so they canonicalize without pairing.)
 ```
+
+The same wrong value appears in §2.1's row-schema example three lines above. Correcting only the sentence that surfaced the problem leaves the document contradicting itself, so grep the whole spec for the value before calling an erratum closed. In §2.1, replace:
+
+```json
+{ "scanner": "trivy", "rule_id": "AWS-0088", "canonical_id": "AWS-0088",
+  "class_id": "storage-encryption-at-rest", "title": "..." }
+```
+
+with:
+
+```json
+{ "scanner": "tfsec", "rule_id": "AVD-AWS-0026", "canonical_id": "AWS-0026",
+  "class_id": "storage-encryption-at-rest", "title": "..." }
+```
+
+Two reasons for the tfsec form: it is a row that genuinely exists in the committed mapping, and it is the case where `canonical_id` actually differs from `rule_id` — the old example had them identical and so illustrated nothing about the field it exists to explain. Verify all four values against `src/iacrisk/data/taxonomy.json` before writing.
 
 **Erratum 2 — §3.4 misattributes a warning to phase0.** The spec's first §3.4 bullet calls the severity-level-1 defect "grave, and exactly the phase0 warning". Phase0 issued no such warning. Its §A.3 item 4 records that only four levels were observed across the 566 severity-carrying rows and then *hands the decision to S1*: "S1's normalization spec has to say what the fifth level is for, or drop to four." The defect was real and the correction stands; only the attribution is wrong — a citation the cited artifact does not support, which is §G3.
 

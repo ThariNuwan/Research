@@ -104,8 +104,11 @@ def fallback_contract() -> MappingProxyType[str, Any]:
 def canonical_rule_id(rule_id: str) -> str:
     """The cross-scanner form of a rule id: one leading ``AVD-`` removed.
 
-    trivy emits ``AWS-0088`` and tfsec emits ``AVD-AWS-0088`` for the same Aqua
-    rule (spec section 2.2). Checkov ids carry no such prefix and are returned
+    trivy emits ``AWS-0026`` and tfsec emits ``AVD-AWS-0026`` for the same Aqua
+    rule (spec section 2.2), and corpus v0 holds 45 such twin pairs. Not every
+    ``AVD-`` id has a trivy counterpart - ``AVD-AWS-0057``, ``AVD-AWS-0082`` and
+    ``AVD-AWS-0088`` are tfsec-only - so canonicalization is a normalization, not
+    evidence that a twin exists. Checkov ids carry no such prefix and are returned
     unchanged. `removeprefix` strips exactly one occurrence, which is why
     ``AVD-AVD-1`` becomes ``AVD-1`` rather than ``1``.
     """
