@@ -1421,9 +1421,11 @@ Create `tests/test_ground_truth.py`:
 ```python
 """A malformed ground-truth record is a hard reject, never a skip (spec section 4.5).
 
-A harness that skips a bad case silently shrinks its own denominator and reports
-a better number than it earned. Every test here is about the reject path being
-loud.
+A harness that skips a bad case silently shrinks its own denominator and reports a
+better number than it earned. Most tests here are about that reject path being
+loud. The rest are the other half of the contract: a validator that refused
+legitimate ground truth would be just as useless, so the accept path is asserted
+too - null declared context, an omitted expected_band, an unmapped issue class.
 """
 
 from __future__ import annotations
@@ -1668,6 +1670,16 @@ def test_load_and_validate_rejects_malformed_json(tmp_path: Path) -> None:
         load_and_validate(broken)
 
 
+def test_the_document_description_is_optional() -> None:
+    """The exemplar labels itself in-band; authored ground truth need not."""
+    document = _document()
+    assert "description" not in document
+    validate(document)
+
+    document["description"] = "Authored corpus ground truth for corpus v0."
+    validate(document)
+
+
 def test_the_schema_file_is_itself_valid_json() -> None:
     path = REPO_ROOT / "eval" / "ground_truth.schema.json"
     schema = json.loads(path.read_text(encoding="utf-8"))
@@ -1698,6 +1710,10 @@ Create `eval/ground_truth.schema.json`:
   "required": ["schema_version", "cases", "contrastive_pairs", "scenarios"],
   "properties": {
     "schema_version": { "const": 1 },
+    "description": {
+      "description": "Free text saying what this document is. Present so a reader can tell a schema exemplar from authored corpus ground truth without opening another file.",
+      "type": "string"
+    },
     "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
     "contrastive_pairs": { "type": "array", "items": { "$ref": "#/$defs/contrastive_pair" } },
     "scenarios": { "type": "array", "items": { "$ref": "#/$defs/scenario" } }
@@ -1893,7 +1909,7 @@ from typing import Any
 
 import jsonschema
 
-SCHEMA_PATH = Path(__file__).resolve().parent / "ground_truth.schema.json"
+SCHEMA_PATH: Path = Path(__file__).resolve().parent / "ground_truth.schema.json"
 
 
 class GroundTruthError(ValueError):
@@ -1992,6 +2008,7 @@ Create `eval/ground_truth/example.json`. This is a schema exemplar, not corpus g
 
 ```json
 {
+  "description": "Schema exemplar, not corpus ground truth. It exists to exercise all three record types against eval/ground_truth.schema.json, and every case id carries an example- prefix to mark it as illustrative. The authored corpus cases are written in S2 against this same schema.",
   "schema_version": 1,
   "cases": [
     {
