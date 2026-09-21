@@ -52,6 +52,20 @@ class MappingRow:
     class_id: str
     title: str
 
+    confidence: str
+    """How firmly this rule sits in its class: "high" or "medium"."""
+
+    note: str | None
+    """Why this rule landed here, where the placement needed saying.
+
+    Carries spec section 2.3's provenance through the loader rather than leaving
+    it readable only in the JSON: a twin-derived row records the tfsec rule it
+    followed, a tree-placed row records that it came from the class tree's own
+    examples. S3 reports cross-scanner-proven placements separately from
+    single-scanner ones, and this is what it reads to do that. `None` where the
+    placement was unremarkable.
+    """
+
 
 @lru_cache(maxsize=1)
 def _document() -> dict[str, Any]:
@@ -86,6 +100,8 @@ def mapping() -> MappingProxyType[tuple[str, str], MappingRow]:
                 canonical_id=entry["canonical_id"],
                 class_id=entry["class_id"],
                 title=entry["title"],
+                confidence=entry["confidence"],
+                note=entry.get("note"),
             )
             for entry in _document()["mapping"]
         }

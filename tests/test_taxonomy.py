@@ -133,6 +133,50 @@ def test_trivy_and_tfsec_twins_share_one_class() -> None:
     assert split == {}, f"twins split across classes: {split}"
 
 
+def test_every_row_carries_its_placement_provenance() -> None:
+    """Spec section 2.3: which placements are cross-scanner-proven must be recoverable.
+
+    The claim is that twin-derived trivy rows are distinguishable from rows
+    placed by the class tree's own examples. That is only true if the provenance
+    survives into the loader, so this asserts the reachable fields rather than
+    trusting the JSON to be read directly. Every row states a confidence; a note
+    is present where the placement needed explaining.
+    """
+    rows = list(taxonomy.mapping().values())
+
+    assert all(row.confidence in {"high", "medium", "low"} for row in rows)
+
+    twin_derived = [row for row in rows if row.note and "AVD-twin" in row.note]
+    assert len(twin_derived) == 45, f"expected 45 twin-derived rows, found {len(twin_derived)}"
+    assert all(row.scanner == "trivy" for row in twin_derived), (
+        "a twin-derived note belongs only on the trivy row that followed its tfsec twin"
+    )
+
+
+def test_the_least_confident_placement_is_one_the_spec_flags_as_arguable() -> None:
+    """Confidence is meaningful here, not decorative.
+
+    Spec section 1.3 delegates three structural rulings and names the ECR
+    image-scanning class as the arguable one: the property is a workload concern
+    but the resource is an `aws_ecr_repository`, so containers-versus-storage was
+    a judgement call rather than a reading. The derivation recorded that same
+    hesitation as the mapping's only low-confidence row.
+
+    Tying the two together is the point. If a future edit ever left some routine
+    placement as the least confident row, the data and the spec would have
+    drifted apart, and this says so instead of letting the confidence field
+    decay into decoration.
+    """
+    least_confident = [row for row in taxonomy.mapping().values() if row.confidence == "low"]
+
+    assert len(least_confident) == 1
+    row = least_confident[0]
+
+    assert row.class_id == "containers-image-vulnerability-scanning"
+    assert row.note is not None
+    assert "arguable" in row.note
+
+
 def test_unknown_rule_id_falls_back_to_an_explicit_unmapped_class() -> None:
     """Spec section 2.4: a rule the table has never seen is named, never dropped.
 
