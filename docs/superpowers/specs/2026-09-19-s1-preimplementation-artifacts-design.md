@@ -117,7 +117,7 @@ Met in corpus v0: 255/255 mapped, 0 unmapped, all five categories populated.
 `taxonomy.json` carries one row per observed `(scanner, rule_id)` — 255 rows. Each row:
 
 ```json
-{ "scanner": "trivy", "rule_id": "AWS-0088", "canonical_id": "AWS-0088",
+{ "scanner": "tfsec", "rule_id": "AVD-AWS-0026", "canonical_id": "AWS-0026",
   "class_id": "storage-encryption-at-rest", "title": "..." }
 ```
 

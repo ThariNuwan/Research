@@ -81,9 +81,10 @@ def test_gate_4_the_schema_validates_good_records_and_rejects_bad_ones() -> None
     missing/ill-formed expected outputs rather than skipping it."
 
     The reject half is asserted here in full. The "all corpus cases" half is
-    asserted against the committed exemplar, because the corpus ground truth
-    itself is authored in S2 against this schema - see
-    `test_deferred_gate_items_are_named`.
+    asserted against the committed exemplar rather than against authored corpus
+    ground truth, because that ground truth is S2's to write - it does not exist
+    yet. Stating that plainly is the point: this gate is met for the schema and
+    the validator, not for a corpus of real cases.
     """
     document = load_and_validate(REPO_ROOT / "eval" / "ground_truth" / "example.json")
     assert document["cases"]
