@@ -79,7 +79,9 @@ runtime and the harness are built against:
   `unmapped:<scanner>:<rule_id>` class rather than a guess.
 - `src/iacrisk/data/rubric.json` — the six source-anchored factors, the frozen
   1–28 bounds and priority bands, the per-scanner severity-normalization table,
-  and the four coherence rules from the design spec.
+  and the design spec's three structural coherence rules plus its orthogonality
+  note, carried as data so the scoring engine enforces them rather than
+  reinventing them.
 - `eval/ground_truth.schema.json` + `eval/ground_truth.py` — the three
   ground-truth record types and a validator that hard-rejects a malformed case
   rather than skipping it.
@@ -91,9 +93,17 @@ output exists. Later movement is reported as sensitivity analysis (PLAN Q10),
 never tuned to fit the test data. `tests/test_s1_gates.py` holds the five
 acceptance gates and the freeze.
 
-S3 is next: the scanner adapters under `src/iacrisk/scanners/`, the bounded
-context extractor, and the scoring engine that enforces the coherence rules S1
-carries as data.
+Two sub-projects draw on this. **S2** authors the evaluation corpus and its
+ground truth against `eval/ground_truth.schema.json` — gate 4 is met for the
+schema and the validator, not for a corpus of real cases, which do not exist
+yet. **S3** builds the scanner adapters under `src/iacrisk/scanners/`, the
+bounded context extractor, and the scoring engine that enforces the coherence
+rules and the exposure precedence rule S1 carries as data.
+
+One caveat S3 should carry forward: `normalize_severity` returns `int | str`,
+where the string is the explicit `unknown` state. Every call site must branch on
+it before arithmetic — an unguarded `+` would concatenate or raise rather than
+score.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

@@ -133,7 +133,14 @@ def model() -> MappingProxyType[str, Any]:
 
 
 def coherence_rules() -> MappingProxyType[str, str]:
-    """The four structural rules from spec section 3.5, carried as data for S3."""
+    """Spec section 3.5's three structural resolutions plus its orthogonality note.
+
+    Carried as data so S3 enforces the rules S1 decided rather than reinventing
+    them. Four entries, not four resolutions: section 3.5 approves three
+    structural decisions, and `encryption_sensitivity_orthogonality` is its
+    closing secondary fix - already baked into the authored encryption levels,
+    recorded here so the reasoning survives alongside them.
+    """
     return MappingProxyType(dict(_document()["coherence_rules"]))
 
 

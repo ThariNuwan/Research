@@ -129,7 +129,9 @@ Keying on the raw `(scanner, rule_id)` as-emitted (not a pre-normalized key) kee
 
 Two guarantees asserted as tests:
 - **Co-location.** Every trivy `AWS-####` and its tfsec `AVD-AWS-####` twin map to the same `class_id`. True by construction for the 45 twin pairs (trivy took tfsec's class directly during derivation); the test locks it so no future edit can split a twin.
-- **Dedupe key.** `canonical_id` + resource identity (§5) is what recognizes a trivy finding and its tfsec twin on one resource as one logical finding (the deduplication half of the Q7/Q8 alert-reduction number).
+- **Dedupe key.** The key itself is defined in §5.4 — `(canonical resource identity, normalized issue-class, violation fingerprint)` — and that is what the implementation uses. `canonical_id` is not a term in it. Its role here is upstream: the co-location guarantee above is what makes a trivy finding and its tfsec twin carry the *same* `class_id`, which is what lets the §5.4 key recognise them as one logical finding (the deduplication half of the Q7/Q8 alert-reduction number).
+
+  Note the consequence, because it is a reported metric: keying on issue-class rather than on `canonical_id` collapses **any** two findings sharing a class on one resource with one fingerprint, not only Aqua twins. That is the intended behaviour — two rules flagging the same missing control on the same attribute are one remediation — but it means the dedup number measures class-level collapse, and it must be described that way rather than as twin-level collapse.
 
 ### 2.3 Provenance
 
