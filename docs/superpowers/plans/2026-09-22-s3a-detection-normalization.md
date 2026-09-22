@@ -37,7 +37,7 @@ All from `tests/harvest/fixtures/`. **Drive assertions from the fixtures, never 
 
 | Scanner / platform | Findings | Identity present | Attribute path | Notes |
 |---|---|---|---|---|
-| checkov / terraform | 221 | 221/221 | 208/221 | 6 non-resource (4 secret, 2 Dockerfile) |
+| checkov / terraform | 221 | 221/221 | 208/221 | 7 non-resource (4 secret, 2 Dockerfile, 1 provider) |
 | checkov / kubernetes | 268 | 268/268 | 165/268 | 10 use a 4-component form that is a **label**, not a container; 2 secret |
 | trivy / terraform | 115 | 113/115 | 0 | one Target is `.` |
 | trivy / kubernetes | 332 | **0/332** | 0 | 328/332 have StartLine |
