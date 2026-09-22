@@ -37,10 +37,20 @@ I/O and caching machinery into a record type that has none of its own.
 class NormalizedFinding:
     """One scanner finding, reshaped into the common record every later stage consumes.
 
-    Frozen for value equality and hashing: Task 8's deduplication and Task 9's
-    retention report both count distinct findings by putting them in sets, so
-    every field listed here participates in `__eq__` and `__hash__` by
-    dataclass default - none is excluded as incidental.
+    Frozen for value equality and hashing, and every field listed here
+    participates in `__eq__` and `__hash__` by dataclass default - none is
+    excluded as incidental. That matters for bookkeeping over whole records,
+    such as Task 8's accounting check that every input finding ends up in
+    exactly one dedupe group or standing alone.
+
+    It is deliberately NOT what performs deduplication. Tier 1 groups on the
+    derived key `(resource_identity, issue_class, fingerprint)` (spec §7),
+    and two findings that must collapse are by definition reported by
+    different scanners - so they differ in `scanner` and usually `rule_id`,
+    `title`, `native_severity` and `remediation` too, and remain two distinct
+    records under this dataclass's own equality however equal their dedupe
+    key. A `set()` of raw records cannot perform that collapse; Task 8 groups
+    by the derived key, not by record identity.
 
     `native_severity` is the scanner's own string (or `None` where the scanner
     supplied none, per corpus v0's measured Checkov gap); `severity_level` is

@@ -13,7 +13,8 @@ from typing import Any
 
 import pytest
 
-from iacrisk.finding import IDENTITY_KINDS, PLATFORMS, NormalizedFinding
+from iacrisk import taxonomy
+from iacrisk.finding import IDENTITY_KINDS, PLATFORMS, UNMAPPED_PREFIX, NormalizedFinding
 
 BASE: dict[str, Any] = {
     "scanner": "checkov",
@@ -100,6 +101,16 @@ def test_the_vocabularies_are_closed() -> None:
     """A new identity kind or platform should be a deliberate edit, not an accident."""
     assert IDENTITY_KINDS == ("terraform", "kubernetes", "file", "provider", "secret", "unresolved")
     assert PLATFORMS == ("terraform", "kubernetes")
+
+
+def test_the_unmapped_prefix_agrees_with_the_taxonomy_module() -> None:
+    """finding.py restates the prefix rather than importing taxonomy's I/O machinery.
+
+    That is a reasonable trade, but an unguarded duplicate is one edit away from
+    `is_unmapped` silently returning False for every unmapped finding. This is
+    the cheap guard that makes the duplication safe.
+    """
+    assert UNMAPPED_PREFIX == taxonomy.UNMAPPED_PREFIX
 
 
 def test_a_non_resource_finding_is_marked_context_ineligible() -> None:
