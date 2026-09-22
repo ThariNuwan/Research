@@ -45,7 +45,7 @@ Four consequences drive the design:
 3. **Checkov's `resource` field is polymorphic.** Across 47 distinct values it carries Terraform addresses (`aws_db_instance.default`), Dockerfile paths (`/resources\Dockerfile.`), provider blocks (`aws.plain_text_access_keys_provider`) and bare secret hashes (`25910f981e85ca…`). Not everything checkov calls a resource is a Terraform resource.
 4. **A structured violation fingerprint exists only in checkov.** Its `evaluated_keys` is high quality where present (`spec/template/spec/containers/[0]/securityContext/allowPrivilegeEscalation`) but absent on 13/221 and 103/268, and its single most common value is the meta-key `resource_type`, which names no attribute at all.
 
-**Kubernetes manifests** (`corpus/vendor/kubernetes-goat/scenarios`, 22 files): 18 parse cleanly under `yaml.safe_load_all`; **4 fail, all under `metadata-db/templates/`** — the Helm chart, whose `{{ … }}` is not valid YAML. Parsing yields 37 documents, 17 container names, and 15/37 documents with no `metadata.namespace`.
+**Kubernetes manifests** (`corpus/vendor/kubernetes-goat/scenarios`, 22 files): 18 parse cleanly under `yaml.safe_load_all`; **4 fail, all under `metadata-db/templates/`** — the Helm chart, whose `{{ … }}` is not valid YAML. Parsing yields **35 kind-bearing documents**, 17 container names, and **13/35 with no `metadata.namespace`**. (An earlier revision of this line said 37 and 15/37. Those figures counted `Chart.yaml` and `values.yaml`, which parse cleanly but carry no `kind` and are therefore not manifests — §3 excludes them by exactly that test. Corrected from Task 3's measurement.)
 
 **Taxonomy coverage** of the rule families the adapters will see: checkov `CKV_*`/`CKV2_*` 128, tfsec `AVD-AWS-*` 48, trivy `AWS-*` 47 and **`KSV-*` 30**. All 255 map.
 
@@ -100,7 +100,11 @@ Discovery is separate from scanning because the platform decides which scanners 
 `src/iacrisk/resources.py`. Parses confirmed manifests once into an index supporting two lookups:
 
 - **by file and line** → the document whose span contains that line, for trivy, which gives only `CauseMetadata.StartLine`;
-- **by kind, namespace and name** → for checkov, which gives `Kind.namespace.name` but no `apiVersion`. Checkov also emits a **four-component container form**, `Kind.namespace.name.container` (measured: 10 findings, e.g. `Pod.default.build-code-deployment.app-build-code`), so the lookup takes an optional trailing container component and the adapter does not need the by-line path to reach a container.
+- **by kind, namespace and name** → for checkov, which gives `Kind.namespace.name` but no `apiVersion`.
+
+**Checkov's four-component form is NOT a container address — erratum, corrected 2026-09-22.** An earlier revision of this section claimed `Kind.namespace.name.container`, measured from 10 findings such as `Pod.default.build-code-deployment.app-build-code`. That reading was wrong, and it was caught by Task 3's implementer and confirmed against the manifests: **the fourth component is the pod template's label rendered `key-value`, in 10 cases out of 10.** `Pod.default.internal-proxy-deployment.app-internal-proxy` settles it — that workload has two containers, `info-app` and `internal-api`, and the fourth component is neither. The synthesized `Kind` is `Pod` rather than the workload's actual `Deployment`, which is the other tell.
+
+Consequently **the checkov adapter must never feed the fourth component to `by_address(container=…)`.** Checkov container-scoped identity, where it is needed at all, comes from the by-line path like trivy's. Every one of these 10 findings is `CKV2_K8S_6`, a pod-level check, so the workload identity is the correct target anyway.
 
 **Spans nest, so the by-line lookup needs a tie-break rule.** A container's lines fall inside its parent workload's span, so a line can match both the document and a container within it. The rule: the lookup returns the **innermost** match — the container when the line falls in a container block, the document otherwise. Documents within one file do not nest (multi-document YAML is sequential), so the only nesting is workload-to-container, and resolving to the container is what gives a container-scoped finding its `[container=…]` component rather than collapsing every container finding onto the workload.
 
@@ -219,7 +223,7 @@ Both open items were settled by measurement rather than argument, and the measur
 
 2. **Trivy fingerprints stay unresolved, on evidence rather than principle** (§6). The original rationale — that `Resolution` is prose and parsing it would be inference — was wrong: 55.7% of trivy Resolutions carry a cleanly extractable quoted attribute. The real reason is that the extracted vocabulary has **zero exact overlap** with checkov's, so extraction would add a field that never matches and produce no additional Tier-1 collapse. The cost of doing better is named (an attribute-normalization mapping across three vocabularies) rather than hidden.
 
-A third item surfaced from the same measurement and is folded into §4: checkov emits a **four-component container form** `Kind.namespace.name.container`, not only `Kind.namespace.name` as this spec originally stated.
+A third item surfaced from the same measurement and was folded into §4 — **and was then itself wrong.** This spec claimed checkov's four-component form was a container address. Task 3's implementer measured it against the manifests and found the fourth component is the pod template's **label**, 10 times out of 10. §4 now carries the corrected reading and the erratum. Recorded here rather than quietly rewritten, because a measurement that corrects an earlier measurement is exactly the kind of thing this project's §G3 discipline exists to keep visible.
 
 ## 13. Named future work, deliberately not attempted here
 

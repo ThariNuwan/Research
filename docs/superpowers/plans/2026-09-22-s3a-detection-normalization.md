@@ -38,12 +38,12 @@ All from `tests/harvest/fixtures/`. **Drive assertions from the fixtures, never 
 | Scanner / platform | Findings | Identity present | Attribute path | Notes |
 |---|---|---|---|---|
 | checkov / terraform | 221 | 221/221 | 208/221 | 6 non-resource (4 secret, 2 Dockerfile) |
-| checkov / kubernetes | 268 | 268/268 | 165/268 | 10 use the 4-component container form; 2 secret |
+| checkov / kubernetes | 268 | 268/268 | 165/268 | 10 use a 4-component form that is a **label**, not a container; 2 secret |
 | trivy / terraform | 115 | 113/115 | 0 | one Target is `.` |
 | trivy / kubernetes | 332 | **0/332** | 0 | 328/332 have StartLine |
 | tfsec / terraform | 119 | 119/119 | via `resource` suffix | **119/119 absolute Windows paths** |
 
-Kubernetes manifests: 22 files, **18 parse, 4 fail** (all `metadata-db/templates/*`, the Helm chart), 37 documents, 17 container names, 15/37 with no namespace.
+Kubernetes manifests: 22 files, **18 parse, 4 fail** (all `metadata-db/templates/*`, the Helm chart), **35 kind-bearing documents**, 17 container names, **13/35 with no namespace**. (An earlier revision said 37 and 15/37; those figures counted `Chart.yaml` and `values.yaml`, which parse but carry no `kind` and are not manifests. Corrected from Task 3's measurement.)
 
 ## File Structure
 
@@ -588,7 +588,7 @@ def test_by_line_outside_every_span_is_none_not_the_nearest() -> None:
 
 
 def test_by_address_resolves_checkov_style_addresses() -> None:
-    """Checkov gives Kind.namespace.name and its four-component container form."""
+    """Checkov gives Kind.namespace.name; its four-component form is a label, not a container."""
     index = _index()
     workload = next(e for e in index.entries if e.kind == "Deployment" and not e.container)
 
@@ -866,7 +866,7 @@ Implements spec §5 for checkov, including the polymorphic `resource` field (§2
   - a Terraform address `aws_db_instance.default` → `identity_kind == "terraform"`, `context_eligible is True`;
   - a 40-hex secret value → `identity_kind == "secret"`, `context_eligible is False`;
   - a Dockerfile `resource` → `identity_kind == "file"`, `context_eligible is False`;
-  - the four-component `Pod.default.build-code-deployment.app-build-code` resolves to a container-scoped identity carrying `[container=app-build-code]`;
+  - **the four-component form is a LABEL, not a container — do not feed it to `by_address(container=…)`.** `Pod.default.build-code-deployment.app-build-code` carries the pod template's label `app: build-code` rendered `key-value`, not a container name. Measured 10/10 against the manifests, and `Pod.default.internal-proxy-deployment.app-internal-proxy` proves it: that workload's containers are `info-app` and `internal-api`, neither of which is the fourth component. The synthesized `Kind` is `Pod` rather than the workload's real `Deployment`, which is the other tell. All 10 are `CKV2_K8S_6`, a pod-level check, so the **workload** identity is the correct target: assert the finding resolves to `.../build-code-deployment` with **no** `[container=…]` component;
   - `evaluated_keys == ["resource_type"]` → fingerprint `None`; `["storage_encrypted"]` → `"storage_encrypted"`; `["kms_key_id", "storage_encrypted"]` → `"kms_key_id,storage_encrypted"` (sorted, comma-joined);
   - `native_severity is None` on every checkov finding and `severity_level == "unknown"` — driven by asserting the fixture's severity field is absent, not by restating 46.4%;
   - class comes from `taxonomy.class_for` — assert one known rule maps to its known class, and that an invented rule id yields an `unmapped:` class.
