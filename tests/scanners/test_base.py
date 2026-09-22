@@ -51,10 +51,27 @@ def test_drive_letter_case_does_not_defeat_the_prefix_match() -> None:
     )
 
 
-def test_an_absolute_path_outside_the_scan_root_raises() -> None:
-    """Silently passing it through would produce a path that joins with nothing."""
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "C:\\Windows\\System32\\drivers\\etc\\hosts",
+        "C:",
+        "\\\\server\\share\\file.tf",
+    ],
+    ids=["drive-elsewhere", "bare-drive", "unc-root"],
+)
+def test_an_absolute_path_outside_the_scan_root_raises(raw: str) -> None:
+    """Silently passing it through would produce a path that joins with nothing.
+
+    Three absolute shapes, none emitted by any scanner in corpus v0 (spec §1):
+    a normal drive-letter path elsewhere on disk, a bare drive with no path
+    component, and a UNC root. A drive-only pattern like ``^[A-Za-z]:/`` misses
+    the last two - ``C:`` has no trailing separator and ``//server/share/...``
+    has no drive letter at all - and each would otherwise fall through to
+    ``lstrip("/")`` and be silently treated as scan-root-relative.
+    """
     with pytest.raises(ValueError, match="outside the scan root"):
-        rebase_to_scan_root("C:\\Windows\\System32\\drivers\\etc\\hosts", SCAN_ROOT)
+        rebase_to_scan_root(raw, SCAN_ROOT)
 
 
 def test_rebasing_is_idempotent() -> None:

@@ -6,9 +6,10 @@ the result shape they return in, the protocol they implement, and the path
 rebasing every one of them needs before a finding can be joined to a resource
 in the index built by Task 3. checkov and trivy already report paths
 scan-root-relative; tfsec reports 119 of 119 findings as an absolute Windows
-path (design spec §5.1). `ResourceIndex.by_line` matches on `relative_path` by
-equality, so a path spelled three ways is silently three files to that lookup
-- not an error, just a `None` where a match should have been.
+path (measured, design spec §1; the rebasing rule itself is §5.1).
+`ResourceIndex.by_line` matches on `relative_path` by equality, so a path
+spelled three ways is silently three files to that lookup - not an error,
+just a `None` where a match should have been.
 """
 
 from __future__ import annotations
@@ -21,13 +22,22 @@ from typing import Protocol
 from iacrisk.finding import NormalizedFinding
 from iacrisk.resources import ResourceIndex
 
-_DRIVE_ABSOLUTE = re.compile(r"^[A-Za-z]:/")
-"""A single drive letter followed by `:/`, once backslashes are forward slashes.
+_ABSOLUTE_PREFIX = re.compile(r"^[A-Za-z]:|^//")
+"""A drive prefix (`C:`, with or without a trailing separator) or a UNC root
+(`//server/share`), once backslashes are forward slashes.
 
-This is the only absolute form any adapter's raw path takes (tfsec's), so it is
-also the only form `_is_absolute` needs to recognize. checkov's `/ec2.tf` must
-read as *not* absolute - a leading `/` with no drive letter is a scan-root-
-relative path, not a filesystem root - or it would raise instead of rebasing.
+tfsec's own paths only ever exercise the drive-with-separator shape
+(`D:/Research/...`), but `_is_absolute` has to recognize the other two shapes
+as absolute as well, or each becomes a second silent mis-join hiding behind
+the first: `//server/share/file.tf` starts with `/`, not a letter, so a
+drive-only pattern never matches it and it falls through to `lstrip("/")` as
+though it were scan-root-relative; a bare `C:` has no trailing `/` to match a
+pattern that requires one, so it falls through the same way. Neither shape is
+emitted by any scanner in corpus v0 (spec §1's measured-facts table) or by
+this function's own output - named here as a closed door, not a measured one.
+checkov's `/ec2.tf` must still read as *not* absolute - a single leading `/`
+with no drive letter and no second `/` is a scan-root-relative path, not a
+filesystem root - or it would raise instead of rebasing.
 """
 
 
@@ -82,8 +92,8 @@ def rebase_to_scan_root(raw_path: str, scan_root: Path) -> str:
 
 
 def _is_absolute(posix_style: str) -> bool:
-    """Whether `posix_style` carries a Windows drive letter rather than being relative."""
-    return bool(_DRIVE_ABSOLUTE.match(posix_style))
+    """Whether `posix_style` is a Windows drive or UNC path rather than being relative."""
+    return bool(_ABSOLUTE_PREFIX.match(posix_style))
 
 
 class ScannerAdapter(Protocol):
