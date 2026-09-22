@@ -1,6 +1,6 @@
 # S3a — Detection & Normalization (design)
 
-**Status:** design, awaiting review-gate approval
+**Status:** approved at the review gate (2026-09-22); both §12 items resolved by measurement
 **Author:** Jayathissa E.A.T.N. (258243J)
 **Date:** 2026-09-22
 **Scope:** Sub-project S3a — pipeline layers 1–2 plus Q8 deduplication. Splits the S0 roadmap's S3 in two; S3b takes layer 3 (context extraction).
