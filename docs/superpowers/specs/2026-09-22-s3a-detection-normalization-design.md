@@ -71,8 +71,15 @@ The record S0 refused to define because it depends on a taxonomy that did not th
 | `file_path` | `str` | Normalized, **scan-root-relative** (§5.1) |
 | `line_range` | `tuple[int, int] \| None` | Source span where reported |
 | `fingerprint` | `str \| None` | Normalized attribute path; **`None` means unresolved** |
+| `context_eligible` | `bool` | Whether a cloud resource exists for S3b to contextualize |
 
 `identity_kind` is what keeps finding 3 honest. A checkov Dockerfile or secret finding is retained with its real identity kind rather than being forced into a Terraform shape or silently dropped — it still counts toward retention coverage, and a consumer can tell at a glance that it is not a Terraform resource.
+
+### 2.1 Why non-resource findings are retained, and what `context_eligible` is for
+
+Measured: **8 of 489 checkov findings (1.6%) carry a non-resource `resource`** — 4 secret hashes and 2 Dockerfile findings on Terraform, 2 secret hashes on Kubernetes. The choice moves no metric materially, so it goes to whichever side is cheaper to defend: retaining requires an honest label, while dropping requires justifying an exclusion from a *coverage* metric. They are also genuine findings a user wants surfaced — `CKV_SECRET_*` is a hardcoded credential.
+
+`context_eligible = False` marks them. It exists because of the washout spec §3.5(2) identifies: the five context defaults sum to 16, so a finding with nothing resolved lands at 17–21 and is **always High**. A hardcoded secret may well deserve High, but it must not arrive there because no factor resolved. The flag makes S3b skip extraction rather than default every factor, and makes S4/S5 exclude these from prioritization-quality claims — the same discipline the `unmapped:` contract already applies, on a different axis. `unmapped:` means *no class*; `context_eligible = False` means *no resource to contextualize*.
 
 ---
 
@@ -93,7 +100,7 @@ Discovery is separate from scanning because the platform decides which scanners 
 `src/iacrisk/resources.py`. Parses confirmed manifests once into an index supporting two lookups:
 
 - **by file and line** → the document whose span contains that line, for trivy, which gives only `CauseMetadata.StartLine`;
-- **by kind, namespace and name** → for checkov, which gives `Kind.namespace.name` but no `apiVersion`.
+- **by kind, namespace and name** → for checkov, which gives `Kind.namespace.name` but no `apiVersion`. Checkov also emits a **four-component container form**, `Kind.namespace.name.container` (measured: 10 findings, e.g. `Pod.default.build-code-deployment.app-build-code`), so the lookup takes an optional trailing container component and the adapter does not need the by-line path to reach a container.
 
 **Spans nest, so the by-line lookup needs a tie-break rule.** A container's lines fall inside its parent workload's span, so a line can match both the document and a container within it. The rule: the lookup returns the **innermost** match — the container when the line falls in a container block, the document otherwise. Documents within one file do not nest (multi-document YAML is sequential), so the only nesting is workload-to-container, and resolving to the container is what gives a container-scoped finding its `[container=…]` component rather than collapsing every container finding onto the workload.
 
@@ -140,7 +147,7 @@ PLAN Q8 #6 added the fingerprint so that materially different violations on one 
 
 - **checkov** — `check_result.evaluated_keys`, normalized as follows, because "sorted and joined" is not a specification: discard the meta-key `resource_type`, which names no attribute; lowercase nothing (attribute paths are case-significant); sort the remaining keys lexicographically so key order in the scanner's output cannot change the fingerprint; join with `,`. An empty list after discarding → unresolved. A single key `storage_encrypted` therefore fingerprints as `storage_encrypted`, and two keys as `kms_key_id,storage_encrypted`.
 - **tfsec** — the attribute split off the `resource` field where present; otherwise unresolved.
-- **trivy** — unresolved. `Resolution` is prose written for humans, and parsing it into an attribute path would be inference presented as extraction.
+- **trivy** — unresolved, and the reason is measured rather than stylistic. Extraction is entirely feasible: **185 of 332 trivy Kubernetes `Resolution` strings (55.7%) carry a cleanly quoted attribute token**, e.g. `containers[].securityContext.runAsNonRoot`. The problem is that the vocabularies do not meet. Checkov spells the same attribute `spec/template/spec/containers/[0]/securityContext/readOnlyRootFilesystem` where trivy spells it `containers[].securityContext.readOnlyRootFilesystem` — different separators, different rooting — and the **exact string overlap between the two extracted vocabularies is 0** (18 distinct trivy tokens, 23 distinct checkov keys, no shared spelling). Extracting trivy's attribute would therefore produce **zero** additional Tier-1 collapses while adding a field that never matches. Closing the gap needs an attribute-normalization mapping across three scanner vocabularies — a taxonomy-sized artifact, not a line in an adapter. It is named here as scoped future work rather than attempted.
 
 Synthesizing a fingerprint from the source span was considered and rejected: the three scanners report spans at incompatible granularities — checkov the whole resource block `[1, 42]`, trivy the precise cause `[11, 12]`, tfsec the block `[117, 134]` — so equal-fingerprint would almost never hold across scanners, and the dedupe key would track formatting rather than the violation.
 
@@ -204,7 +211,16 @@ All five contextual attributes; the Q4 declared-context join; the four bounded e
 
 ---
 
-## 12. Open items for the review gate
+## 12. Review-gate items, resolved
 
-1. **`identity_kind` for non-resource checkov findings** (§2) — confirm that retaining Dockerfile, provider and secret findings with an explicit kind is preferred to excluding them from the pipeline. They count toward retention coverage either way, but only if retained do they reach S4's report.
-2. **Trivy fingerprints are unresolved by construction** (§6) — confirm that declining to parse `Resolution` prose is the right call, accepting that trivy findings will rarely reach Tier 1.
+Both open items were settled by measurement rather than argument, and the measurement changed one of the answers.
+
+1. **Non-resource checkov findings are retained** (§2.1). They are 8 of 489 findings (1.6%), so neither choice moves a metric materially; retaining needs only an honest label where dropping needs a defended exclusion from a coverage metric. They carry `context_eligible = False` so the §3.5(2) all-defaulted washout cannot float them into High for structural reasons.
+
+2. **Trivy fingerprints stay unresolved, on evidence rather than principle** (§6). The original rationale — that `Resolution` is prose and parsing it would be inference — was wrong: 55.7% of trivy Resolutions carry a cleanly extractable quoted attribute. The real reason is that the extracted vocabulary has **zero exact overlap** with checkov's, so extraction would add a field that never matches and produce no additional Tier-1 collapse. The cost of doing better is named (an attribute-normalization mapping across three vocabularies) rather than hidden.
+
+A third item surfaced from the same measurement and is folded into §4: checkov emits a **four-component container form** `Kind.namespace.name.container`, not only `Kind.namespace.name` as this spec originally stated.
+
+## 13. Named future work, deliberately not attempted here
+
+**Cross-scanner attribute normalization.** A mapping from each scanner's attribute vocabulary to one canonical spelling would move most Tier-2 candidate overlaps into Tier-1 exact collapses, materially raising the measured deduplication. It is taxonomy-sized — three vocabularies, per-rule spellings, its own acceptance gate and its own verification — and it is not in S3a, S3b, S4 or S5 as currently scoped. Recorded here so the smaller deduplication number S3a reports is understood as a scope boundary with a known price, not as a limitation of the approach.
