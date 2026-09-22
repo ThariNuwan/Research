@@ -314,6 +314,27 @@ def test_by_address_without_a_container_never_returns_a_container_entry() -> Non
         assert found.container is None
 
 
+def test_by_address_round_trips_a_cluster_scoped_entry_addressed_with_none() -> None:
+    """The `namespace=None` half of the address space, otherwise never called.
+
+    Every other `by_address` test here passes a namespaced workload or
+    container, so nothing would fail if `None` stopped matching - if a caller
+    normalized it to `""`, or if `namespace` were narrowed back to `str`. That
+    is the one address shape a cluster-scoped kind has.
+    """
+    index = _index()
+    cluster_scoped = [e for e in index.entries if e.kind in CLUSTER_SCOPED_KINDS]
+    assert cluster_scoped, "corpus should contain cluster-scoped kinds"
+
+    for entry in cluster_scoped:
+        found = index.by_address(entry.kind, None, entry.name)
+
+        assert found is not None, f"{entry.kind}/{entry.name} is unaddressable"
+        assert found == entry
+        assert found.to_identity() == f"{entry.api_version}/{entry.kind}/{entry.name}"
+        assert f"/{identity.DEFAULT_NAMESPACE}/" not in found.to_identity()
+
+
 def test_by_address_that_matches_nothing_is_none() -> None:
     index = _index()
 
@@ -351,11 +372,18 @@ def test_unparseable_files_are_recorded_and_yield_no_entries() -> None:
 
 
 def test_unparseable_carries_discoverys_finding_through() -> None:
-    """The index must not quietly re-classify what discovery could not parse."""
+    """The index must not quietly re-classify what discovery could not parse.
+
+    Equality, not containment: `build_index` may add a file of its own where
+    composing fails, and over this corpus it adds none - `compose` is a
+    sub-stage of the load discovery performs, so it cannot fail where that
+    succeeded. A path appearing here that discovery did not report would mean
+    that reasoning no longer holds.
+    """
     discovery = _discovery()
     index = build_index(discovery)
 
-    assert set(discovery.unparseable) <= set(index.unparseable)
+    assert set(discovery.unparseable) == set(index.unparseable)
     indexed_paths = {e.relative_path for e in index.entries}
     assert not (indexed_paths & set(index.unparseable))
 

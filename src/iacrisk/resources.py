@@ -132,6 +132,14 @@ class ResourceIndex:
         it breaks does not arise in corpus v0; without it the result would fall
         back to insertion order, which is not a stated guarantee.
 
+        One tie has no principled winner: containers written as a flow sequence
+        on one physical line - `containers: [{name: a}, {name: b}]` - have
+        identical spans, and a line is genuinely ambiguous between them. The
+        first in `entries` order is returned, which is declaration order and
+        nothing more; do not read it as a choice. Corpus v0 writes every
+        container as a block sequence, so this shape is described here rather
+        than exercised.
+
         `None` means no span contains the line - an unparseable file, a line in
         a leading comment block, or a file that is not a manifest at all. It is
         never the nearest entry.
