@@ -7,6 +7,7 @@ Neither may be silently ignored.
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -88,6 +89,15 @@ def test_a_missing_scan_root_raises_rather_than_returning_empty() -> None:
 
 
 def test_discovery_result_is_frozen() -> None:
+    """Frozen so a caller cannot quietly edit a discovery result after the fact.
+
+    The assertion is the mutation attempt, not the isinstance check: without it
+    this test passes with `frozen=True` removed, which is the name promising
+    what the body never checks.
+    """
     result = discover(TF_ROOT)
+
     assert isinstance(result, DiscoveryResult)
     assert isinstance(result.files, tuple)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        result.files = ()  # type: ignore[misc]

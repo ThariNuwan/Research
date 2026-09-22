@@ -47,9 +47,12 @@ class DiscoveryResult:
     """The full accounting of one `discover()` walk: a partition, not just a hit list.
 
     `files`, `ignored` and `unparseable` are disjoint and exhaustive over every
-    file under the scan root. Task 9's retention report computes coverage rates
-    from these three collections, so a file that fell out of all of them here
-    would silently inflate every rate downstream rather than showing up as a gap.
+    file under the scan root - no file this module sees is ever silently
+    dropped. `unparseable` is kept distinct from `ignored` because Task 3's
+    `build_index` takes this result and carries `unparseable` through into
+    `ResourceIndex.unparseable`, where a lookup against one of those paths
+    resolves to `None` rather than a guess - collapsing the two buckets here
+    would erase that distinction before it ever reaches the index.
     """
 
     files: tuple[DiscoveredFile, ...]
@@ -106,6 +109,12 @@ def discover(scan_root: Path) -> DiscoveryResult:
             continue
 
         try:
+            # errors="replace" means a genuinely mis-encoded file decodes to U+FFFD
+            # and may still parse as valid YAML, landing in `files` or `ignored`
+            # with corrupted content instead of `unparseable`. A deliberate
+            # tradeoff, not an oversight: no such file is known to exist in the
+            # pinned corpus, so revisit this if a corpus with real encoding
+            # variance is ever scanned.
             docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8", errors="replace")))
         except yaml.YAMLError:
             unparseable.append(rel)
