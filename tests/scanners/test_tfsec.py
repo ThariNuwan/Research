@@ -157,6 +157,101 @@ def test_the_suffixed_and_plain_findings_share_one_identity() -> None:
     assert suffixed.resource_identity == plain.resource_identity
 
 
+# --- terraform identity: data sources (S1 §5.1) - constructed, not corpus-observed -
+
+
+def test_a_data_source_resource_strips_the_data_prefix_per_s1_section_5_1() -> None:
+    """Fixed round. Constructed: none of corpus v0's 119 tfsec `resource`
+    values carries a `data.` prefix (measured), so this shape has to be
+    built by hand rather than found in the fixture - but it is not
+    hypothetical. checkov already flags the identical Terraform `data` block
+    in this corpus (`aws_iam_policy_document.policy` in `es.tf`, verified
+    against the raw checkov fixture below) and renders it with no `data`
+    component anywhere in the string - exactly what S1 §5.1 prescribes for a
+    scanner-flagged data source ("`type.name` with no instance key"). A
+    tfsec finding on that same resource must resolve to the identical
+    identity, or the two scanners' findings on it could never meet at Task
+    8's dedupe key.
+
+    An earlier version of `_resolve_terraform` ran `_TFSEC_RESOURCE_RE`
+    directly against the raw string with no `data.` handling at all: it
+    matched `data.aws_iam_policy_document.policy` as `type="data"`,
+    `name="aws_iam_policy_document"`, `attribute="policy"` - a wrong
+    identity that collides every data source of one type into one string,
+    and a bogus fingerprint that is really the data source's own name. This
+    test is what that regression would fail.
+    """
+    checkov_raw = json.loads((FIXTURES_DIR / "checkov-terraform.json").read_text(encoding="utf-8"))
+    checkov_data_source_rows = [
+        c
+        for doc in checkov_raw
+        for c in (doc.get("results") or {}).get("failed_checks") or []
+        if c.get("resource") == "aws_iam_policy_document.policy"
+    ]
+    assert checkov_data_source_rows  # grounds the construction below in a real corpus fact
+
+    raw = {
+        "results": [
+            {
+                "rule_id": "AVD-AWS-0057",
+                "rule_description": "made up for this test",
+                "resolution": "n/a",
+                "severity": "LOW",
+                "resource": "data.aws_iam_policy_document.policy",
+                "location": {
+                    "filename": str(TERRAFORM_SCAN_ROOT / "made-up.tf"),
+                    "start_line": 1,
+                    "end_line": 2,
+                },
+            }
+        ]
+    }
+    result = TfsecAdapter().parse(raw, TERRAFORM_SCAN_ROOT, None)
+    (finding,) = result.findings
+    assert finding.identity_kind == "terraform"
+    assert finding.context_eligible is True
+    assert finding.fingerprint is None
+    assert finding.resource_identity == identity.terraform_identity(
+        "aws_iam_policy_document", "policy"
+    )
+    # The point of the fix: this must equal checkov's own rendering of the
+    # identical resource, not merely "look like" a terraform identity.
+    assert finding.resource_identity == checkov_data_source_rows[0]["resource"]
+
+
+def test_a_four_component_data_source_still_splits_off_the_fingerprint() -> None:
+    """Constructed: corpus v0 exercises neither a `data.`-prefixed resource nor
+    an attribute-suffixed one together at once. S1 §5.1 gives a data source
+    the same bare `type.name` form a managed resource takes, so the same
+    attribute-splitting rule that applies to `aws_db_instance.default.
+    publicly_accessible` (three components) must also apply one component
+    further in, once the leading `data.` is stripped.
+    """
+    raw = {
+        "results": [
+            {
+                "rule_id": "AVD-AWS-0057",
+                "rule_description": "made up for this test",
+                "resolution": "n/a",
+                "severity": "LOW",
+                "resource": "data.aws_iam_policy_document.policy.statement",
+                "location": {
+                    "filename": str(TERRAFORM_SCAN_ROOT / "made-up.tf"),
+                    "start_line": 1,
+                    "end_line": 2,
+                },
+            }
+        ]
+    }
+    result = TfsecAdapter().parse(raw, TERRAFORM_SCAN_ROOT, None)
+    (finding,) = result.findings
+    assert finding.identity_kind == "terraform"
+    assert finding.resource_identity == identity.terraform_identity(
+        "aws_iam_policy_document", "policy"
+    )
+    assert finding.fingerprint == "statement"
+
+
 # --- terraform identity: unrecognized resource shapes are unresolved, not guessed --
 
 
@@ -251,15 +346,19 @@ def test_every_finding_from_the_terraform_fixture_is_platform_terraform() -> Non
 
 
 def test_fingerprint_is_none_for_every_plain_resource() -> None:
-    """118 of 119 corpus v0 `resource` values carry no attribute suffix
-    (measured), so 118 findings must carry `fingerprint is None` - the
-    explicit unresolved state (spec §6: "tfsec - the attribute split off the
-    `resource` field where present; otherwise unresolved"), never a
-    placeholder string.
+    """Every finding but the one attribute-suffixed row (`AVD-AWS-0180`, the
+    fixture's only `resource` value carrying a suffix - confirmed above) must
+    carry `fingerprint is None` - the explicit unresolved state (spec §6:
+    "tfsec - the attribute split off the `resource` field where present;
+    otherwise unresolved"), never a placeholder string. Expressed as "all
+    findings minus the one known exception" rather than a restated `118`, so
+    a re-capture that changes the total moves what this test expects instead
+    of leaving a stale count standing.
     """
     result = _terraform_result()
+    assert result.findings
     unsuffixed = [f for f in result.findings if f.rule_id != "AVD-AWS-0180"]
-    assert len(unsuffixed) == 118
+    assert len(unsuffixed) == len(result.findings) - 1
     assert all(f.fingerprint is None for f in unsuffixed)
 
 
@@ -387,11 +486,14 @@ def test_title_and_remediation_come_from_tfsecs_own_fields() -> None:
 
 def test_every_tfsec_finding_rebases_to_an_absolute_windows_path() -> None:
     """Ground the gate-3 fixture assumption itself: `location.filename` really is
-    absolute on all 119 rows (measured; design spec §1 consequence 1), so the
-    rebasing this task adds is exercised by every finding, not a handful.
+    absolute on every row (measured; design spec §1 consequence 1), so the
+    rebasing this task adds is exercised by every finding, not a handful. The
+    point is "every row, not just a sample" - `assert raw` plus the `all(...)`
+    below already say that; the row count itself is not this test's claim, so
+    it is deliberately not restated here as a hardcoded `119`.
     """
     raw = _raw_results("tfsec-terraform.json")
-    assert len(raw) == 119
+    assert raw
     assert all(r["location"]["filename"][1:3] == ":\\" for r in raw)
 
 
