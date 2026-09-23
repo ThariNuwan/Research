@@ -980,7 +980,7 @@ Implements spec §3's lockfile-driven dispatch.
 
 - [ ] **Step 1: Write the failing test** covering:
   - `applicable_scanners("terraform")` returns all three and `applicable_scanners("kubernetes")` excludes tfsec — **read from the lockfile, not hardcoded**, so the platform matrix stays data as S0 established;
-  - no scanner name appears as a literal in a conditional in `invoke.py` — assert by AST inspection, mirroring `tests/test_architecture.py`'s approach;
+  - no scanner name appears as a literal in a conditional in `invoke.py` — assert by AST inspection. **Correction:** an earlier revision said this mirrored `tests/test_architecture.py`'s approach. It does not — that file holds only import-boundary, CRLF and harvest-isolation guards, and has no scanner-name test. What it *does* provide is the AST technique itself (`ast.parse` plus a walk, as `_imported_modules` uses), which is worth borrowing. The real precedent for treating the platform matrix as data is `tools/harvest/run.py`, which filters `scanners.lock.json`'s `platforms` list rather than branching on a scanner name;
   - `build_invocations` emits nothing for a platform with no files;
   - `run` is **not** exercised against live scanners; test only that a non-zero exit with parseable JSON is returned rather than raising, and that an unparseable stdout raises with the scanner named.
 
