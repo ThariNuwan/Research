@@ -367,3 +367,25 @@ def test_file_path_is_rebased_scan_root_relative() -> None:
     result = _terraform_result()
     assert any(f.file_path == "db-app.tf" for f in result.findings)
     assert not any(f.file_path.startswith(("/", "\\")) for f in result.findings)
+
+
+# --- file identity: cross-scanner agreement with trivy on the same Dockerfile -----
+
+
+def test_dockerfile_identity_has_no_trailing_dot_and_matches_trivys() -> None:
+    """checkov's raw `resource` for both `CKV_DOCKER_*` findings is
+    `/resources\\Dockerfile.` - trailing dot and all - but `resource_identity`
+    here is built from the rebased `file_path` instead, which has no such
+    decoration. That is what lets it meet trivy's identity for the same file
+    (`DS-0002`/`DS-0026` resolve to `resources/Dockerfile` too): a bare
+    normalization of the raw `resource` string would leave the trailing dot in
+    place and put the two adapters' identities for one Dockerfile one
+    character apart, silently defeating Task 8's cross-scanner join. A future
+    reader should not "tidy" this back to the raw value.
+    """
+    result = _terraform_result()
+    dockerfile_findings = [f for f in result.findings if f.identity_kind == "file"]
+    assert len(dockerfile_findings) == 2  # CKV_DOCKER_2 and CKV_DOCKER_3, corpus v0's only two
+    for finding in dockerfile_findings:
+        assert finding.resource_identity == "resources/Dockerfile"
+        assert not finding.resource_identity.endswith(".")

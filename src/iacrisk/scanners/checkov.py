@@ -98,18 +98,24 @@ def classify_resource(value: str, rule_id: str, platform: str) -> tuple[str, str
     an ambiguous value between those two, checking secret first costs nothing
     and removes a fragile assumption.
 
-    The returned `resource_identity` is the *final* value for every kind except
-    `kubernetes`: a terraform address round-trips through `identity.
-    terraform_identity` (S1's single spelling authority), and `secret`/`file`/
-    `provider` have no S1 formatter at all, so the value is returned verbatim
-    (`file` through `identity.normalize_path`, since checkov spells the same
-    Dockerfile two ways across its own blocks - see that function's docstring).
-    For `kubernetes`, this function returns `identity.UNRESOLVED` deliberately:
-    the canonical form needs `apiVersion`, which is not in checkov's field at
-    all (spec §4), and needs the resource index's by-address/by-line resolution
-    (`_resolve_kubernetes`, below) that this pure, index-free classifier does
-    not have access to. `CheckovAdapter.parse` overwrites this placeholder for
-    every kubernetes-shaped value; nothing downstream should read it as final.
+    The returned `resource_identity` is the *final* value for `terraform`,
+    `secret` and `provider`: a terraform address round-trips through `identity.
+    terraform_identity` (S1's single spelling authority), and `secret`/
+    `provider` have no S1 formatter at all, so the value is returned verbatim.
+    `kubernetes` and `file` both come back as placeholders instead, because
+    each needs something this pure, index-free classifier does not have access
+    to. For `kubernetes`, this function returns `identity.UNRESOLVED`
+    deliberately: the canonical form needs `apiVersion`, which is not in
+    checkov's field at all (spec §4), and needs the resource index's
+    by-address/by-line resolution (`_resolve_kubernetes`, below). For `file`,
+    it returns `identity.normalize_path(value)` - the raw `resource` string,
+    backslash-normalized - but that string carries decoration checkov's own
+    `file_path` field does not (a trailing `.` on a Dockerfile finding,
+    measured in corpus v0; see `_build_finding`'s docstring), so
+    `_build_finding` substitutes the rebased `file_path` for it, which this
+    classifier also cannot reach. `CheckovAdapter.parse` overwrites both
+    placeholders; nothing downstream should read either as final from this
+    function alone.
 
     Only `terraform` and `kubernetes` are `context_eligible` (spec §2.1): the
     other three kinds have no cloud or cluster resource for S3b to attach
@@ -254,6 +260,16 @@ def _build_finding(
     (`_CONTEXT_ELIGIBLE_KINDS`) rather than left at the `True` `classify_resource`
     assigned before resolution had a chance to fail. `classify_resource` cannot
     make this call itself - resolution has not happened yet when it runs.
+
+    A `file`-shaped identity is replaced with the rebased `file_path`, for the
+    same reason `classify_resource`'s own docstring flags it as a placeholder:
+    checkov's `resource` string for a Dockerfile finding carries decoration its
+    `file_path` field does not (a trailing `.` in `/resources\\Dockerfile.`,
+    measured on corpus v0's two `CKV_DOCKER_*` findings), and that decoration
+    would put this adapter's identity for the file one character off trivy's
+    identity for the same file - silently defeating the Task 8 cross-scanner
+    join `CKV_DOCKER_2`/`DS-0002` and `CKV_DOCKER_3`/`DS-0026` are exactly the
+    kind of pair it exists to report.
     """
     raw_rule_id = check.get("check_id")
     if not raw_rule_id:
@@ -272,6 +288,9 @@ def _build_finding(
     raw_file_path = str(check.get("file_path") or "")
     file_path = rebase_to_scan_root(raw_file_path, scan_root) if raw_file_path else ""
     line_range = _line_range(check.get("file_line_range"))
+
+    if identity_kind == "file":
+        resource_identity = file_path
 
     if identity_kind == "kubernetes":
         if index is not None:
