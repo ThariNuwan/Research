@@ -3,8 +3,9 @@
 Terraform is the easy half - `CauseMetadata.Resource` is present on 113 of 115
 findings and is always a clean `<type>.<name>` pair, the same shape checkov's
 `classify_resource` has to work harder to recognize among four other shapes.
-The 2 without it (both `DS-*` Dockerfile checks) take `<unresolved>` rather
-than being dropped, mirroring checkov's non-resource retention (spec §2.1).
+The 2 without it (both `DS-*` Dockerfile checks) resolve to `identity_kind
+="file"` from `Target` instead - not `<unresolved>`, corrected during the fix
+round - matching checkov's own `identity_kind` for the same physical file.
 
 Kubernetes is the hard half. Trivy states the resource only in prose
 (`Container 'batch-check' of Job 'batch-check-job' should set...`), so every
@@ -84,8 +85,8 @@ def test_every_kubernetes_finding_is_retained_or_dropped() -> None:
 def test_nothing_is_dropped_in_corpus_v0() -> None:
     """Every misconfiguration in both fixtures carries an `ID` (measured: 0 of
     115 and 0 of 332 missing), so nothing should land in `dropped` - even the
-    2 terraform findings with no `CauseMetadata.Resource` are retained with an
-    `<unresolved>` identity, never dropped (task brief, Step 1 bullet 1).
+    2 terraform findings with no `CauseMetadata.Resource` are retained, with a
+    `file` identity resolved from `Target`, never dropped.
     """
     assert _terraform_result().dropped == ()
     assert _kubernetes_result().dropped == ()
@@ -121,13 +122,21 @@ def test_a_terraform_resource_resolves_to_the_terraform_identity() -> None:
     assert finding.resource_identity == identity.terraform_identity("aws_instance", "db_app")
 
 
-def test_the_two_findings_without_a_resource_are_unresolved_and_counted() -> None:
+def test_the_two_findings_without_a_resource_take_the_file_identity_kind() -> None:
     """The 2 terraform findings with no `CauseMetadata.Resource` at all (measured:
-    both are `resources/Dockerfile` findings, `DS-0002` and `DS-0026` - Dockerfile
-    checks trivy runs alongside the terraform scan root, per the block-level
-    `Type` field). They take `<unresolved>`, not `file` - unlike checkov's
-    Dockerfile findings, trivy supplies nothing here to classify as a file path,
-    only the absence of a resource (task brief, Step 1 bullet 1).
+    both are `resources/Dockerfile` findings, `DS-0002` and `DS-0026`, `Type:
+    "dockerfile"` - Dockerfile checks trivy runs alongside the terraform scan
+    root). **Corrected during the fix round**: the task brief originally said
+    these take `<unresolved>`; that conflated "no terraform `Resource`" with
+    "identity undeterminable". trivy's own `Target` names the file plainly
+    (`resources/Dockerfile`), and checkov flags the *same file* with
+    `CKV_DOCKER_2`/`CKV_DOCKER_3` under `identity_kind="file"`
+    (`test_checkov.py::test_a_dockerfile_resource_is_a_file_and_not_context_eligible`).
+    Giving trivy's view of that file a different kind than checkov's would
+    split one Dockerfile across two retention-report buckets (Task 9) and
+    make the two scanners' findings on it structurally unable to dedupe-
+    candidate together (Task 8, since `<unresolved>` never collapses with
+    anything) - for no reason but which scanner happened to find it.
     """
     raw = _raw_misconfigurations("trivy-terraform.json")
     missing = [
@@ -135,14 +144,50 @@ def test_the_two_findings_without_a_resource_are_unresolved_and_counted() -> Non
     ]
     assert len(missing) == 2
     assert {m["ID"] for _, m in missing} == {"DS-0002", "DS-0026"}
+    assert {target for target, _ in missing} == {"resources/Dockerfile"}
 
     result = _terraform_result()
-    unresolved = [f for f in result.findings if f.rule_id in ("DS-0002", "DS-0026")]
-    assert len(unresolved) == 2
-    for finding in unresolved:
-        assert finding.resource_identity == identity.UNRESOLVED
-        assert finding.identity_kind == "unresolved"
+    file_findings = [f for f in result.findings if f.rule_id in ("DS-0002", "DS-0026")]
+    assert len(file_findings) == 2
+    for finding in file_findings:
+        assert finding.identity_kind == "file"
+        assert finding.resource_identity == "resources/Dockerfile"
         assert finding.context_eligible is False
+
+
+def test_no_resource_and_no_target_stays_genuinely_unresolved() -> None:
+    """The `file` fallback above only fires when `Target` actually names a file.
+    A finding with neither `CauseMetadata.Resource` nor a real `Target` (here,
+    `Target == "."`, trivy's directory-level summary spelling) has nothing to
+    point at, so it must still fall through to `<unresolved>` - the boundary
+    the fix round's file-identity fallback must not erase. Constructed rather
+    than found: corpus v0 has no misconfiguration with both fields absent at
+    once (the 2 real no-`Resource` findings both carry a real `Target`).
+    """
+    synthetic = {
+        "Results": [
+            {
+                "Target": ".",
+                "Class": "config",
+                "Type": "terraform",
+                "Misconfigurations": [
+                    {
+                        "ID": "AWS-9998",
+                        "Title": "made up for this test",
+                        "Resolution": "n/a",
+                        "Severity": "LOW",
+                        "CauseMetadata": {},
+                    }
+                ],
+            }
+        ]
+    }
+    result = TrivyAdapter().parse(synthetic, TERRAFORM_SCAN_ROOT, None)
+    (finding,) = result.findings
+    assert finding.file_path == ""
+    assert finding.resource_identity == identity.UNRESOLVED
+    assert finding.identity_kind == "unresolved"
+    assert finding.context_eligible is False
 
 
 # --- kubernetes identity: entirely from the index, by line -------------------------

@@ -5,8 +5,11 @@ on 113 of 115 corpus v0 findings and is always a clean `<type>.<name>` pair -
 no polymorphism to read apart, unlike checkov's `resource` field (spec §2.1).
 The 2 without it (`resources/Dockerfile`'s `DS-0002` and `DS-0026`, run
 alongside the terraform scan root per trivy's own block-level `Type` field)
-take `identity.UNRESOLVED` rather than being dropped, the same retain-not-drop
-discipline checkov's non-resource findings follow.
+take `identity_kind="file"` with the rebased `Target` as their identity, not
+`<unresolved>` - checkov flags the same file (`CKV_DOCKER_2`/`CKV_DOCKER_3`)
+and gives it the same kind, and `<unresolved>` is reserved for identity that
+is genuinely undeterminable, which this is not (`_resolve_terraform`'s
+docstring has the full correction history).
 
 Kubernetes has no such field to read at all - measured 0 of 332 findings carry
 `CauseMetadata.Resource`; trivy states the resource only in the `Message`
@@ -118,18 +121,37 @@ def _platform_of(results: Sequence[Any]) -> str:
     return "terraform"
 
 
-def _resolve_terraform(resource: object) -> tuple[str, str]:
-    """`CauseMetadata.Resource` read as a terraform identity, or `<unresolved>`.
+def _resolve_terraform(resource: object, file_path: str) -> tuple[str, str]:
+    """`CauseMetadata.Resource` read as a terraform identity, a file identity, or `<unresolved>`.
 
-    `resource` is missing on 2 of 115 corpus v0 findings (both `DS-*`
-    Dockerfile checks) and is always a clean `<type>.<name>` pair when
-    present, measured against `_TERRAFORM_RESOURCE_RE`. A present-but-
-    unrecognized shape falls through to `<unresolved>` alongside the missing
-    case - defensive, since corpus v0 has no such value.
+    `resource` is missing on 2 of 115 corpus v0 findings and is always a clean
+    `<type>.<name>` pair when present, measured against `_TERRAFORM_RESOURCE_RE`.
+    A present-but-unrecognized shape falls through toward the file/unresolved
+    branch below alongside the missing case - defensive, since corpus v0 has
+    no such value.
+
+    **Correction, recorded during Task 6's fix round.** The task brief
+    originally said the 2 resource-less findings should take `<unresolved>`.
+    That was wrong: both are `DS-*` Dockerfile checks (`Type: "dockerfile"`,
+    `Target: "resources/Dockerfile"`) - trivy tells us exactly which file is
+    at fault, it simply is not a terraform *resource*. `<unresolved>` means
+    "we could not determine it"; here we can, from `Target` alone. Checkov
+    flags the same file with `CKV_DOCKER_2`/`CKV_DOCKER_3` and gives it
+    `identity_kind="file"` (`checkov.classify_resource`) - without this
+    fallback, one Dockerfile would carry two different identity kinds
+    depending only on which scanner found it, breaking Task 9's retention
+    grouping and Task 8's dedupe key for no principled reason. So: no
+    terraform-shaped `Resource` but a real `Target` (a non-empty, non-`"."`
+    `file_path`) resolves to the `file` kind instead, mirroring checkov's own
+    treatment of the same file. Only when there is truly no file to point at
+    (`file_path` empty, e.g. a `Target == "."` summary block) does this fall
+    through to `<unresolved>`.
     """
     if isinstance(resource, str) and _TERRAFORM_RESOURCE_RE.fullmatch(resource):
         resource_type, _, resource_name = resource.partition(".")
         return identity.terraform_identity(resource_type, resource_name), "terraform"
+    if file_path:
+        return identity.normalize_path(file_path), "file"
     return identity.UNRESOLVED, "unresolved"
 
 
@@ -176,7 +198,9 @@ def _build_finding(
     line_range = _line_range(cause_metadata)
 
     if platform == "terraform":
-        resource_identity, identity_kind = _resolve_terraform(cause_metadata.get("Resource"))
+        resource_identity, identity_kind = _resolve_terraform(
+            cause_metadata.get("Resource"), file_path
+        )
     else:
         resource_identity, identity_kind = _resolve_kubernetes(file_path, line_range, index)
     # `context_eligible` is derived from the kind alone, never from resolution
