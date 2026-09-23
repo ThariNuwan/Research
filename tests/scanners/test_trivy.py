@@ -309,7 +309,7 @@ def test_kubernetes_identity_needs_an_index() -> None:
     # Derived, not restated: losing the index must cost identity, never findings.
     # A hardcoded count here could not distinguish "nothing dropped" from "the
     # fixture changed", which is the whole reason the brief forbids the literal.
-    assert len(result.findings) == len(_raw_misconfigurations(raw_kubernetes))
+    assert len(result.findings) == len(_raw_misconfigurations("trivy-kubernetes.json"))
     assert all(f.identity_kind == "unresolved" for f in result.findings)
     assert all(f.context_eligible is False for f in result.findings)
 
