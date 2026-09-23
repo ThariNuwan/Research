@@ -186,7 +186,8 @@ def _build_finding(
     `ID` is present on every one of corpus v0's 447 misconfigurations
     (measured), so the guard below is defensive rather than modeled - it
     exists so a future capture missing it is counted as `dropped`
-    (`in == out + dropped`, spec §0.1) instead of crashing the adapter run.
+    (`in == out + dropped`, spec §10 acceptance gate 6) instead of crashing
+    the adapter run.
     """
     raw_id = misconfiguration.get("ID")
     if not raw_id:

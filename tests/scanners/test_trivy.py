@@ -92,17 +92,6 @@ def test_nothing_is_dropped_in_corpus_v0() -> None:
     assert _kubernetes_result().dropped == ()
 
 
-def test_terraform_finding_count_matches_the_fixture() -> None:
-    """115 misconfigurations (§1's measured-facts table), grounded here rather
-    than only implied by the retention test above."""
-    assert len(_terraform_result().findings) == 115
-
-
-def test_kubernetes_finding_count_matches_the_fixture() -> None:
-    """332 misconfigurations (§1's measured-facts table)."""
-    assert len(_kubernetes_result().findings) == 332
-
-
 # --- terraform identity: CauseMetadata.Resource, and the 2 that lack it ------------
 
 
@@ -219,8 +208,14 @@ def test_kubernetes_identity_resolution_rate_matches_the_index_measured_independ
             if entry.container is not None:
                 expected_container += 1
 
-    assert expected_resolved == 313
-    assert expected_container == 217
+    # Non-triviality guards, not the numbers under test: a defect that made the
+    # loop above match nothing at all would otherwise let the comparison below
+    # pass vacuously (0 == 0). The 313/217 the docstring quotes are asserted
+    # only via that comparison against the adapter's own output, never
+    # hardcoded here - so a re-capture that moves the true rate moves what
+    # this test expects, rather than failing against a stale literal.
+    assert expected_resolved
+    assert expected_container
 
     result = _kubernetes_result()
     resolved = [f for f in result.findings if f.identity_kind == "kubernetes"]

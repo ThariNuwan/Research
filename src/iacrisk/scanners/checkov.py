@@ -113,9 +113,9 @@ def classify_resource(value: str, rule_id: str, platform: str) -> tuple[str, str
     `file_path` field does not (a trailing `.` on a Dockerfile finding,
     measured in corpus v0; see `_build_finding`'s docstring), so
     `_build_finding` substitutes the rebased `file_path` for it, which this
-    classifier also cannot reach. `CheckovAdapter.parse` overwrites both
-    placeholders; nothing downstream should read either as final from this
-    function alone.
+    classifier also cannot reach. `_build_finding` - called from
+    `CheckovAdapter.parse`, not `parse` itself - overwrites both placeholders;
+    nothing downstream should read either as final from this function alone.
 
     Only `terraform` and `kubernetes` are `context_eligible` (spec §2.1): the
     other three kinds have no cloud or cluster resource for S3b to attach
@@ -250,8 +250,8 @@ def _build_finding(
     §1's identity-present column), and `check_id` measures the same on this pin
     though spec §1 does not itself tabulate it. Both guards are therefore
     defensive rather than modeled; they exist so a future capture missing
-    either is counted as `dropped` (`in == out + dropped`, spec §0.1) instead
-    of crashing the adapter run or, worse, silently vanishing.
+    either is counted as `dropped` (`in == out + dropped`, spec §10 acceptance
+    gate 6) instead of crashing the adapter run or, worse, silently vanishing.
 
     A `kubernetes`-shaped identity that still resolves to `identity.UNRESOLVED`
     after `_resolve_kubernetes` runs - both lookups missed, or no index was
