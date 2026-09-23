@@ -205,6 +205,88 @@ def test_a_lone_unresolved_fingerprint_finding_with_no_sibling_stands_alone() ->
     assert result.collapsed_count == 0
 
 
+# --- candidate split: cross-scanner (rule-family overlap) vs same-scanner (a -----------
+# --- precision limit of the fingerprint) - two different claims, never combined --------
+
+
+def test_cross_scanner_and_same_scanner_candidates_are_correctly_classified_and_partition() -> None:
+    """Fix round, coordinator-directed: `candidates` alone conflates two different
+    research claims. A cross-scanner candidate (two different scanners on one
+    resource and class) is evidence for PLAN #19's rule-family overlap
+    discussion; a same-scanner candidate (one scanner, two genuinely different
+    checks, neither fingerprinted) is a precision limit of the fingerprint
+    itself and has nothing to do with scanner overlap - the real corpus v0
+    example is `checkov` alone reporting `CKV2_AWS_61` and `CKV2_AWS_62` on
+    one S3 bucket. This builds one of each, on two different resources so
+    they cannot be confused with each other, and checks both the per-candidate
+    flag and the `DedupeResult`-level split.
+    """
+    cross_a = _finding(scanner="checkov", resource_identity="aws_s3_bucket.logs", fingerprint=None)
+    cross_b = _finding(scanner="trivy", resource_identity="aws_s3_bucket.logs", fingerprint=None)
+    same_a = _finding(
+        scanner="checkov",
+        rule_id="CKV2_AWS_61",
+        resource_identity="aws_s3_bucket.data",
+        fingerprint=None,
+    )
+    same_b = _finding(
+        scanner="checkov",
+        rule_id="CKV2_AWS_62",
+        resource_identity="aws_s3_bucket.data",
+        fingerprint=None,
+    )
+
+    result = deduplicate([cross_a, cross_b, same_a, same_b])
+
+    assert len(result.candidates) == 2
+    cross_candidate = next(
+        c for c in result.candidates if c.resource_identity == "aws_s3_bucket.logs"
+    )
+    same_candidate = next(
+        c for c in result.candidates if c.resource_identity == "aws_s3_bucket.data"
+    )
+
+    assert cross_candidate.is_cross_scanner
+    assert not same_candidate.is_cross_scanner
+
+    assert result.cross_scanner_candidates == (cross_candidate,)
+    assert result.same_scanner_candidates == (same_candidate,)
+
+
+def test_cross_and_same_scanner_candidates_partition_the_total_exactly() -> None:
+    """The coordinator's required invariant: `cross + same == len(candidates)`,
+    derived from `DedupeResult` itself rather than restated as a literal count
+    - and every candidate lands in exactly one of the two, never both and
+    never neither.
+    """
+    cross = _finding(scanner="checkov", resource_identity="aws_s3_bucket.logs", fingerprint=None)
+    cross_partner = _finding(
+        scanner="trivy", resource_identity="aws_s3_bucket.logs", fingerprint=None
+    )
+    same_a = _finding(
+        scanner="checkov",
+        rule_id="CKV2_AWS_61",
+        resource_identity="aws_s3_bucket.data",
+        fingerprint=None,
+    )
+    same_b = _finding(
+        scanner="checkov",
+        rule_id="CKV2_AWS_62",
+        resource_identity="aws_s3_bucket.data",
+        fingerprint=None,
+    )
+
+    result = deduplicate([cross, cross_partner, same_a, same_b])
+
+    assert len(result.cross_scanner_candidates) + len(result.same_scanner_candidates) == len(
+        result.candidates
+    )
+    cross_ids = {id(c) for c in result.cross_scanner_candidates}
+    same_ids = {id(c) for c in result.same_scanner_candidates}
+    assert cross_ids.isdisjoint(same_ids)
+    assert cross_ids | same_ids == {id(c) for c in result.candidates}
+
+
 # --- unresolved identity: opts out of both tiers entirely -----------------------------
 
 
@@ -424,6 +506,68 @@ def test_real_corpus_tier2_candidate_count_matches_an_independent_tally() -> Non
     assert expected_candidate_groups > 0
     assert len(result.candidates) == expected_candidate_groups
     assert sum(len(c.findings) for c in result.candidates) == expected_candidated_findings
+
+
+def test_real_corpus_cross_and_same_scanner_candidates_partition_exactly() -> None:
+    """The coordinator's fix-round requirement, over the full real corpus rather
+    than only the synthetic cases: `cross_scanner_candidates` and
+    `same_scanner_candidates` partition `candidates` exactly - every real
+    candidate lands in one and only one - and neither count is restated as a
+    literal; both are read off `DedupeResult` itself.
+    """
+    result = deduplicate(_all_real_findings())
+    assert result.candidates  # non-vacuous
+
+    cross = result.cross_scanner_candidates
+    same = result.same_scanner_candidates
+    assert len(cross) + len(same) == len(result.candidates)
+    cross_ids = {id(c) for c in cross}
+    same_ids = {id(c) for c in same}
+    assert cross_ids.isdisjoint(same_ids)
+    assert cross_ids | same_ids == {id(c) for c in result.candidates}
+    assert all(c.is_cross_scanner for c in cross)
+    assert all(not c.is_cross_scanner for c in same)
+    # Both categories are genuinely exercised in corpus v0 (measured: 116
+    # cross-scanner, 91 same-scanner) - asserted as non-empty rather than
+    # restating either literal, so this test cannot vacuously pass if a
+    # future recapture stopped exercising one side.
+    assert cross
+    assert same
+
+
+def test_real_corpus_cross_scanner_candidate_count_matches_an_independent_tally() -> None:
+    """The split's cross-scanner count, cross-checked against an oracle built
+    independently from the finding list - the same discipline the Tier-1 and
+    Tier-2 independent tallies above apply, extended to the new split so a bug
+    in `is_cross_scanner` or in how `cross_scanner_candidates` filters cannot
+    mark its own homework.
+    """
+    findings = _all_real_findings()
+    result = deduplicate(findings)
+
+    by_pair: dict[tuple[str, str], list[NormalizedFinding]] = {}
+    for f in findings:
+        if f.resource_identity == identity.UNRESOLVED:
+            continue
+        by_pair.setdefault((f.resource_identity, f.issue_class), []).append(f)
+
+    expected_cross = 0
+    expected_same = 0
+    for members in by_pair.values():
+        fingerprint_counts = Counter(f.fingerprint for f in members if f.has_resolved_fingerprint)
+        remaining = [
+            f
+            for f in members
+            if not f.has_resolved_fingerprint or fingerprint_counts[f.fingerprint] == 1
+        ]
+        if len(remaining) > 1 and any(not f.has_resolved_fingerprint for f in remaining):
+            if len({f.scanner for f in remaining}) > 1:
+                expected_cross += 1
+            else:
+                expected_same += 1
+
+    assert len(result.cross_scanner_candidates) == expected_cross
+    assert len(result.same_scanner_candidates) == expected_same
 
 
 def test_real_corpus_has_at_least_one_genuinely_cross_scanner_tier1_group() -> None:

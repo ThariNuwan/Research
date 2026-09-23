@@ -33,6 +33,31 @@ containing at least one *unresolved* fingerprint is genuinely ambiguous - it
 cannot be ruled out that the unresolved finding is the same violation as one
 of its resolved-but-unmatched neighbours - and that ambiguity is what Tier 2
 exists to surface.
+
+**Candidates split into cross-scanner and same-scanner, because they are two
+different research claims, not two shades of one number.** Measured on
+corpus v0's fixtures: of 207 candidate groups, 116 involve more than one
+scanner and 91 involve exactly one. Collapsing them into a single "candidate
+overlap" figure would misreport the 91 - a real example from the corpus is
+`checkov` alone reporting `CKV2_AWS_61` and `CKV2_AWS_62` on one S3 bucket,
+two genuinely different checks with no scanner overlap involved at all. The
+two counts mean different things and PLAN Q7 requires exactly this discipline
+for alert-reduction numbers - reported separately, never combined:
+
+- `DedupeResult.cross_scanner_candidates` - evidence for PLAN's
+  scanner-selection note #19, the rule-family overlap discussion between
+  tfsec and trivy (and, per the one measured Tier-1 example, checkov too).
+- `DedupeResult.same_scanner_candidates` - not scanner overlap at all. It is
+  a precision limit of the fingerprint itself: cases where our own
+  extraction could not tell two findings on one resource and class apart,
+  which belongs in the dissertation's limitations discussion rather than the
+  cross-scanner one.
+
+Both are derived properties over `candidates` (via `CandidateOverlap.
+is_cross_scanner`, itself read off the already-deduplicated `scanners` tuple)
+rather than stored fields or a recomputation from raw findings, so they
+cannot drift from `candidates` and a caller never needs the original finding
+list again to ask which bucket a candidate belongs to.
 """
 
 from __future__ import annotations
@@ -81,6 +106,22 @@ class CandidateOverlap:
     findings: tuple[NormalizedFinding, ...]
     scanners: tuple[str, ...]
 
+    @property
+    def is_cross_scanner(self) -> bool:
+        """Whether more than one scanner contributed to this candidate group.
+
+        Read off `scanners` - already the deduplicated set of scanner names
+        among `findings` - rather than recomputed from `findings` itself, so
+        this can never disagree with what `scanners` already states. This is
+        the fact `DedupeResult.cross_scanner_candidates` and
+        `.same_scanner_candidates` partition on: a cross-scanner group is
+        evidence of rule-family overlap between scanners (PLAN #19); a
+        same-scanner group is one scanner reporting two findings the
+        fingerprint could not distinguish - a precision limit of the
+        fingerprint, not overlap between scanners at all.
+        """
+        return len(self.scanners) > 1
+
 
 @dataclass(frozen=True)
 class DedupeResult:
@@ -96,6 +137,30 @@ class DedupeResult:
     groups: tuple[DedupeGroup, ...]
     candidates: tuple[CandidateOverlap, ...]
     collapsed_count: int
+
+    @property
+    def cross_scanner_candidates(self) -> tuple[CandidateOverlap, ...]:
+        """The subset of `candidates` more than one scanner contributed to.
+
+        Evidence for PLAN's scanner-selection note #19 (rule-family overlap
+        between scanners) - report this count, never `len(candidates)`
+        undifferentiated, when that is the claim being made (module
+        docstring's "candidates split" section).
+        """
+        return tuple(c for c in self.candidates if c.is_cross_scanner)
+
+    @property
+    def same_scanner_candidates(self) -> tuple[CandidateOverlap, ...]:
+        """The subset of `candidates` exactly one scanner contributed to.
+
+        Not scanner overlap - one scanner reported findings on one resource
+        and class that the fingerprint could not tell apart. Belongs in the
+        dissertation's limitations discussion (a precision limit of the
+        fingerprint), never folded into the cross-scanner count (module
+        docstring's "candidates split" section; PLAN Q7's discipline of
+        reporting alert-reduction facts separately, never combined).
+        """
+        return tuple(c for c in self.candidates if not c.is_cross_scanner)
 
 
 def deduplicate(findings: Iterable[NormalizedFinding]) -> DedupeResult:
