@@ -313,6 +313,49 @@ def test_every_ckv2_k8s_6_finding_resolves_without_a_container_component() -> No
         assert finding.resource_identity != identity.UNRESOLVED
 
 
+# --- unresolved kubernetes identity: context_eligible follows the downgraded kind --
+
+
+def test_an_unresolvable_kubernetes_identity_is_context_ineligible() -> None:
+    """Corpus v0 does not exercise this branch: every checkov kubernetes finding
+    in the fixtures resolves by address or by line, and none of the 4
+    unparseable `metadata-db/templates/` files produces a checkov finding at
+    all. So this case - a kubernetes-shaped `resource` that fails both
+    `by_address` and `by_line` - is constructed directly against an empty
+    index rather than found in the corpus.
+
+    A finding like this must not be `context_eligible`: nothing was actually
+    resolved, and marking it eligible would let S3b default every context
+    factor and float it to a "High" that reflects nothing but the washout
+    (spec §2.1).
+    """
+    raw = [
+        {
+            "check_type": "kubernetes",
+            "results": {
+                "failed_checks": [
+                    {
+                        "check_id": "CKV_K8S_43",
+                        "check_name": "made up for this test",
+                        "check_result": {"result": "FAILED", "evaluated_keys": []},
+                        "file_path": "/made-up.yaml",
+                        "file_line_range": [1, 2],
+                        "resource": "Deployment.default.nowhere",
+                        "severity": None,
+                        "guideline": None,
+                    }
+                ]
+            },
+        }
+    ]
+    empty_index = ResourceIndex(entries=(), unparseable=())
+    result = CheckovAdapter().parse(raw, KUBERNETES_SCAN_ROOT, empty_index)
+    (finding,) = result.findings
+    assert finding.resource_identity == identity.UNRESOLVED
+    assert finding.identity_kind == "unresolved"
+    assert finding.context_eligible is False
+
+
 # --- path handling: checkov's own leading-separator spelling is rebased -----------
 
 

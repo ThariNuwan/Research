@@ -3,10 +3,10 @@
 Checkov's `resource` string does not announce what it names - across corpus v0's
 489 failed checks it is a Terraform address (`aws_db_instance.default`), a
 Dockerfile path (`/resources\\Dockerfile.`), a provider block
-(`aws.plain_text_access_keys_provider`), a bare 40-hex secret hash, or a
-Kubernetes `Kind.namespace.name` triple, sometimes with a fourth dot-component
-(spec §1 measured fact 3, §2.1). `classify_resource` reads that shape; nothing
-else in this module second-guesses it once classified.
+(`aws.plain_text_access_keys_provider`), a bare 40-hex secret hash (spec §1
+measured fact 3, §2.1), or a Kubernetes `Kind.namespace.name` triple, sometimes
+with a fourth dot-component. `classify_resource` reads that shape; nothing else
+in this module second-guesses it once classified.
 
 The fourth Kubernetes component deserves its own warning, because an earlier
 draft of the spec got it wrong and this module exists to not repeat that
@@ -35,7 +35,7 @@ from typing import Any
 from iacrisk import identity, rubric, taxonomy
 from iacrisk.finding import NormalizedFinding
 from iacrisk.resources import ResourceIndex
-from iacrisk.scanners.base import AdapterResult, rebase_to_scan_root
+from iacrisk.scanners.base import AdapterResult, ScannerAdapter, rebase_to_scan_root
 
 _SECRET_HASH_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 """A bare secret hash, e.g. `25910f981e85ca04baf359199dd0bd4a3ae738b6` (§2.1).
@@ -60,7 +60,12 @@ addresses has a `<provider>_<resource>` type (`aws_db_instance`, `aws_s3_bucket`
 regex encodes that measured distinction rather than checkov's `check_class`
 field (`checkov.terraform.checks.provider.aws.credentials` for that finding),
 which `classify_resource` cannot see: its signature is `(value, rule_id,
-platform)`, not the full check record.
+platform)`, not the full check record. That makes the underscore test
+coincidental rather than principled, and it fails in two directions this
+corpus does not happen to exercise: a provider block whose name itself
+contains an underscore would misclassify as terraform, and a resource type
+with no underscore in it (neither occurs among corpus v0's 47 distinct
+terraform-platform values) would misclassify as a provider.
 """
 
 _KUBERNETES_ADDRESS_RE = re.compile(r"^[A-Z][A-Za-z0-9]*\.[^.]+\.[^.]+(?:\.[^.]+)?$")
@@ -147,10 +152,12 @@ def _optional_str(value: object) -> str | None:
 
     checkov's `severity` and `guideline` fields are `str | None` in every
     fixture row this module has seen: `severity` is `None` on all 489 failed
-    checks (spec §1), and `guideline` measures the same on this pin - null on
-    every one of the same 489, not just the ones this adapter drops. This is a
-    narrow defensive coercion, not a modeled state: nothing in corpus v0
-    exercises a non-string, non-null value for either field.
+    checks (the count is spec §1's Findings column, 221 + 268; the null fact
+    itself is measured - CLAUDE.md, "Severity in corpus v0, measured"), and
+    `guideline` measures the same on this pin - null on every one of the same
+    489, not just the ones this adapter drops. This is a narrow defensive
+    coercion, not a modeled state: nothing in corpus v0 exercises a
+    non-string, non-null value for either field.
     """
     return None if value is None else str(value)
 
@@ -217,6 +224,17 @@ def _platform_of(documents: Sequence[Any]) -> str:
     return "terraform"
 
 
+_CONTEXT_ELIGIBLE_KINDS = frozenset({"terraform", "kubernetes"})
+"""The only two `identity_kind` values `context_eligible` may be `True` for (spec §2.1).
+
+Stated once and re-read wherever a kind can change after `classify_resource`
+returns, rather than re-derived in each such place: `_build_finding` downgrades
+a `kubernetes` kind to `unresolved` when `_resolve_kubernetes` falls through,
+and re-reads this set to settle `context_eligible` for that downgraded kind -
+one flag, one meaning, sourced from the kind alone.
+"""
+
+
 def _build_finding(
     check: dict[str, Any], platform: str, scan_root: Path, index: ResourceIndex | None
 ) -> tuple[NormalizedFinding | None, str | None]:
@@ -228,6 +246,14 @@ def _build_finding(
     defensive rather than modeled; they exist so a future capture missing
     either is counted as `dropped` (`in == out + dropped`, spec §0.1) instead
     of crashing the adapter run or, worse, silently vanishing.
+
+    A `kubernetes`-shaped identity that still resolves to `identity.UNRESOLVED`
+    after `_resolve_kubernetes` runs - both lookups missed, or no index was
+    available to try them - is downgraded to `identity_kind = "unresolved"`
+    here, and `context_eligible` is re-settled from that downgraded kind
+    (`_CONTEXT_ELIGIBLE_KINDS`) rather than left at the `True` `classify_resource`
+    assigned before resolution had a chance to fail. `classify_resource` cannot
+    make this call itself - resolution has not happened yet when it runs.
     """
     raw_rule_id = check.get("check_id")
     if not raw_rule_id:
@@ -247,8 +273,12 @@ def _build_finding(
     file_path = rebase_to_scan_root(raw_file_path, scan_root) if raw_file_path else ""
     line_range = _line_range(check.get("file_line_range"))
 
-    if identity_kind == "kubernetes" and index is not None:
-        resource_identity = _resolve_kubernetes(resource_value, file_path, line_range, index)
+    if identity_kind == "kubernetes":
+        if index is not None:
+            resource_identity = _resolve_kubernetes(resource_value, file_path, line_range, index)
+        if resource_identity == identity.UNRESOLVED:
+            identity_kind = "unresolved"
+            context_eligible = identity_kind in _CONTEXT_ELIGIBLE_KINDS
 
     check_result = check.get("check_result") or {}
     fingerprint = fingerprint_from(check_result.get("evaluated_keys") or [])
@@ -312,3 +342,12 @@ class CheckovAdapter:
                     findings.append(finding)
 
         return AdapterResult(findings=tuple(findings), dropped=tuple(dropped))
+
+
+_conforms: ScannerAdapter = CheckovAdapter()
+"""Never executed - a mypy-checked assertion that `CheckovAdapter` satisfies
+`ScannerAdapter` structurally. Without it, conformance rests on a reviewer
+reading both signatures side by side, which is exactly the kind of check that
+stops happening once nobody is looking; this makes a future drift in either
+signature a type error instead of a silent one.
+"""
