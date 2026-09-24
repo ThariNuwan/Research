@@ -1,11 +1,13 @@
 """Lockfile-driven scanner invocation (design spec §3).
 
 `tools/harvest/run.py` solves this same problem for the S0 harvest and is the
-proven precedent for every decision below, but this module does not import
-it - `tests/test_architecture.py::test_harvest_does_not_define_a_normalized_finding`
+proven precedent this module follows, but it does not import it -
+`tests/test_architecture.py::test_harvest_does_not_define_a_normalized_finding`
 and the plan's harvest-isolation constraint both forbid that, so the platform
 matrix, the argv table and the subprocess handling are re-derived here rather
-than shared.
+than shared. One divergence from that precedent is deliberate and documented
+where it happens: `run()`'s timeout does not, unlike harvest's, return partial
+output - see its docstring for why.
 
 Three things this module refuses to do, each measured rather than assumed:
 
@@ -43,6 +45,13 @@ from iacrisk.input import DiscoveryResult
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+SCANNER_TIMEOUT_SECONDS = 900
+"""Re-derived from `tools/harvest/run.py`'s `SCANNER_TIMEOUT_SECONDS`, not imported -
+harvest isolation forbids the import, the same reason the argv table below is a
+re-derived literal rather than a shared one. The two are meant to stay in step: a
+change to harvest's constant that is not mirrored here is a drift, not a decision,
+because nothing about the timeout differs between a harvest run and one made here."""
+
 SCANNER_ARGV: dict[str, tuple[str, ...]] = {
     "checkov": ("--output", "json", "--compact", "--skip-download", "--directory"),
     "trivy": (
@@ -75,6 +84,20 @@ class ScannerNotResolvedError(RuntimeError):
     `.\\tools\\bootstrap.ps1` as the fix, rather than silently trying a bare
     command name.
     """
+
+
+class ScannerTimeoutError(RuntimeError):
+    """`run()` killed `invocation.argv` after `SCANNER_TIMEOUT_SECONDS` (or an override).
+
+    Named and propagated rather than absorbed - see `run()`'s docstring for
+    why that is the right divergence from `tools/harvest/run.py`, which
+    returns partial output on the same condition instead of raising.
+    """
+
+    def __init__(self, scanner: str, timeout: float) -> None:
+        super().__init__(f"{scanner}: timed out after {timeout}s")
+        self.scanner = scanner
+        self.timeout = timeout
 
 
 @dataclass(frozen=True)
@@ -197,17 +220,35 @@ def build_invocations(discovery: DiscoveryResult, scan_root: Path) -> tuple[Scan
     return tuple(invocations)
 
 
-def run(invocation: ScanInvocation) -> object:
+def run(invocation: ScanInvocation, timeout: float = SCANNER_TIMEOUT_SECONDS) -> object:
     """Launch `invocation.argv` and return its parsed JSON stdout, whatever the exit code.
 
     All three pinned scanners exit non-zero on their ordinary, successful
     path - they find misconfigurations - so the exit code is never inspected
     here and `subprocess.run` is called with `check=False`. Unparseable
-    stdout is the one thing this function does raise on, and the message
-    names `invocation.scanner` so a caller running several invocations can
-    tell which one produced it.
+    stdout is one thing this function raises on, naming `invocation.scanner`
+    so a caller running several invocations can tell which one produced it.
+
+    A hung scanner is the other. `timeout` defaults to
+    `SCANNER_TIMEOUT_SECONDS` and is a parameter rather than only that module
+    constant so a test can hand it a tiny value instead of waiting 900
+    seconds for a real timeout to fire. On expiry this raises
+    `ScannerTimeoutError` naming the scanner and the limit - a deliberate
+    divergence from `tools/harvest/run.py`, which returns whatever partial
+    stdout arrived plus an error string instead of raising, because
+    `harvest()` must still write one artifact covering every scan root and
+    letting `TimeoutExpired` propagate there would discard every run that did
+    complete. This function has no equivalent obligation - it is one
+    invocation, not an artifact covering several - so the failure is named
+    and propagated rather than absorbed into a partial result, keeping it an
+    explicit state rather than one silently downgraded to "no findings".
     """
-    result = subprocess.run(list(invocation.argv), capture_output=True, check=False)
+    try:
+        result = subprocess.run(
+            list(invocation.argv), capture_output=True, timeout=timeout, check=False
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ScannerTimeoutError(invocation.scanner, timeout) from exc
     try:
         return json.loads(result.stdout.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:

@@ -314,3 +314,22 @@ def test_run_raises_on_unparseable_stdout_and_names_the_scanner() -> None:
     )
     with pytest.raises(ValueError, match="faux"):
         invoke.run(invocation)
+
+
+def test_run_raises_scanner_timeout_error_and_names_the_scanner() -> None:
+    """A real hung subprocess, killed by a tiny override - never the 900s production value.
+
+    Unlike `tools/harvest/run.py`, which returns partial output plus an error
+    string on the same condition, `run()` raises: this asserts the divergence
+    the dispatch called for, not just that *some* timeout fires.
+    """
+    invocation = invoke.ScanInvocation(
+        scanner="faux",
+        platform="terraform",
+        scan_root="D:/does-not-matter",
+        argv=(sys.executable, "-c", "import time; time.sleep(60)"),
+    )
+    with pytest.raises(invoke.ScannerTimeoutError, match="faux") as excinfo:
+        invoke.run(invocation, timeout=0.05)
+    assert excinfo.value.scanner == "faux"
+    assert excinfo.value.timeout == 0.05
