@@ -80,6 +80,13 @@ path in `resources.py`'s `ResourceIndex.by_line` and `trivy.py`'s
 `_resolve_kubernetes` - reported as an explicit zero rather than omitted, so a
 future corpus that does exercise it is counted rather than silently folded
 into `NO_LINE_SUPPLIED`.
+
+This cause is classified from `(file_path, line_range, unparseable)` alone, so
+it also absorbs the third state `_resolve_kubernetes` names: no index was
+supplied at all. That case is distinguishable only by the adapter, which does
+not record which of its three branches returned `<unresolved>`, and no caller
+omits the index on a Kubernetes run - so the conflation is a limit of what this
+module can see rather than one it chooses.
 """
 
 
@@ -228,8 +235,11 @@ def _unresolved_cause(finding: NormalizedFinding, unparseable: frozenset[str]) -
     `metadata-db/templates` Helm template, that is both unparseable and
     lineless). Between the two line-based causes, an absent `line_range` is
     checked before an unmatched one - a finding with no line at all was never
-    going to reach `ResourceIndex.by_line`, so `LINE_UNMATCHED` is reserved for
-    a line that was actually looked up and failed to match, not merely absent.
+    going to reach `ResourceIndex.by_line`, so `LINE_UNMATCHED` covers the cases
+    where a line was present to look up, rather than merely absent. It does not
+    claim the lookup itself ran: an adapter given no index returns
+    `<unresolved>` without consulting one, and nothing in `NormalizedFinding`
+    distinguishes that from a lookup that missed (see `LINE_UNMATCHED`).
     Assigning to exactly one cause is what keeps `unresolved_unparseable_file +
     unresolved_no_line_supplied + unresolved_line_unmatched` equal to the
     unresolved total instead of double counting.
