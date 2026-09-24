@@ -388,8 +388,7 @@ def test_every_input_finding_appears_in_exactly_one_group_or_candidate_or_stands
     assert membership[id(standalone)] == []
 
     # Every finding is accounted for by exactly one of: a group, a candidate,
-    # or "neither" (standalone) - this is the "in = groups + candidates +
-    # standalone" identity task 9's retention report will build on.
+    # or "neither" (standalone).
     grouped = sum(len(g.findings) for g in result.groups)
     candidated = sum(len(c.findings) for c in result.candidates)
     standalone_count = sum(1 for f in findings if not membership[id(f)])
