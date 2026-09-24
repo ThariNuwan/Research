@@ -356,9 +356,13 @@ def test_real_corpus_only_trivy_kubernetes_has_unresolved_identities() -> None:
 
 
 def test_real_corpus_unresolved_causes_sum_to_the_unresolved_total() -> None:
-    """R30's required invariant: each unresolved finding is assigned to exactly
-    one cause, so the two counters sum to the total with no double count and no
-    residual - not merely two figures asserted independently.
+    """Single-assignment, not precedence: each unresolved finding is assigned to
+    exactly one of the two cause buckets, so they sum to the total with no
+    double count and no residual. This holds under EITHER precedence ordering
+    (`_unresolved_cause` always returns exactly one string), so it cannot by
+    itself prove which cause a specific overlapping finding lands in - that is
+    what `test_real_corpus_unparseable_file_precedence_over_missing_line`
+    below checks, as a separate and independent claim.
     """
     report = _real_report()
     coverage = report.scanners[("trivy", "kubernetes")]
@@ -370,10 +374,23 @@ def test_real_corpus_unresolved_causes_sum_to_the_unresolved_total() -> None:
 
 
 def test_real_corpus_unparseable_file_precedence_over_missing_line() -> None:
-    """R30's overlap case: at least one real finding is on an unparseable file
-    AND carries no line number at all. It must be classified as the unparseable
-    cause, not double counted into both - checked against the actual overlap
-    the fixtures produce, not a hardcoded rule id or file path.
+    """R30's overlap case, pinned by equality rather than by a loose inequality.
+
+    Fix round 1: an earlier version of this test asserted
+    `unresolved_unparseable_file >= len(overlap)` and relied on the sum test
+    above as a second check. Both are too weak to catch inverted precedence -
+    proven by mutation: swapping `_unresolved_cause` to check `line_range is
+    None` before the unparseable-file set moves the one real overlapping
+    finding (`metadata-db/templates/deployment.yaml`'s `KSV-0117`, both
+    unparseable and lineless) into the no-line bucket, but `_unresolved_cause`
+    still returns exactly one string per finding, so the sum stays 19 either
+    way and `>=` is satisfied by both 16 and 15. Neither test noticed.
+
+    The fix is an equality against a count computed independently of
+    `_unresolved_cause` itself: every unresolved finding whose file is in the
+    unparseable set - overlapping ones included - must be counted under
+    `unresolved_unparseable_file`, full stop. That pins the precedence exactly
+    rather than merely bounding it from below.
     """
     results = _real_results()
     unparseable = _real_unparseable()
@@ -386,17 +403,22 @@ def test_real_corpus_unparseable_file_precedence_over_missing_line() -> None:
     ]
     assert overlap  # non-vacuous: R30 names exactly this case as present in corpus v0
 
+    expected_unparseable = sum(
+        1
+        for f in trivy_kubernetes_findings
+        if f.identity_kind == "unresolved" and f.file_path in unparseable
+    )
+    expected_no_line = sum(
+        1
+        for f in trivy_kubernetes_findings
+        if f.identity_kind == "unresolved" and f.file_path not in unparseable
+    )
+
     report = build_report(results, deduplicate(list(trivy_kubernetes_findings)), unparseable)
     coverage = report.scanners[("trivy", "kubernetes")]
 
-    # The overlapping finding(s) must be absorbed into the unparseable-file
-    # count; if precedence were wrong the two counters would double count and
-    # sum to more than the unresolved total (the exact failure R30 describes).
-    assert coverage.unresolved_unparseable_file >= len(overlap)
-    assert (
-        coverage.unresolved_unparseable_file + coverage.unresolved_no_line_supplied
-        == coverage.identity_unresolved
-    )
+    assert coverage.unresolved_unparseable_file == expected_unparseable
+    assert coverage.unresolved_no_line_supplied == expected_no_line
 
 
 def test_real_corpus_identity_kind_counts_match_an_independent_tally() -> None:
