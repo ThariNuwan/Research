@@ -169,9 +169,29 @@ The **per-scanner fingerprint-resolution rate is reported** as an evaluation-int
 
 **Tier 1 — exact collapse.** Two findings collapse when identity and issue-class match **and both fingerprints are resolved and equal**. Scanner provenance is retained as metadata on the collapsed group. **This tier alone produces the reported deduplication number.**
 
-**Tier 2 — candidate overlap.** Findings sharing identity and issue-class where either fingerprint is unresolved are reported as *candidate* cross-scanner overlap: counted, surfaced, and **never merged**. They do not enter the deduplication number.
+**Tier 2 — candidate overlap.** Findings sharing identity and issue-class where either fingerprint is unresolved are reported as *candidates*: counted, surfaced, and **never merged**. They do not enter the deduplication number.
 
-Rationale. Collapsing on identity and class alone would maximise the measured reduction, but it is exactly what Q8 #6 added the fingerprint to prevent — two separate open ingress rules on one security group, or two different container fields, would become one finding and the number would be inflated by that conflation. Refusing to merge without evidence keeps the headline number conservative and true, and it matches the explicit-state discipline. Tier 2 is not a consolation prize: PLAN's scanner-selection note (#19) asks the dissertation to account for rule-family overlap between tfsec and Trivy, and the candidate tier is the evidence for exactly that discussion.
+**Tier 2 is reported as two numbers, never one — erratum, corrected 2026-09-24.** An earlier revision of this section stated the condition above (no scanner requirement) but labelled the output "candidate **cross-scanner** overlap". Those disagree, and Task 8's implementer found the disagreement by measuring 207 candidates where the controller had predicted ~123 and then re-deriving why, rather than bending to the prior. The 207 decomposes exactly:
+
+| Population | Measured | What it is |
+|---|---|---|
+| Candidates, the condition above | **207** | every pair the pipeline declined to merge |
+| — **cross-scanner** | **116** | two or more scanners, one resource, one class → the rule-family overlap PLAN #19 asks the dissertation to account for |
+| — **same-scanner** | **91** | *one* scanner raising several distinct rules on one resource that this taxonomy maps to one class, with no fingerprint to separate them → a limit of **this method**, not scanner overlap at all |
+
+Merging them would label the 91 as cross-scanner overlap, which is precisely the error PLAN Q7 forbids for alert reduction: *two separate numbers, never combined*.
+
+**What the 91 actually are, measured.** By raising scanner: **trivy 71, checkov 19, tfsec 1**. Trivy dominating is not incidental — it follows from §6, where trivy's fingerprint is always `None`, so *every* trivy pair sharing identity and class necessarily lands in Tier 2 and can never be separated. The largest single group is one trivy scan of the `docker-bench-security` DaemonSet's `docker-bench` container raising six KSV rules (`KSV-0001, 0012, 0017, 0020, 0021, 0105`) that all map to `containers-privileged-execution`. The checkov shape is narrower and cleaner: `CKV2_AWS_61` with `CKV2_AWS_62` on one bucket under `storage-data-lifecycle-hygiene`, on **6 S3 buckets** — buckets `flowbucket, data, financials, operations, data_science, logs`.
+
+So the 91 compose two causes, neither of which is scanner disagreement: the taxonomy **deliberately** groups many rule IDs into 28 classes, and the scanner supplies no fingerprint with which to tell same-class findings apart. The first is a design choice; the second is a data limit.
+
+That makes the same-scanner figure the more valuable of the two for the write-up — it quantifies what **this method** cannot separate rather than a property of the scanners — and it belongs in the limitations section, not the alert-reduction result.
+
+**A fourth number that must not be reported.** The controller's original ~123 was `(identity, class)` pairs spanning more than one scanner counted **before** Tier 1 ran, so it double-counts groups Tier 1 has already collapsed. It is neither of the two figures above and has no place in the results.
+
+**Measured deduplication, for the record.** Over all five adapter runs on corpus v0: 1055 findings in, **35 Tier-1 groups holding 74 findings, so 39 removed** — a reported reduction of **39/1055 = 3.7%**, with exactly **one** of those groups cross-scanner. A conservative number, which is the intent.
+
+Rationale. Collapsing on identity and class alone would maximise the measured reduction, but it is exactly what Q8 #6 added the fingerprint to prevent — two separate open ingress rules on one security group, or two different container fields, would become one finding and the number would be inflated by that conflation. Refusing to merge without evidence keeps the headline number conservative and true, and it matches the explicit-state discipline. Tier 2 is not a consolation prize: PLAN's scanner-selection note (#19) asks the dissertation to account for rule-family overlap between tfsec and Trivy, and the **cross-scanner** half of the candidate tier — the 116, not the 207 — is the evidence for exactly that discussion.
 
 A finding whose identity is `<unresolved>` never collapses with anything, in either tier.
 
