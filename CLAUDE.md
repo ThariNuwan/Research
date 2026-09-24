@@ -69,9 +69,10 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0 and S1 complete. S0 pinned the toolchain and harvested an empirical rule-ID
-inventory over a vendored corpus. S1 authored the five specification artifacts the
-runtime and the harness are built against:
+S0, S1 and S3a complete. S3b is next and takes layer 3 (context extraction). S0
+pinned the toolchain and harvested an empirical rule-ID inventory over a
+vendored corpus. S1 authored the five specification artifacts the runtime and
+the harness are built against:
 
 - `src/iacrisk/data/taxonomy.json` — 28 issue classes over the five tested
   categories, plus one mapping row per observed `(scanner, rule_id)`. All 255
@@ -122,6 +123,45 @@ scoring.
 residual risks in full, with what each one costs if ignored. Read it before
 starting either sub-project.
 
+**S3a** built layers 1-2 plus Q8 deduplication: file discovery, the Kubernetes
+resource index, the three scanner adapters under `src/iacrisk/scanners/`, the
+two-tier dedupe (`src/iacrisk/dedupe.py`), the retention-coverage report
+(`src/iacrisk/report.py`), and lockfile-driven scanner invocation. Its six
+acceptance gates are `tests/test_s3a_gates.py`. A few figures a future session
+will get wrong without stating them explicitly:
+
+- **The reported deduplication number is Tier 1 only**: 39 of 1055 findings
+  removed (3.7%), from 35 groups, exactly 1 of them cross-scanner.
+- **Tier 2 is two numbers that must never be combined.** 207 candidates total,
+  splitting into 116 cross-scanner (genuine rule-family overlap between
+  scanners) and 91 same-scanner (one scanner raising several rules the
+  taxonomy maps to one class, with no fingerprint to separate them - a limit
+  of this method, not scanner overlap). Reporting 207 as cross-scanner overlap
+  mislabels the 91; the same-scanner figure belongs in the limitations
+  discussion, never in the alert-reduction result. By raising scanner the 91
+  split trivy 71, checkov 19, tfsec 1 - trivy dominates structurally because
+  its fingerprint is `None` on every finding (spec §6).
+- **Cross-scanner attribute normalization is named future work** (spec §13):
+  a mapping from each scanner's attribute vocabulary to one canonical spelling
+  would move most Tier-2 candidates into Tier-1 exact collapses, materially
+  raising the measured deduplication number. Not attempted in S3a, S3b, S4 or
+  S5 as currently scoped.
+- **A pytest trap.** `addopts` already carries `-q --strict-markers -rs`
+  (Commands, above), but under those flags a *failing* test prints `F` and a
+  traceback and emits no line beginning with `FAILED` - that needs `-rf`/`-ra`.
+  So `pytest | grep -c "^FAILED"` returns `0` for a red suite. **Judge pytest
+  by its exit code, not by grepping its output.**
+- **`findings_in` is derived, not measured.** `ScannerCoverage.findings_in` is
+  `findings_out + len(dropped)`, with no independent raw-record count carried
+  inside `AdapterResult`. The retention *tests* close the gap by counting raw
+  records from the fixtures independently; the *field* itself stays derived.
+  Plumbing a real `raw_records_seen` through the adapters is recorded future
+  work for S3b or S5.
+
+`docs/superpowers/specs/2026-09-22-s3a-handoff.md` records these and more
+residual risks in full, with what each one costs if ignored. Read it before
+starting S3b.
+
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four
 interpreter facts about this host, because they are easy to state backwards:
@@ -141,6 +181,10 @@ decorative: **always `uv run python`**, never bare `python`.
 ```powershell
 uv sync                      # install/refresh dependencies
 uv run pytest                # full suite; addopts already carries -q --strict-markers -rs
+                              # judge by EXIT CODE, not by grepping output for "FAILED" -
+                              # under -q a failing test prints F + a traceback with no
+                              # "FAILED" line (needs -rf/-ra), so a grep for it returns 0
+                              # even on a red suite
 uv run pytest tests/harvest  # harvest tests only
 uv run ruff check .          # lint
 uv run ruff format .         # format (mutating)
