@@ -120,6 +120,7 @@ def test_coverage_rates_are_computed_from_known_synthetic_counts() -> None:
     assert coverage.identity_resolved == 3
     assert coverage.unresolved_unparseable_file == 1
     assert coverage.unresolved_no_line_supplied == 1
+    assert coverage.unresolved_line_unmatched == 0
     assert coverage.identity_resolution_rate == 3 / 5
 
     assert coverage.fingerprint_resolved == 1
@@ -172,6 +173,32 @@ def test_zero_findings_with_a_drop_still_reports_in_correctly() -> None:
     assert coverage.findings_out == 0
     assert coverage.findings_in == 1
     assert coverage.identity_resolution_rate is None
+
+
+def test_a_line_matching_no_span_is_the_line_unmatched_cause_not_no_line_supplied() -> None:
+    """Fix round 2: `LINE_UNMATCHED` is a real, documented return path
+    (`resources.py`'s `ResourceIndex.by_line` and `trivy.py`'s
+    `_resolve_kubernetes` both return `<unresolved>` when a supplied line
+    matches no indexed span), even though corpus v0 never exercises it. A
+    version of `_unresolved_cause` that only checks `file_path in unparseable`
+    and falls through everything else to `NO_LINE_SUPPLIED` would silently
+    mislabel this finding - constructed directly since corpus v0 has no real
+    example to drive it from.
+    """
+    unresolved_with_a_line = _finding(
+        identity_kind="unresolved",
+        resource_identity=identity.UNRESOLVED,
+        file_path="parseable/c.yaml",
+        line_range=(10, 12),
+    )
+    result = AdapterResult(findings=(unresolved_with_a_line,), dropped=())
+
+    report = build_report({("trivy", "kubernetes"): result}, _EMPTY_DEDUPE, frozenset())
+    coverage = report.scanners[("trivy", "kubernetes")]
+
+    assert coverage.unresolved_line_unmatched == 1
+    assert coverage.unresolved_no_line_supplied == 0
+    assert coverage.unresolved_unparseable_file == 0
 
 
 # --- R27: tuple-keyed mapping, checkov surviving both platforms --------------------
@@ -324,11 +351,78 @@ def _real_report() -> RetentionReport:
     return build_report(_real_results(), _real_dedupe(), _real_unparseable())
 
 
-def test_real_corpus_in_equals_out_plus_dropped_for_every_run() -> None:
+def test_real_corpus_findings_in_is_internally_consistent_with_out_and_dropped() -> None:
+    """Fix round 2: renamed from a name that claimed the retention property.
+    `ScannerCoverage.findings_in` is *derived* as `findings_out + len(dropped)`
+    (report.py's own docstring says so), so this assertion is `a == a` and
+    cannot fail for any input - it checks that the derivation was not broken
+    on the way to `to_json()`, nothing more. The actual retention claim - that
+    `findings_out + len(dropped)` equals an independently counted raw total -
+    is `test_real_corpus_findings_out_plus_dropped_equals_an_independent_raw_count`
+    below, which does not import or call `_coverage_for` for its expectation.
+    """
     report = _real_report()
     assert report.scanners  # non-vacuous
     for coverage in report.scanners.values():
         assert coverage.findings_in == coverage.findings_out + len(coverage.dropped)
+
+
+def _raw_checkov_record_count(name: str) -> int:
+    """Every `failed_checks` entry across every framework block of one fixture,
+    read directly from the JSON rather than through `CheckovAdapter`. Checkov's
+    own fixtures are a top-level list of per-framework result objects (`--
+    framework` is deliberately withheld so multi-framework detection stays
+    visible in the raw capture) - handled as a list, with a single-object
+    fallback so this does not assume a shape it has not checked.
+    """
+    document = _load_fixture(name)
+    frameworks = document if isinstance(document, list) else [document]
+    return sum(len((fw.get("results") or {}).get("failed_checks") or []) for fw in frameworks)
+
+
+def _raw_trivy_record_count(name: str) -> int:
+    """Every `Misconfigurations` entry across every `Results` block, read
+    directly from the JSON rather than through `TrivyAdapter`.
+    """
+    document = _load_fixture(name)
+    return sum(len(block.get("Misconfigurations") or []) for block in document.get("Results") or [])
+
+
+def _raw_tfsec_record_count(name: str) -> int:
+    """tfsec's flat `results` array, read directly from the JSON rather than
+    through `TfsecAdapter`.
+    """
+    document = _load_fixture(name)
+    return len(document.get("results") or [])
+
+
+def test_real_corpus_findings_out_plus_dropped_equals_an_independent_raw_count() -> None:
+    """The retention claim this report exists to make checkable: `findings_out
+    + len(dropped)` must equal a record count taken from a DIFFERENT path than
+    the thing under test - the raw fixture JSON, walked by this test's own
+    code, never by calling an adapter (which would just rebuild the tautology
+    `test_real_corpus_findings_in_is_internally_consistent_with_out_and_dropped`
+    above already names honestly). Each scanner's raw shape is read as it
+    actually is, not assumed: checkov's fixtures are a list of per-framework
+    objects, trivy nests under `Results[].Misconfigurations`, tfsec is a flat
+    `results` array. Expected totals are computed from the fixtures here, not
+    hardcoded, though they are known to match S0's independently harvested
+    inventory (`artifacts/rule-inventory.json`): 221 + 268 + 115 + 332 + 119 =
+    1055, with 0 dropped in corpus v0.
+    """
+    report = _real_report()
+    expected = {
+        ("checkov", "terraform"): _raw_checkov_record_count("checkov-terraform.json"),
+        ("checkov", "kubernetes"): _raw_checkov_record_count("checkov-kubernetes.json"),
+        ("trivy", "terraform"): _raw_trivy_record_count("trivy-terraform.json"),
+        ("trivy", "kubernetes"): _raw_trivy_record_count("trivy-kubernetes.json"),
+        ("tfsec", "terraform"): _raw_tfsec_record_count("tfsec-terraform.json"),
+    }
+    assert set(report.scanners) == set(expected)  # every run accounted for, none missing
+    for key, expected_count in expected.items():
+        assert expected_count > 0  # non-vacuous
+        coverage = report.scanners[key]
+        assert coverage.findings_out + len(coverage.dropped) == expected_count
 
 
 def test_real_corpus_nothing_is_dropped() -> None:
@@ -357,20 +451,35 @@ def test_real_corpus_only_trivy_kubernetes_has_unresolved_identities() -> None:
 
 def test_real_corpus_unresolved_causes_sum_to_the_unresolved_total() -> None:
     """Single-assignment, not precedence: each unresolved finding is assigned to
-    exactly one of the two cause buckets, so they sum to the total with no
-    double count and no residual. This holds under EITHER precedence ordering
-    (`_unresolved_cause` always returns exactly one string), so it cannot by
-    itself prove which cause a specific overlapping finding lands in - that is
-    what `test_real_corpus_unparseable_file_precedence_over_missing_line`
+    exactly one of the three cause buckets, so they sum to the total with no
+    double count and no residual. This holds under ANY precedence ordering
+    among the three (`_unresolved_cause` always returns exactly one string),
+    so it cannot by itself prove which cause a specific finding lands in -
+    that is what `test_real_corpus_unparseable_file_precedence_over_missing_line`
     below checks, as a separate and independent claim.
     """
     report = _real_report()
     coverage = report.scanners[("trivy", "kubernetes")]
     assert coverage.identity_unresolved > 0  # non-vacuous
     assert (
-        coverage.unresolved_unparseable_file + coverage.unresolved_no_line_supplied
+        coverage.unresolved_unparseable_file
+        + coverage.unresolved_no_line_supplied
+        + coverage.unresolved_line_unmatched
         == coverage.identity_unresolved
     )
+
+
+def test_real_corpus_line_unmatched_cause_is_an_explicit_zero() -> None:
+    """Fix round 2: `LINE_UNMATCHED` has zero population in corpus v0, and
+    reporting that zero explicitly - rather than omitting the counter, the
+    earlier version of this module's mistake - is the whole point (module
+    docstring). Paired with `identity_unresolved > 0` so this cannot pass
+    vacuously because there were no unresolved findings to classify at all.
+    """
+    report = _real_report()
+    coverage = report.scanners[("trivy", "kubernetes")]
+    assert coverage.identity_unresolved > 0  # non-vacuous
+    assert coverage.unresolved_line_unmatched == 0
 
 
 def test_real_corpus_unparseable_file_precedence_over_missing_line() -> None:
@@ -411,7 +520,16 @@ def test_real_corpus_unparseable_file_precedence_over_missing_line() -> None:
     expected_no_line = sum(
         1
         for f in trivy_kubernetes_findings
-        if f.identity_kind == "unresolved" and f.file_path not in unparseable
+        if f.identity_kind == "unresolved"
+        and f.file_path not in unparseable
+        and f.line_range is None
+    )
+    expected_line_unmatched = sum(
+        1
+        for f in trivy_kubernetes_findings
+        if f.identity_kind == "unresolved"
+        and f.file_path not in unparseable
+        and f.line_range is not None
     )
 
     report = build_report(results, deduplicate(list(trivy_kubernetes_findings)), unparseable)
@@ -419,6 +537,7 @@ def test_real_corpus_unparseable_file_precedence_over_missing_line() -> None:
 
     assert coverage.unresolved_unparseable_file == expected_unparseable
     assert coverage.unresolved_no_line_supplied == expected_no_line
+    assert coverage.unresolved_line_unmatched == expected_line_unmatched
 
 
 def test_real_corpus_identity_kind_counts_match_an_independent_tally() -> None:
@@ -522,6 +641,7 @@ def test_module_level_conformance_guard_exists() -> None:
         identity_unresolved=0,
         unresolved_unparseable_file=0,
         unresolved_no_line_supplied=0,
+        unresolved_line_unmatched=0,
         fingerprint_resolved=0,
         unmapped=0,
         unknown_severity=0,

@@ -9,25 +9,30 @@ count must equal `out + dropped`, and every state the record can carry
 (`unmapped:`, `unknown`, an unresolved identity, an unresolved fingerprint) is
 counted explicitly rather than folded into a rate that would hide it.
 
-**Spec section 8's cause list is superseded here, in two ways, both measured
-against the committed fixtures rather than argued.** First, "no line match" -
-a line number supplied but matching no indexed span - has zero population in
-corpus v0 (every finding on a parseable file with a line number resolves), so
-this module does not carry a counter for it; a caller can see the 100% match
-rate for itself from `unresolved_unparseable_file + unresolved_no_line_supplied
-== identity_unresolved` leaving no residual. Second, "non-resource kind" is not
-an unresolved-identity cause at all - Task 5 gives non-resource findings real,
-resolved identities (`identity_kind` values `secret`, `file`, `provider`) - so
-it is reported here as its own context-eligibility breakdown
+**Spec section 8's cause list is corrected here, in two ways, both measured
+against the committed fixtures rather than argued.** First, "non-resource
+kind" is not an unresolved-identity cause at all - Task 5 gives non-resource
+findings real, resolved identities (`identity_kind` values `secret`, `file`,
+`provider`) - so it is reported here as its own context-eligibility breakdown
 (`identity_kind_counts`, `context_eligible`, `context_ineligible`) rather than
-folded into the unresolved-cause counters.
+folded into the unresolved-cause counters. Second, the remaining three causes
+- unparseable file, no line supplied, and a supplied line matching no
+indexed span - are all kept as separate, named counters, including the third
+one. Fix round 2 corrected an earlier version of this module that dropped the
+third counter on the reasoning that it has zero population in corpus v0;
+that conflated "zero here" with "cannot happen" - `resources.py`'s
+`ResourceIndex.by_line` and `trivy.py`'s `_resolve_kubernetes` both document
+the unmatched-line case as a real return path, just one corpus v0 never
+exercises. Reporting it as an explicit zero, rather than omitting the counter,
+is what lets a future corpus that does exercise it be seen rather than
+silently folded into "no line supplied".
 
-One finding in corpus v0 hits both remaining causes at once: its file is
-unparseable **and** its raw record carries no line number. Unparseable-file
-takes precedence - the file never entered the resource index, so the absent
-line is moot - and each unresolved finding is assigned to exactly one cause,
-never both, so the two counters sum to the unresolved total without double
-counting.
+One finding in corpus v0 hits two of the three causes at once: its file is
+unparseable **and** its raw record carries no line number at all. Unparseable-
+file takes precedence over both line-based causes - the file never entered the
+resource index, so whatever the line field says is moot - and each unresolved
+finding is assigned to exactly one cause, never more than one, so the three
+counters sum to the unresolved total without double counting.
 
 Per scanner-and-platform coverage is keyed `(scanner, platform)`, not `scanner`
 alone: checkov is the one scanner in corpus v0 that runs against both scan
@@ -55,10 +60,27 @@ from iacrisk.finding import NormalizedFinding
 from iacrisk.scanners.base import AdapterResult
 
 UNPARSEABLE_FILE = "unparseable_file"
-"""One of two unresolved-identity causes this module distinguishes (module docstring)."""
+"""One of three unresolved-identity causes this module distinguishes (module docstring).
+
+Checked first in `_unresolved_cause`: it wins over either line-based cause
+whenever more than one condition holds on the same finding.
+"""
 
 NO_LINE_SUPPLIED = "no_line_supplied"
-"""The other. Precedence between the two, where a finding hits both, is `UNPARSEABLE_FILE` first."""
+"""The scanner's raw record carried no line number at all (`line_range is None`).
+
+Checked second, after `UNPARSEABLE_FILE`.
+"""
+
+LINE_UNMATCHED = "line_unmatched"
+"""A line number was supplied, on a parseable file, but matched no indexed span.
+
+Zero population in corpus v0 (module docstring) but a real, documented return
+path in `resources.py`'s `ResourceIndex.by_line` and `trivy.py`'s
+`_resolve_kubernetes` - reported as an explicit zero rather than omitted, so a
+future corpus that does exercise it is counted rather than silently folded
+into `NO_LINE_SUPPLIED`.
+"""
 
 
 @dataclass(frozen=True)
@@ -87,6 +109,7 @@ class ScannerCoverage:
     identity_unresolved: int
     unresolved_unparseable_file: int
     unresolved_no_line_supplied: int
+    unresolved_line_unmatched: int
     fingerprint_resolved: int
     unmapped: int
     unknown_severity: int
@@ -140,6 +163,7 @@ class ScannerCoverage:
             "identity_resolution_rate": self.identity_resolution_rate,
             "unresolved_unparseable_file": self.unresolved_unparseable_file,
             "unresolved_no_line_supplied": self.unresolved_no_line_supplied,
+            "unresolved_line_unmatched": self.unresolved_line_unmatched,
             "fingerprint_resolved": self.fingerprint_resolved,
             "fingerprint_resolution_rate": self.fingerprint_resolution_rate,
             "unmapped": self.unmapped,
@@ -195,19 +219,26 @@ class RetentionReport:
 
 
 def _unresolved_cause(finding: NormalizedFinding, unparseable: frozenset[str]) -> str:
-    """Which of the two causes one unresolved-identity finding is assigned to.
+    """Which of the three causes one unresolved-identity finding is assigned to.
 
-    Unparseable-file is checked first and wins whenever both conditions hold
-    on the same finding - the file never entered the resource index, so
-    whatever `line_range` says is moot once that is true (module docstring;
-    the one corpus v0 finding, a `KSV-0117` on a `metadata-db/templates`
-    Helm template, that is both). Assigning to exactly one cause is what keeps
-    `unresolved_unparseable_file + unresolved_no_line_supplied` equal to the
+    Unparseable-file is checked first and wins whenever more than one
+    condition holds on the same finding - the file never entered the resource
+    index, so whatever `line_range` says is moot once that is true (module
+    docstring; the one corpus v0 finding, a `KSV-0117` on a
+    `metadata-db/templates` Helm template, that is both unparseable and
+    lineless). Between the two line-based causes, an absent `line_range` is
+    checked before an unmatched one - a finding with no line at all was never
+    going to reach `ResourceIndex.by_line`, so `LINE_UNMATCHED` is reserved for
+    a line that was actually looked up and failed to match, not merely absent.
+    Assigning to exactly one cause is what keeps `unresolved_unparseable_file +
+    unresolved_no_line_supplied + unresolved_line_unmatched` equal to the
     unresolved total instead of double counting.
     """
     if finding.file_path in unparseable:
         return UNPARSEABLE_FILE
-    return NO_LINE_SUPPLIED
+    if finding.line_range is None:
+        return NO_LINE_SUPPLIED
+    return LINE_UNMATCHED
 
 
 def _coverage_for(
@@ -242,6 +273,7 @@ def _coverage_for(
         identity_unresolved=identity_unresolved,
         unresolved_unparseable_file=causes[UNPARSEABLE_FILE],
         unresolved_no_line_supplied=causes[NO_LINE_SUPPLIED],
+        unresolved_line_unmatched=causes[LINE_UNMATCHED],
         fingerprint_resolved=fingerprint_resolved,
         unmapped=unmapped,
         unknown_severity=unknown_severity,
@@ -266,11 +298,11 @@ def build_report(
     that produce it, so this module's own dependencies stay to `dedupe.py`,
     `finding.py` and `scanners/base.py` alone.
 
-    `unparseable` has no default. An empty default would silently attribute
-    every unresolved finding to "no line supplied" for a caller that forgot to
-    pass it - exactly the silent default this project's explicit-state
-    discipline forbids - so a caller with no unparseable files must pass
-    `frozenset()` explicitly.
+    `unparseable` has no default. An empty default would silently move every
+    unparseable-file finding into one of the two line-based causes for a
+    caller that forgot to pass it - exactly the silent default this project's
+    explicit-state discipline forbids - so a caller with no unparseable files
+    must pass `frozenset()` explicitly.
     """
     scanners = {
         key: _coverage_for(key[0], key[1], result, unparseable) for key, result in results.items()
