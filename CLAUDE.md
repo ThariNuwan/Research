@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **A framework for risk-aware security misconfiguration detection and prioritization in cloud Infrastructure-as-Code (IaC) environments.**
 
-MSc in Computer Science (Cloud Computing) research project, University of Moratuwa — Jayathissa E.A.T.N. (258243J), May 2026. This is a **design-oriented research** project: the deliverable is a technical artifact (the framework) *plus* its evaluation, not just working code. Design/implementation decisions should trace back to the research questions and objectives below.
+MSc in Computer Science (Cloud Computing) research project, University of Moratuwa — Jayathissa E.A.T.N. (258243J), November 2026. This is a **design-oriented research** project: the deliverable is a technical artifact (the framework) *plus* its evaluation, not just working code. Design/implementation decisions should trace back to the research questions and objectives below.
 
 ### Core idea
 
