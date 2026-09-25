@@ -47,6 +47,10 @@ Seven Terraform resource *types* have more than one instance (`aws_rds_cluster` 
 
 **What S1's validator already enforces**, so S2 neither re-implements nor claims credit for it (`eval/ground_truth.py::_check_semantics`): unique `case_id`/`pair_id`/`scenario_id`; both pair sides resolving to known cases; `case_high != case_low`; every scenario tier entry resolving to a known case; and — decisively — **`oracle.author != oracle.reviewer`**, rejected with *"the oracle would be reviewing itself"*. An independent reviewer is a load-time requirement, not a preference.
 
+**No class-to-factor mapping exists, and S2 does not create one.** `taxonomy.json`'s class records carry `id`, `category`, `title` and `definition` — no factor. `rubric.json` carries the six factors with no per-class relation. So which factor a given issue class bears on is nowhere in the data, and §3 is designed around that rather than around wishing it were there. Authoring such a table in S2 would be worse than the gap: it is a *scoring* decision, and a table the evaluator writes and the scorer later consumes couples the grader to the graded — the exact coupling `test_eval_does_not_import_the_framework` exists to prevent.
+
+**`eval/` may not import `iacrisk` at all.** `tests/test_architecture.py::test_eval_does_not_import_the_framework` guards the whole package, deliberately: its docstring records that the ground-truth schema *duplicates* the class-id pattern and the factor-key enum as literal values rather than importing them, and that "a guard that permits the import the duplication exists to avoid is not guarding anything." Anything needing the adapters therefore cannot live in `eval/` (§3).
+
 **Schema shapes that constrain authoring**, read from the committed schema:
 
 - `case.source` is either `{repo, commit, path}` with a 7–40 hex commit, or the literal `"hand-crafted"`. The schema already anticipates authored cases and names them; authored cases need no commit pin because the repository is the pin.
@@ -69,13 +73,15 @@ Every case carries its `source` honestly — a `{repo, commit, path}` triple for
 
 ## 3. Deliverable 2 — the pair-candidate generator
 
-`eval/pair_candidates.py`. Mechanical, reproducible, and **it does not author ground truth**.
+`tools/paircand/`, **not** `eval/`, because it consumes S3a's adapters and `eval/` may not import them (§1). It sits with `tools/harvest/` as a research instrument: outside `src/` because it is not part of the artifact, and outside `eval/` because it is not part of the grader.
 
-It enumerates same-type resources from S3a's adapter output over corpus v0, maps each differing issue class to its rubric factor, and emits only candidates whose difference touches **exactly one** factor. Candidates it rejects are counted and the count reported: "12 clean pairs" is not a defensible claim without "out of how many considered".
+This is the **first `tools/ → iacrisk` import** in the repository, so it is a deliberate precedent rather than a slide: the direction is instrument-consumes-artifact, which is sound, while the reverse — `src/` importing `tools/` — stays forbidden and tested.
 
-The division of labour is the point. The generator proves *single-factor purity* — a property no reader should have to take on trust. The **orientation** (which case is high), the **rationale**, and the decision to use a candidate at all remain human. The machine proposes; it never judges.
+It enumerates same-type resources from adapter output over corpus v0 and emits, for every pair whose issue-class sets differ, the two identities and **exactly which classes differ in each direction**. It writes `artifacts/pair-candidates.json`. It reports how many same-type combinations it considered and how many had an empty difference, because "12 usable pairs" means little without the denominator.
 
-Purity is re-asserted as a test over the committed document (§6), so a hand-edited pair that breaks purity fails rather than passing quietly.
+**What it does not do, stated because an earlier draft of this section claimed otherwise.** It does not prove single-factor purity. Proving that needs a class-to-factor mapping, which does not exist and which S2 is not the place to invent (§1). Purity is therefore an **authored judgement**: the human reads the listed class difference, names the `factor_under_test`, and justifies purity in the `rationale`. The generator *supports* that judgement by making the difference explicit and re-derivable; it does not replace it, and the spec does not dress it up as mechanical.
+
+What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5. The set of pairs induces a class-difference-to-factor relation, and that relation must be a function: if one pair rests the `exposure` claim on a class difference and another rests `severity` on the same difference, one of them is wrong. That catches the realistic authoring error without inventing the table.
 
 ---
 
@@ -138,7 +144,7 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 2. Every one of the six `factor_key` values is the `factor_under_test` of at least 2 pairs.
 3. Every one of the five `domain` values has at least 1 scenario, and every scenario orders ≥3 cases across ≥2 tiers.
 4. **No orphan cases** — every `case_id` is referenced by at least one pair or scenario. The validator checks that references resolve; it does not check the converse.
-5. Every mined pair still proves single-factor purity when re-derived from the adapters, and every hand-crafted pair's case carries `source: "hand-crafted"`.
+5. **Cross-pair consistency.** For every mined pair, the recorded class difference between its two cases is still what the adapters produce when re-derived. And the relation the pairs induce from class-difference to `factor_under_test` is a **function**: no single class difference is cited as evidence for two different factors. Hand-crafted cases carry `source: "hand-crafted"`; mined ones carry a `{repo, commit, path}` triple.
 6. Both `defaulted_factors` and `unresolved_factors` are non-empty on at least one expected finding each, and every scenario oracle is complete: a `reviewer_verdict` in the enum, a `reviewer` distinct from the `author`, and a `registered_at` that parses as a date in the past.
 
 **What gate 6 can and cannot carry.** An earlier draft of this section had gate 6 assert that every `registered_at` predates the earliest scoring artifact. That test would be **vacuous**: no scoring module exists, so there is nothing to compare against, and it would pass while proving nothing — the precise defect S3a shipped three times before it was caught. Stated plainly instead:
@@ -151,9 +157,9 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 
 ## 7. Testing
 
-- `tests/test_pair_candidates.py` — the generator: a same-type pair differing in one factor is emitted; one differing in two factors is rejected and counted; the `aws_rds_cluster` `iam-authentication-controls` case is rejected as privilege material specifically (§1's trap, as a regression test).
+- `tests/paircand/test_generate.py`, mirroring the existing `tests/harvest/` layout — the generator: two same-type resources with differing class sets are emitted **with the difference recorded in both directions**; two with identical class sets are not emitted but *are* counted in the considered denominator; and the `aws_rds_cluster` trap is pinned as a regression test in the form the generator can actually express — all nine instances carry an identical class set, so no candidate is produced for them at all. That is the mechanical half of §1's trap; the judgement half (that `iam-authentication-controls` is authentication config, not privilege scope) lives in the spec and in the hand-crafted privilege pair's rationale, because no test can hold it.
 - `tests/test_s2_gates.py` — the six gates above.
-- Ground-truth authoring is data, so its test is the validator plus the gates. There is no unit test of a judgement.
+- Ground-truth authoring is data, so its test is the validator plus the gates. There is no unit test of a judgement — and §6 gate 5 is deliberately the strongest mechanical check available over authored judgements rather than a proof of them.
 
 ---
 
@@ -168,7 +174,8 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 
 ## 9. Residual risks
 
-1. **A hand-crafted pair is a pair the framework's author wrote.** Mitigated by keeping authoring to the minimum v0 cannot express, by the generator proving purity for everything else, and by disclosing the hand-crafted count. Not eliminated.
+1. **Single-factor purity is an authored judgement, not a proven property.** This is the largest residual risk in S2 and it follows from the missing class-to-factor mapping (§1). The generator makes each pair's class difference explicit and re-derivable, and gate 5 enforces that the induced class-difference-to-factor relation is a function — but nothing establishes that the *named* factor is the right one. A pair can be internally consistent, mechanically clean, and still test the wrong factor. **Cost if wrong:** a contrastive-pair pass rate that measures something other than what the results claim it measures, with no artifact that would reveal it. The only real mitigation is that the reviewer of §5 sees the pairs too; a disagreement there is the signal to look.
+2. **A hand-crafted pair is a pair the framework's author wrote.** Mitigated by keeping authoring to the minimum v0 cannot express, by recording the class difference mechanically for everything else, and by disclosing the hand-crafted count. Not eliminated.
 2. **The blinded reviewer shares a model family with the author's tooling.** Correlated blind spots are possible and cannot be measured from inside. A supervisor review of a sample would bound it; that is available later and does not block S2.
 3. **Scanning the authored root introduces a second fixture set.** Two fixture directories mean two things that can drift. Bounded by never touching v0's, and by the authored fixtures being regenerable from committed files.
-4. **`iam-authentication-controls` looks like privilege material and is not.** Recorded as a regression test rather than a comment, because the next author will have the same thought.
+4. **`iam-authentication-controls` looks like privilege material and is not.** Only half of this is testable: the generator emits no `aws_rds_cluster` candidate because all nine instances share an identical class set, and that is pinned as a regression test. The judgement — that the class is authentication configuration rather than privilege scope — cannot be tested and lives in §1 and in the hand-crafted privilege pair's rationale. The next author will have the same thought, so it is written down twice rather than once.
