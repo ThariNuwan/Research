@@ -96,13 +96,31 @@ def test_kubernetes_identities_group_by_api_version_and_kind() -> None:
 
 
 def test_unresolved_identities_are_excluded_entirely() -> None:
+    """Exclusion happens on `identity_kind`, before grouping.
+
+    The two findings deliberately carry *distinct* identity strings that
+    still share a grouping_type (`apps/v1/Deployment`) and have differing
+    issue classes: with the `identity_kind` exclusion removed, this is
+    exactly one usable candidate, so a broken exclusion cannot pass by
+    accident through a single-identity bucket collapsing to zero
+    combinations regardless of whether the exclusion ran.
+    """
     report = enumerate_candidates(
         [
-            _f("<unresolved>", "storage-logging-audit", kind="unresolved"),
-            _f("<unresolved>", "storage-encryption-at-rest", kind="unresolved"),
+            _f(
+                "apps/v1/Deployment/<unresolved>/<unresolved>",
+                "storage-logging-audit",
+                kind="unresolved",
+            ),
+            _f(
+                "apps/v1/Deployment/default/<unresolved>",
+                "storage-encryption-at-rest",
+                kind="unresolved",
+            ),
         ]
     )
     assert report.considered == 0
+    assert report.candidates == ()
 
 
 def test_real_corpus_figures_are_derived_not_restated() -> None:
