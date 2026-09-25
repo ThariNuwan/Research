@@ -1,0 +1,1319 @@
+{
+  "schema_version": 1,
+  "considered": 249,
+  "empty_difference": 129,
+  "usable": 120,
+  "clean_severity_pairs": 0,
+  "candidates": [
+    {
+      "grouping_type": "apps/v1/DaemonSet",
+      "a": "apps/v1/DaemonSet/default/docker-bench-security",
+      "b": "apps/v1/DaemonSet/default/docker-bench-security [container=docker-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/DaemonSet",
+      "a": "apps/v1/DaemonSet/default/docker-bench-security",
+      "b": "apps/v1/DaemonSet/default/docker-bench-security [container=verify-runtime-socket]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/DaemonSet",
+      "a": "apps/v1/DaemonSet/default/docker-bench-security [container=docker-bench]",
+      "b": "apps/v1/DaemonSet/default/docker-bench-security [container=verify-runtime-socket]",
+      "only_a": [],
+      "only_b": [
+        "containers-workload-reliability"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/big-monolith/hunger-check-deployment",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/health-check-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/build-code-deployment [container=build-code]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=detect-runtime-socket]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment [container=health-check]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "b": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-workload-reliability"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/health-check-deployment-simple [container=health-check]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "b": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [],
+      "only_b": [
+        "containers-workload-reliability"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [],
+      "only_b": [
+        "containers-workload-reliability"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=info-app]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [],
+      "only_b": [
+        "containers-workload-reliability"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [],
+      "only_b": [
+        "containers-workload-reliability"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "containers-workload-reliability",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "b": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/kubernetes-goat-home-deployment [container=kubernetes-goat-home]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/poor-registry-deployment",
+      "b": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "b": "apps/v1/Deployment/default/system-monitor-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "apps/v1/Deployment",
+      "a": "apps/v1/Deployment/default/poor-registry-deployment [container=poor-registry]",
+      "b": "apps/v1/Deployment/secure-middleware/cache-store-deployment",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "aws_instance",
+      "a": "aws_instance.db_app",
+      "b": "aws_instance.web_host",
+      "only_a": [],
+      "only_b": [
+        "iam-authentication-controls",
+        "iam-hardcoded-secrets"
+      ],
+      "shared": 3
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.data",
+      "b": "aws_s3_bucket.data_science",
+      "only_a": [
+        "storage-logging-audit"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.data",
+      "b": "aws_s3_bucket.logs",
+      "only_a": [
+        "storage-encryption-at-rest",
+        "storage-key-management-cmk"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.data_science",
+      "b": "aws_s3_bucket.financials",
+      "only_a": [],
+      "only_b": [
+        "storage-logging-audit"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.data_science",
+      "b": "aws_s3_bucket.flowbucket",
+      "only_a": [],
+      "only_b": [
+        "storage-logging-audit"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.data_science",
+      "b": "aws_s3_bucket.logs",
+      "only_a": [
+        "storage-encryption-at-rest",
+        "storage-key-management-cmk"
+      ],
+      "only_b": [
+        "storage-logging-audit"
+      ],
+      "shared": 3
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.data_science",
+      "b": "aws_s3_bucket.operations",
+      "only_a": [],
+      "only_b": [
+        "storage-logging-audit"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.financials",
+      "b": "aws_s3_bucket.logs",
+      "only_a": [
+        "storage-encryption-at-rest",
+        "storage-key-management-cmk"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.flowbucket",
+      "b": "aws_s3_bucket.logs",
+      "only_a": [
+        "storage-encryption-at-rest",
+        "storage-key-management-cmk"
+      ],
+      "only_b": [],
+      "shared": 4
+    },
+    {
+      "grouping_type": "aws_s3_bucket",
+      "a": "aws_s3_bucket.logs",
+      "b": "aws_s3_bucket.operations",
+      "only_a": [],
+      "only_b": [
+        "storage-encryption-at-rest",
+        "storage-key-management-cmk"
+      ],
+      "shared": 4
+    },
+    {
+      "grouping_type": "aws_security_group",
+      "a": "aws_security_group.default",
+      "b": "aws_security_group.web-node",
+      "only_a": [],
+      "only_b": [
+        "networking-egress-exposure",
+        "networking-ingress-exposure"
+      ],
+      "shared": 1
+    },
+    {
+      "grouping_type": "aws_security_group_rule",
+      "a": "aws_security_group_rule.egress",
+      "b": "aws_security_group_rule.ingress",
+      "only_a": [
+        "networking-egress-exposure"
+      ],
+      "only_b": [],
+      "shared": 1
+    },
+    {
+      "grouping_type": "aws_vpc",
+      "a": "aws_vpc.eks_vpc",
+      "b": "aws_vpc.web_vpc",
+      "only_a": [
+        "networking-flow-logging"
+      ],
+      "only_b": [],
+      "shared": 1
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job",
+      "b": "batch/v1/Job/default/batch-check-job [container=batch-check]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job",
+      "b": "batch/v1/Job/default/hidden-in-layers [container=hidden-in-layers]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job",
+      "b": "batch/v1/Job/default/kube-bench-master",
+      "only_a": [
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 6
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job",
+      "b": "batch/v1/Job/default/kube-bench-master [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job",
+      "b": "batch/v1/Job/default/kube-bench-node",
+      "only_a": [
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 6
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job",
+      "b": "batch/v1/Job/default/kube-bench-node [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job [container=batch-check]",
+      "b": "batch/v1/Job/default/hidden-in-layers",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job [container=batch-check]",
+      "b": "batch/v1/Job/default/kube-bench-master",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/batch-check-job [container=batch-check]",
+      "b": "batch/v1/Job/default/kube-bench-node",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers",
+      "b": "batch/v1/Job/default/hidden-in-layers [container=hidden-in-layers]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers",
+      "b": "batch/v1/Job/default/kube-bench-master",
+      "only_a": [
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 6
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers",
+      "b": "batch/v1/Job/default/kube-bench-master [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers",
+      "b": "batch/v1/Job/default/kube-bench-node",
+      "only_a": [
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 6
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers",
+      "b": "batch/v1/Job/default/kube-bench-node [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout",
+        "networking-isolation-segmentation"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers [container=hidden-in-layers]",
+      "b": "batch/v1/Job/default/kube-bench-master",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/hidden-in-layers [container=hidden-in-layers]",
+      "b": "batch/v1/Job/default/kube-bench-node",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/kube-bench-master",
+      "b": "batch/v1/Job/default/kube-bench-master [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/kube-bench-master",
+      "b": "batch/v1/Job/default/kube-bench-node [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout"
+      ],
+      "only_b": [],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/kube-bench-master [container=kube-bench]",
+      "b": "batch/v1/Job/default/kube-bench-node",
+      "only_a": [],
+      "only_b": [
+        "containers-host-isolation-breakout"
+      ],
+      "shared": 5
+    },
+    {
+      "grouping_type": "batch/v1/Job",
+      "a": "batch/v1/Job/default/kube-bench-node",
+      "b": "batch/v1/Job/default/kube-bench-node [container=kube-bench]",
+      "only_a": [
+        "containers-host-isolation-breakout"
+      ],
+      "only_b": [],
+      "shared": 5
+    }
+  ]
+}
