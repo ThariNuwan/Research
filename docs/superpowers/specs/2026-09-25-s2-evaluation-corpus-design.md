@@ -38,8 +38,12 @@ Measured from `tests/harvest/fixtures/` through S3a's committed adapters on this
 | criticality | **Yes, with no new code** | declared-context variation on one resource |
 | exposure | Yes | `aws_security_group.default` carries `networking-config-hygiene` only; `aws_security_group.web-node` adds `networking-ingress-exposure` *and* `networking-egress-exposure` — both feed exposure |
 | encryption | Yes | `aws_instance.db_app` carries `storage-encryption-at-rest`; `aws_instance.web_host` does not |
-| severity | Yes | all four levels present on the Terraform root: CRITICAL 15, HIGH 133, MEDIUM 47, LOW 39 |
+| **severity** | **No** | see below — presence of all four levels is not a controlled pair |
 | **privilege** | **No** | every genuine IAM policy type is single-instance: `aws_iam_policy_document` 1, `aws_iam_role_policy` 1, `aws_iam_user` 1, `aws_iam_user_policy` 1 |
+
+**Why severity cannot be paired from v0, corrected from an earlier draft of this table.** That draft reasoned "all four levels are present (CRITICAL 15, HIGH 133, MEDIUM 47, LOW 39), therefore a severity pair exists." Presence is not isolation. Measured: **zero** resource pairs share an identical issue-class set while differing in maximum severity, because severity is determined by which rule fires and which rule fires also determines the class — the two co-vary. Five classes *do* show intra-class severity variance (`iam-authentication-controls` 2–3, `networking-ingress-exposure` 4–5, `storage-key-management-cmk` 2–4, `storage-logging-audit` 2–3, `storage-public-accessibility` 4–5), but in every case the two resources are of **different types** and therefore differ in other classes too. So severity joins privilege as hand-crafted (§4).
+
+**Candidate supply, measured.** Over corpus v0: **249** same-type combinations considered, **129** with an empty class difference, **120** usable candidates. Grouped by the class family their difference touches: containers+networking 82, containers 21, storage 9, networking 7, iam 1. The clean single-family supply is comfortable where it exists — exposure has `aws_security_group.default` vs `web-node` (ingress + egress) and `aws_security_group_rule.egress` vs `ingress`; encryption has **four** clean pairs against `aws_s3_bucket.logs` (`data`, `financials`, `flowbucket`, `operations`), each differing only in `storage-encryption-at-rest` + `storage-key-management-cmk`. The single `iam`-family candidate is `aws_instance.db_app` vs `web_host`, which mixes `iam-authentication-controls` with `iam-hardcoded-secrets` and is privilege material in neither case.
 
 Seven Terraform resource *types* have more than one instance (`aws_rds_cluster` 9, `aws_s3_bucket` 6, `aws_subnet` 4, then `aws_security_group`, `aws_security_group_rule`, `aws_instance`, `aws_vpc` at 2 each); of those, **5 have instances whose issue-class sets genuinely differ**. 28 distinct issue classes appear across the corpus, and 39 distinct Kubernetes identities.
 
@@ -81,6 +85,8 @@ It enumerates same-type resources from adapter output over corpus v0 and emits, 
 
 **What it does not do, stated because an earlier draft of this section claimed otherwise.** It does not prove single-factor purity. Proving that needs a class-to-factor mapping, which does not exist and which S2 is not the place to invent (§1). Purity is therefore an **authored judgement**: the human reads the listed class difference, names the `factor_under_test`, and justifies purity in the `rationale`. The generator *supports* that judgement by making the difference explicit and re-derivable; it does not replace it, and the spec does not dress it up as mechanical.
 
+It also emits one negative figure: the count of resource pairs sharing an identical class set while differing in maximum severity. §1 measured that as **0**, and having the generator recompute it keeps that claim re-derivable instead of a one-time observation someone has to trust. If a re-capture ever makes it non-zero, severity becomes minable and §4's hand-crafted severity cases can retire.
+
 What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5. The set of pairs induces a class-difference-to-factor relation, and that relation must be a function: if one pair rests the `exposure` claim on a class difference and another rests `severity` on the same difference, one of them is wrong. That catches the realistic authoring error without inventing the table.
 
 ---
@@ -89,7 +95,14 @@ What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5.
 
 `corpus/authored/`, with its scan root declared in `tools/corpus.lock.json` alongside v0's vendored roots.
 
-**Scope: the minimum v0 cannot express.** Privilege for certain — one low-privilege and one broad-privilege IAM policy differing in scope alone. Anywhere a mined candidate turns out impure on inspection, its factor gets a hand-crafted pair too.
+**Scope: the minimum v0 cannot express — two factors, not one.**
+
+- **privilege:** three IAM policies differing in scope alone — narrow, moderate, broad — yielding two pairs from three cases.
+- **severity:** two or three resources of one type, each triggering rules in a single shared issue class at different severities. §1 shows this is constructible because five classes span multiple severities; it is not minable because in v0 that variance only ever appears across different resource types.
+
+Anywhere a mined candidate turns out impure on inspection, its factor gets a hand-crafted pair too.
+
+A note on relative value, so the authored surface is spent knowingly: severity enters the additive model as a direct term, so its pair is a **sanity check on the engine** rather than a test of the research contribution. It is included because the marginal cost is two small resources in a scan the privilege cases already require — not because it carries an argument.
 
 **These files must be scanned.** `expected.findings` references real `resource_identity` and `issue_class` values, and there is no honest way to author those without seeing what the pinned scanners actually emit. S2 therefore runs the pinned scanners over the **new root only**, capturing fixtures to `tests/harvest/fixtures/authored/`. Corpus v0's five golden documents are not touched, re-captured, or rewritten. This is a deliberate, bounded relaxation of the don't-run-the-scanners rule, and it is bounded by path.
 
