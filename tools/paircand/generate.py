@@ -24,7 +24,7 @@ from typing import Any
 
 from iacrisk.finding import NormalizedFinding
 from iacrisk.input import discover
-from iacrisk.resources import build_index
+from iacrisk.resources import CLUSTER_SCOPED_KINDS, build_index
 from iacrisk.scanners.checkov import CheckovAdapter
 from iacrisk.scanners.tfsec import TfsecAdapter
 from iacrisk.scanners.trivy import TrivyAdapter
@@ -70,9 +70,23 @@ class CandidateReport:
 def grouping_type(identity: str, identity_kind: str) -> str:
     """The bucket two identities must share before they are worth comparing.
 
-    Terraform: the resource type before the first dot. Kubernetes: apiVersion
-    plus Kind, which is the identity minus its namespace and name - and any
-    `[container=...]` suffix goes with the name.
+    Terraform: the resource type before the first dot.
+
+    Kubernetes has two shapes, because `identity.kubernetes_identity` itself
+    built the string two ways: a namespaced identity is
+    `apiVersion/Kind/namespace/name[ [container=...]]`, so the bucket drops
+    the last two segments (namespace and name); a cluster-scoped identity
+    carries no namespace component at all
+    (`apiVersion/Kind/name`), so dropping two segments would strip the Kind
+    too and leave a bare apiVersion. Segment count alone cannot distinguish
+    them - `v1/Service/default/name` and
+    `rbac.authorization.k8s.io/v1/ClusterRoleBinding/superadmin` are both
+    four segments - so the second-from-last segment is tested against
+    `CLUSTER_SCOPED_KINDS`, imported rather than restated so this bucket
+    can never drift from whatever `identity.py` treated as cluster-scoped
+    when it built the string in the first place; a Kind that set does not
+    cover carries a namespace in its identity anyway, so mirroring the same
+    constant is correct by construction, not by coincidence.
 
     A grouping heuristic for *proposal* only. It is never used as an identity
     and never written into ground truth.
@@ -80,6 +94,8 @@ def grouping_type(identity: str, identity_kind: str) -> str:
     if identity_kind == "terraform":
         return identity.split(".", 1)[0]
     parts = identity.split("/")
+    if len(parts) >= 3 and parts[-2] in CLUSTER_SCOPED_KINDS:
+        return "/".join(parts[:-1])
     if len(parts) >= 3:
         return "/".join(parts[:-2])
     return identity
@@ -181,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
     report = enumerate_candidates(real_findings())
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(
-        json.dumps(to_json(report), indent=2, sort_keys=False) + "\n",
+        json.dumps(to_json(report), indent=2) + "\n",
         encoding="utf-8",
         newline="\n",
     )

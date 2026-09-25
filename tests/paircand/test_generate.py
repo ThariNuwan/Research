@@ -90,8 +90,21 @@ def test_an_unknown_severity_never_counts_toward_a_severity_pair() -> None:
 
 
 def test_kubernetes_identities_group_by_api_version_and_kind() -> None:
+    """Namespaced identities drop namespace and name; cluster-scoped identities
+    (no namespace component to begin with) drop only name. Segment count alone
+    cannot tell the two shapes apart - `v1/Service/.../...` and
+    `rbac.../v1/ClusterRoleBinding/...` are both four segments - so the
+    cluster-scoped cases here are the ones that would catch a regression to
+    an unconditional two-segment drop.
+    """
     assert grouping_type("apps/v1/Deployment/default/web", "kubernetes") == "apps/v1/Deployment"
     assert grouping_type("batch/v1/Job/default/j [container=c]", "kubernetes") == "batch/v1/Job"
+    assert grouping_type("v1/Service/default/health-check-service", "kubernetes") == "v1/Service"
+    assert (
+        grouping_type("rbac.authorization.k8s.io/v1/ClusterRoleBinding/superadmin", "kubernetes")
+        == "rbac.authorization.k8s.io/v1/ClusterRoleBinding"
+    )
+    assert grouping_type("v1/Namespace/kube-system", "kubernetes") == "v1/Namespace"
     assert grouping_type("aws_s3_bucket.data", "terraform") == "aws_s3_bucket"
 
 
@@ -121,6 +134,14 @@ def test_unresolved_identities_are_excluded_entirely() -> None:
     )
     assert report.considered == 0
     assert report.candidates == ()
+
+
+def test_empty_input_produces_an_all_zero_report() -> None:
+    report = enumerate_candidates([])
+    assert report.considered == 0
+    assert report.empty_difference == 0
+    assert report.candidates == ()
+    assert report.clean_severity_pairs == 0
 
 
 def test_real_corpus_figures_are_derived_not_restated() -> None:
