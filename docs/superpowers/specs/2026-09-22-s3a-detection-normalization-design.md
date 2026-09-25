@@ -45,7 +45,7 @@ Four consequences drive the design:
 3. **Checkov's `resource` field is polymorphic.** Across 47 distinct values it carries Terraform addresses (`aws_db_instance.default`), Dockerfile paths (`/resources\Dockerfile.`), provider blocks (`aws.plain_text_access_keys_provider`) and bare secret hashes (`25910f981e85ca…`). Not everything checkov calls a resource is a Terraform resource.
 4. **A structured violation fingerprint exists only in checkov.** Its `evaluated_keys` is high quality where present (`spec/template/spec/containers/[0]/securityContext/allowPrivilegeEscalation`) but absent on 13/221 and 103/268, and its single most common value is the meta-key `resource_type`, which names no attribute at all.
 
-**Kubernetes manifests** (`corpus/vendor/kubernetes-goat/scenarios`, 22 files): 18 parse cleanly under `yaml.safe_load_all`; **4 fail, all under `metadata-db/templates/`** — the Helm chart, whose `{{ … }}` is not valid YAML. Parsing yields 37 documents, 17 container names, and 15/37 documents with no `metadata.namespace`.
+**Kubernetes manifests** (`corpus/vendor/kubernetes-goat/scenarios`, 22 files): 18 parse cleanly under `yaml.safe_load_all`; **4 fail, all under `metadata-db/templates/`** — the Helm chart, whose `{{ … }}` is not valid YAML. Parsing yields **35 kind-bearing documents**, 17 container names, and **13/35 with no `metadata.namespace`**. (An earlier revision of this line said 37 and 15/37. Those figures counted `Chart.yaml` and `values.yaml`, which parse cleanly but carry no `kind` and are therefore not manifests — §3 excludes them by exactly that test. Corrected from Task 3's measurement.)
 
 **Taxonomy coverage** of the rule families the adapters will see: checkov `CKV_*`/`CKV2_*` 128, tfsec `AVD-AWS-*` 48, trivy `AWS-*` 47 and **`KSV-*` 30**. All 255 map.
 
@@ -77,7 +77,11 @@ The record S0 refused to define because it depends on a taxonomy that did not th
 
 ### 2.1 Why non-resource findings are retained, and what `context_eligible` is for
 
-Measured: **8 of 489 checkov findings (1.6%) carry a non-resource `resource`** — 4 secret hashes and 2 Dockerfile findings on Terraform, 2 secret hashes on Kubernetes. The choice moves no metric materially, so it goes to whichever side is cheaper to defend: retaining requires an honest label, while dropping requires justifying an exclusion from a *coverage* metric. They are also genuine findings a user wants surfaced — `CKV_SECRET_*` is a hardcoded credential.
+Measured: **9 of 489 checkov findings (1.8%) carry a non-resource `resource`** — on Terraform, 4 secret hashes, 2 Dockerfile findings and 1 provider block; on Kubernetes, 2 secret hashes. (An earlier revision said 8 of 489. That figure counted the secrets and Dockerfiles but overlooked the provider block `aws.plain_text_access_keys_provider`, which is equally not a resource. Corrected from Task 5's adapter run, which classifies terraform as 214 resource + 1 provider + 2 file + 4 secret = 221.) The choice moves no metric materially, so it goes to whichever side is cheaper to defend: retaining requires an honest label, while dropping requires justifying an exclusion from a *coverage* metric. They are also genuine findings a user wants surfaced — `CKV_SECRET_*` is a hardcoded credential.
+
+**An unresolved identity is also context-ineligible.** Settled during Task 5, because the adapter originally set the flag from the resource *shape* before identity resolution had run — so a Kubernetes-shaped finding that failed both index lookups carried `resource_identity = "<unresolved>"` alongside `context_eligible = True`, telling S3b to extract context from a resource that was never found.
+
+The rule: **when identity resolution fails, `identity_kind` becomes `"unresolved"`**, and eligibility follows from the kind as it already did — only `terraform` and `kubernetes` are eligible. No conjunction of kind and resolution, because that would give one flag two meanings; the kind carries it. Nothing is lost, since `platform` still records that the finding was Kubernetes, keeping "might resolve after a re-harvest or a fixed template" distinguishable from a secret hash that never can. Corpus v0 does not exercise this branch — no checkov Kubernetes finding lands in the four unparseable Helm templates — so it is a latent correctness rule, and its test says so rather than implying the case occurs.
 
 `context_eligible = False` marks them. It exists because of the washout spec §3.5(2) identifies: the five context defaults sum to 16, so a finding with nothing resolved lands at 17–21 and is **always High**. A hardcoded secret may well deserve High, but it must not arrive there because no factor resolved. The flag makes S3b skip extraction rather than default every factor, and makes S4/S5 exclude these from prioritization-quality claims — the same discipline the `unmapped:` contract already applies, on a different axis. `unmapped:` means *no class*; `context_eligible = False` means *no resource to contextualize*.
 
@@ -100,7 +104,11 @@ Discovery is separate from scanning because the platform decides which scanners 
 `src/iacrisk/resources.py`. Parses confirmed manifests once into an index supporting two lookups:
 
 - **by file and line** → the document whose span contains that line, for trivy, which gives only `CauseMetadata.StartLine`;
-- **by kind, namespace and name** → for checkov, which gives `Kind.namespace.name` but no `apiVersion`. Checkov also emits a **four-component container form**, `Kind.namespace.name.container` (measured: 10 findings, e.g. `Pod.default.build-code-deployment.app-build-code`), so the lookup takes an optional trailing container component and the adapter does not need the by-line path to reach a container.
+- **by kind, namespace and name** → for checkov, which gives `Kind.namespace.name` but no `apiVersion`.
+
+**Checkov's four-component form is NOT a container address — erratum, corrected 2026-09-22.** An earlier revision of this section claimed `Kind.namespace.name.container`, measured from 10 findings such as `Pod.default.build-code-deployment.app-build-code`. That reading was wrong, and it was caught by Task 3's implementer and confirmed against the manifests: **the fourth component is the pod template's label rendered `key-value`, in 10 cases out of 10.** `Pod.default.internal-proxy-deployment.app-internal-proxy` settles it — that workload has two containers, `info-app` and `internal-api`, and the fourth component is neither. The synthesized `Kind` is `Pod` rather than the workload's actual `Deployment`, which is the other tell.
+
+Consequently **the checkov adapter must never feed the fourth component to `by_address(container=…)`.** Checkov container-scoped identity, where it is needed at all, comes from the by-line path like trivy's. Every one of these 10 findings is `CKV2_K8S_6`, a pod-level check, so the workload identity is the correct target anyway.
 
 **Spans nest, so the by-line lookup needs a tie-break rule.** A container's lines fall inside its parent workload's span, so a line can match both the document and a container within it. The rule: the lookup returns the **innermost** match — the container when the line falls in a container block, the document otherwise. Documents within one file do not nest (multi-document YAML is sequential), so the only nesting is workload-to-container, and resolving to the container is what gives a container-scoped finding its `[container=…]` component rather than collapsing every container finding onto the workload.
 
@@ -161,9 +169,37 @@ The **per-scanner fingerprint-resolution rate is reported** as an evaluation-int
 
 **Tier 1 — exact collapse.** Two findings collapse when identity and issue-class match **and both fingerprints are resolved and equal**. Scanner provenance is retained as metadata on the collapsed group. **This tier alone produces the reported deduplication number.**
 
-**Tier 2 — candidate overlap.** Findings sharing identity and issue-class where either fingerprint is unresolved are reported as *candidate* cross-scanner overlap: counted, surfaced, and **never merged**. They do not enter the deduplication number.
+**Tier 2 — candidate overlap.** Findings sharing identity and issue-class where either fingerprint is unresolved are reported as *candidates*: counted, surfaced, and **never merged**. They do not enter the deduplication number.
 
-Rationale. Collapsing on identity and class alone would maximise the measured reduction, but it is exactly what Q8 #6 added the fingerprint to prevent — two separate open ingress rules on one security group, or two different container fields, would become one finding and the number would be inflated by that conflation. Refusing to merge without evidence keeps the headline number conservative and true, and it matches the explicit-state discipline. Tier 2 is not a consolation prize: PLAN's scanner-selection note (#19) asks the dissertation to account for rule-family overlap between tfsec and Trivy, and the candidate tier is the evidence for exactly that discussion.
+**Tier 2 is reported as two numbers, never one — erratum, corrected 2026-09-24.** An earlier revision of this section stated the condition above (no scanner requirement) but labelled the output "candidate **cross-scanner** overlap". Those disagree, and Task 8's implementer found the disagreement by measuring 207 candidates where the controller had predicted ~123 and then re-deriving why, rather than bending to the prior. The 207 decomposes exactly:
+
+| Population | Measured | What it is |
+|---|---|---|
+| Candidates, the condition above | **207** | every pair the pipeline declined to merge |
+| — **cross-scanner** | **116** | two or more scanners, one resource, one class → the rule-family overlap PLAN #19 asks the dissertation to account for |
+| — **same-scanner** | **91** | *one* scanner raising two or more findings on one resource in one class that no fingerprint separates → a limit of **this method**, not scanner overlap at all |
+
+Merging them would label the 91 as cross-scanner overlap, which is precisely the error PLAN Q7 forbids for alert reduction: *two separate numbers, never combined*.
+
+**What the 91 actually are, measured.** By raising scanner: **trivy 71, checkov 19, tfsec 1**. Trivy dominating is not incidental — it follows from §6, where trivy's fingerprint is always `None`, so *every* trivy pair sharing identity and class necessarily lands in Tier 2 and can never be separated. The largest single group is one trivy scan of the `docker-bench-security` DaemonSet's `docker-bench` container raising six KSV rules (`KSV-0001, 0012, 0017, 0020, 0021, 0105`) that all map to `containers-privileged-execution`. Of checkov's 19, the cleanest shape accounts for **6**: `CKV2_AWS_61` with `CKV2_AWS_62` on one bucket under `storage-data-lifecycle-hygiene`, on the buckets `flowbucket, data, financials, operations, data_science, logs`. The other 13 are `CKV_K8S_16/20/23/40` and `CKV_K8S_22/31` groups, plus the two single-rule cases below.
+
+So the 91 compose **three** mechanisms, none of which is scanner disagreement:
+
+1. the taxonomy **deliberately** groups many rule IDs into 28 classes — a design choice;
+2. the scanner supplies no fingerprint with which to tell same-class findings apart — a data limit;
+3. **one rule firing more than once on one resource** — measured on exactly **3** of the 91, where the group carries a single distinct rule id: tfsec `AVD-AWS-0057` ×5 on `aws_iam_user_policy.userpolicy` (five statements in one policy), checkov `CKV_SECRET_2` ×2 on one secret hash spanning `lambda.tf` and `providers.tf`, and checkov `CKV_K8S_21` ×2 on `v1/Service/default/health-check-service` declared in two files.
+
+**Erratum, corrected 2026-09-25.** Mechanism 3 was missing, and the table row above read "*one* scanner raising several **distinct rules**". For those 3 the taxonomy-grouping cause does not apply at all — there is only one rule — so the earlier wording described 88 of the 91 and mis-described the rest. The whole-branch review found this by measuring the rule-id cardinality of every candidate; the counts were right, the mechanism sentence was not, and it is the sentence the limitations section quotes.
+
+Mechanism 3 is also the shape the Rationale below already names — "two separate open ingress rules on one security group" — which makes it the best evidence in the section that the fingerprint is doing the job §6 added it for.
+
+That makes the same-scanner figure the more valuable of the two for the write-up — it quantifies what **this method** cannot separate rather than a property of the scanners — and it belongs in the limitations section, not the alert-reduction result.
+
+**A fourth number that must not be reported.** The controller's original ~123 was `(identity, class)` pairs spanning more than one scanner counted **before** Tier 1 ran, so it double-counts groups Tier 1 has already collapsed. It is neither of the two figures above and has no place in the results.
+
+**Measured deduplication, for the record.** Over all five adapter runs on corpus v0: 1055 findings in, **35 Tier-1 groups holding 74 findings, so 39 removed** — a reported reduction of **39/1055 = 3.7%**, with exactly **one** of those groups cross-scanner. A conservative number, which is the intent.
+
+Rationale. Collapsing on identity and class alone would maximise the measured reduction, but it is exactly what Q8 #6 added the fingerprint to prevent — two separate open ingress rules on one security group, or two different container fields, would become one finding and the number would be inflated by that conflation. Refusing to merge without evidence keeps the headline number conservative and true, and it matches the explicit-state discipline. Tier 2 is not a consolation prize: PLAN's scanner-selection note (#19) asks the dissertation to account for rule-family overlap between tfsec and Trivy, and the **cross-scanner** half of the candidate tier — the 116, not the 207 — is the evidence for exactly that discussion.
 
 A finding whose identity is `<unresolved>` never collapses with anything, in either tier.
 
@@ -219,7 +255,7 @@ Both open items were settled by measurement rather than argument, and the measur
 
 2. **Trivy fingerprints stay unresolved, on evidence rather than principle** (§6). The original rationale — that `Resolution` is prose and parsing it would be inference — was wrong: 55.7% of trivy Resolutions carry a cleanly extractable quoted attribute. The real reason is that the extracted vocabulary has **zero exact overlap** with checkov's, so extraction would add a field that never matches and produce no additional Tier-1 collapse. The cost of doing better is named (an attribute-normalization mapping across three vocabularies) rather than hidden.
 
-A third item surfaced from the same measurement and is folded into §4: checkov emits a **four-component container form** `Kind.namespace.name.container`, not only `Kind.namespace.name` as this spec originally stated.
+A third item surfaced from the same measurement and was folded into §4 — **and was then itself wrong.** This spec claimed checkov's four-component form was a container address. Task 3's implementer measured it against the manifests and found the fourth component is the pod template's **label**, 10 times out of 10. §4 now carries the corrected reading and the erratum. Recorded here rather than quietly rewritten, because a measurement that corrects an earlier measurement is exactly the kind of thing this project's §G3 discipline exists to keep visible.
 
 ## 13. Named future work, deliberately not attempted here
 
