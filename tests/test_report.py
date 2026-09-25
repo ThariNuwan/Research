@@ -8,30 +8,30 @@ from running the three real adapters over the committed golden fixtures
 (`tests/harvest/fixtures/`) and the real `deduplicate()` over their combined
 output, so a re-capture that changes the corpus fails these tests instead of
 leaving a stale number standing - counts are never restated as literals.
+
+The five real adapter runs behind those headline figures come from
+`tests/_corpus.py`, shared with `test_dedupe.py` and `test_s3a_gates.py` so
+the three modules cannot silently drift onto three different corpora
+(whole-branch review Finding 4; `tests/test_corpus_wiring.py` pins the run
+set that module produces).
 """
 
 from __future__ import annotations
 
 import json
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
+from _corpus import load_fixture as _load_fixture
+from _corpus import real_dedupe as _real_dedupe
+from _corpus import real_report as _real_report
+from _corpus import real_results as _real_results
+from _corpus import real_unparseable as _real_unparseable
 from iacrisk import identity
 from iacrisk.dedupe import DedupeResult, deduplicate
 from iacrisk.finding import NormalizedFinding
-from iacrisk.input import discover
 from iacrisk.report import RetentionReport, ScannerCoverage, build_report
-from iacrisk.resources import ResourceIndex, build_index
 from iacrisk.scanners.base import AdapterResult
-from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
-from iacrisk.scanners.trivy import TrivyAdapter
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-FIXTURES_DIR = REPO_ROOT / "tests" / "harvest" / "fixtures"
-TERRAFORM_SCAN_ROOT = REPO_ROOT / "corpus" / "vendor" / "terragoat" / "terraform" / "aws"
-KUBERNETES_SCAN_ROOT = REPO_ROOT / "corpus" / "vendor" / "kubernetes-goat" / "scenarios"
 
 _EMPTY_DEDUPE = DedupeResult(groups=(), candidates=(), collapsed_count=0)
 
@@ -295,60 +295,11 @@ def test_tier2_cross_and_same_partition_tier2_candidates_exactly() -> None:
 
 
 # --- real fixtures: the headline retention measurement ------------------------------
-
-
-def _load_fixture(name: str) -> Any:
-    return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
-
-
-def _kubernetes_index() -> ResourceIndex:
-    return build_index(discover(KUBERNETES_SCAN_ROOT))
-
-
-def _real_results() -> dict[tuple[str, str], AdapterResult]:
-    """Every `(scanner, platform)` adapter run over the golden fixtures, the same
-    five runs `test_dedupe.py::_all_real_findings` combines into one pool - kept
-    separate by key here, which is exactly what this report exists to do.
-    """
-    kubernetes_index = _kubernetes_index()
-    return {
-        ("checkov", "terraform"): CheckovAdapter().parse(
-            _load_fixture("checkov-terraform.json"), TERRAFORM_SCAN_ROOT, None
-        ),
-        ("checkov", "kubernetes"): CheckovAdapter().parse(
-            _load_fixture("checkov-kubernetes.json"), KUBERNETES_SCAN_ROOT, kubernetes_index
-        ),
-        ("trivy", "terraform"): TrivyAdapter().parse(
-            _load_fixture("trivy-terraform.json"), TERRAFORM_SCAN_ROOT, None
-        ),
-        ("trivy", "kubernetes"): TrivyAdapter().parse(
-            _load_fixture("trivy-kubernetes.json"), KUBERNETES_SCAN_ROOT, kubernetes_index
-        ),
-        ("tfsec", "terraform"): TfsecAdapter().parse(
-            _load_fixture("tfsec-terraform.json"), TERRAFORM_SCAN_ROOT, None
-        ),
-    }
-
-
-def _real_unparseable() -> frozenset[str]:
-    """The scan-root-relative unparseable path set a real caller already has from
-    `ResourceIndex.unparseable` (and `DiscoveryResult.unparseable` for the
-    terraform root, empty in corpus v0 but unioned in for generality).
-    """
-    kubernetes_unparseable = _kubernetes_index().unparseable
-    terraform_unparseable = discover(TERRAFORM_SCAN_ROOT).unparseable
-    return frozenset(kubernetes_unparseable) | frozenset(terraform_unparseable)
-
-
-def _real_dedupe() -> DedupeResult:
-    findings: list[NormalizedFinding] = []
-    for result in _real_results().values():
-        findings.extend(result.findings)
-    return deduplicate(findings)
-
-
-def _real_report() -> RetentionReport:
-    return build_report(_real_results(), _real_dedupe(), _real_unparseable())
+#
+# `_real_results`, `_real_unparseable`, `_real_dedupe` and `_real_report` are
+# `tests/_corpus.py`'s wiring, imported at the top of this module under their
+# old local names so every call site below is unchanged (whole-branch review
+# Finding 4).
 
 
 def test_real_corpus_findings_in_is_internally_consistent_with_out_and_dropped() -> None:

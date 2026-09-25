@@ -26,43 +26,39 @@ double count, since one finding (`metadata-db/templates/deployment.yaml`'s
 exactly one cause.
 
 Never invokes a real scanner. Every fixture is read as committed.
+
+The five real adapter runs every gate below measures come from
+`tests/_corpus.py`, shared with `test_dedupe.py` and `test_report.py` so the
+three modules cannot silently drift onto three different corpora
+(whole-branch review Finding 4; `tests/test_corpus_wiring.py` pins the run
+set that module produces).
 """
 
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
-from typing import Any
 
+from _corpus import all_real_findings as _all_real_findings
+from _corpus import kubernetes_index as _kubernetes_index
+from _corpus import load_fixture as _load_fixture
+from _corpus import real_dedupe as _real_dedupe
+from _corpus import real_results as _real_results
+from _corpus import real_unparseable as _real_unparseable
 from iacrisk import identity
-from iacrisk.dedupe import DedupeResult, deduplicate
+from iacrisk.dedupe import deduplicate
 from iacrisk.finding import NormalizedFinding
-from iacrisk.input import discover
 from iacrisk.report import build_report
-from iacrisk.resources import ResourceIndex, build_index
-from iacrisk.scanners.base import AdapterResult
-from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
-from iacrisk.scanners.trivy import TrivyAdapter
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-FIXTURES_DIR = REPO_ROOT / "tests" / "harvest" / "fixtures"
-TERRAFORM_SCAN_ROOT = REPO_ROOT / "corpus" / "vendor" / "terragoat" / "terraform" / "aws"
-KUBERNETES_SCAN_ROOT = REPO_ROOT / "corpus" / "vendor" / "kubernetes-goat" / "scenarios"
-
-
-# --- fixture loading and raw, adapter-independent record counts --------------------
+# --- raw, adapter-independent record counts -----------------------------------------
 #
 # Duplicated rather than imported from `tests/test_report.py`, matching this
 # project's existing precedent of each test module owning its own oracle
 # (`test_dedupe.py` and `test_report.py` already each carry their own copy of
 # this same shape) - a gate file's oracle should not depend on another test
-# module's internals surviving unchanged.
-
-
-def _load_fixture(name: str) -> Any:
-    return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
+# module's internals surviving unchanged. `_load_fixture` itself is the one
+# exception, imported from `tests/_corpus.py`: it is a pure JSON read with
+# nothing to drift, unlike the oracle logic that walks each shape (whole-branch
+# review Finding 4).
 
 
 def _raw_checkov_record_count(name: str) -> int:
@@ -91,52 +87,11 @@ def _raw_tfsec_record_count(name: str) -> int:
 
 
 # --- real adapter output over the committed fixtures --------------------------------
-
-
-def _kubernetes_index() -> ResourceIndex:
-    return build_index(discover(KUBERNETES_SCAN_ROOT))
-
-
-def _real_results() -> dict[tuple[str, str], AdapterResult]:
-    """Every `(scanner, platform)` adapter run over the golden fixtures - the
-    same five runs `test_dedupe.py`/`test_report.py` combine, kept separate
-    by key here as those two modules also do.
-    """
-    kubernetes_index = _kubernetes_index()
-    return {
-        ("checkov", "terraform"): CheckovAdapter().parse(
-            _load_fixture("checkov-terraform.json"), TERRAFORM_SCAN_ROOT, None
-        ),
-        ("checkov", "kubernetes"): CheckovAdapter().parse(
-            _load_fixture("checkov-kubernetes.json"), KUBERNETES_SCAN_ROOT, kubernetes_index
-        ),
-        ("trivy", "terraform"): TrivyAdapter().parse(
-            _load_fixture("trivy-terraform.json"), TERRAFORM_SCAN_ROOT, None
-        ),
-        ("trivy", "kubernetes"): TrivyAdapter().parse(
-            _load_fixture("trivy-kubernetes.json"), KUBERNETES_SCAN_ROOT, kubernetes_index
-        ),
-        ("tfsec", "terraform"): TfsecAdapter().parse(
-            _load_fixture("tfsec-terraform.json"), TERRAFORM_SCAN_ROOT, None
-        ),
-    }
-
-
-def _real_unparseable() -> frozenset[str]:
-    kubernetes_unparseable = _kubernetes_index().unparseable
-    terraform_unparseable = discover(TERRAFORM_SCAN_ROOT).unparseable
-    return frozenset(kubernetes_unparseable) | frozenset(terraform_unparseable)
-
-
-def _all_real_findings() -> list[NormalizedFinding]:
-    findings: list[NormalizedFinding] = []
-    for result in _real_results().values():
-        findings.extend(result.findings)
-    return findings
-
-
-def _real_dedupe() -> DedupeResult:
-    return deduplicate(_all_real_findings())
+#
+# `_real_results`, `_real_unparseable`, `_all_real_findings` and `_real_dedupe`
+# are `tests/_corpus.py`'s wiring, imported at the top of this module under
+# their old local names so every call site below is unchanged (whole-branch
+# review Finding 4).
 
 
 # --- Gate 1 ---------------------------------------------------------------------------

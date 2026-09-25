@@ -13,29 +13,23 @@ Every count asserted against real adapter output is derived from the fixtures
 in the test itself (an independent tally, not a call into `dedupe.py`'s own
 internals), never restated as a literal - a re-capture that changes the
 corpus must fail these tests instead of leaving a stale number standing.
+
+The five real adapter runs the headline numbers below are measured over come
+from `tests/_corpus.py`, shared with `test_report.py` and `test_s3a_gates.py`
+so the three modules cannot silently drift onto three different corpora
+(whole-branch review Finding 4; `tests/test_corpus_wiring.py` pins the run
+set that module produces).
 """
 
 from __future__ import annotations
 
-import json
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
+from _corpus import all_real_findings as _all_real_findings
 from iacrisk import identity
 from iacrisk.dedupe import CandidateOverlap, DedupeGroup, DedupeResult, deduplicate
 from iacrisk.finding import NormalizedFinding
-from iacrisk.input import discover
-from iacrisk.resources import build_index
-from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
-from iacrisk.scanners.trivy import TrivyAdapter
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-FIXTURES_DIR = REPO_ROOT / "tests" / "harvest" / "fixtures"
-TERRAFORM_SCAN_ROOT = REPO_ROOT / "corpus" / "vendor" / "terragoat" / "terraform" / "aws"
-KUBERNETES_SCAN_ROOT = REPO_ROOT / "corpus" / "vendor" / "kubernetes-goat" / "scenarios"
-
 
 # --- synthetic finding factory -------------------------------------------------------
 
@@ -396,46 +390,10 @@ def test_every_input_finding_appears_in_exactly_one_group_or_candidate_or_stands
 
 
 # --- real adapter output: the headline measurement --------------------------------
-
-
-def _load_fixture(name: str) -> Any:
-    return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
-
-
-def _all_real_findings() -> list[NormalizedFinding]:
-    """Every `NormalizedFinding` the three adapters produce over all five golden
-    fixture captures - the same corpus v0 run the deduplication headline
-    number is measured against, combining terraform and kubernetes, all three
-    scanners, in one pool the way a real pipeline run would feed `deduplicate`.
-    """
-    kubernetes_index = build_index(discover(KUBERNETES_SCAN_ROOT))
-
-    checkov_terraform = CheckovAdapter().parse(
-        _load_fixture("checkov-terraform.json"), TERRAFORM_SCAN_ROOT, None
-    )
-    checkov_kubernetes = CheckovAdapter().parse(
-        _load_fixture("checkov-kubernetes.json"), KUBERNETES_SCAN_ROOT, kubernetes_index
-    )
-    trivy_terraform = TrivyAdapter().parse(
-        _load_fixture("trivy-terraform.json"), TERRAFORM_SCAN_ROOT, None
-    )
-    trivy_kubernetes = TrivyAdapter().parse(
-        _load_fixture("trivy-kubernetes.json"), KUBERNETES_SCAN_ROOT, kubernetes_index
-    )
-    tfsec_terraform = TfsecAdapter().parse(
-        _load_fixture("tfsec-terraform.json"), TERRAFORM_SCAN_ROOT, None
-    )
-
-    findings: list[NormalizedFinding] = []
-    for result in (
-        checkov_terraform,
-        checkov_kubernetes,
-        trivy_terraform,
-        trivy_kubernetes,
-        tfsec_terraform,
-    ):
-        findings.extend(result.findings)
-    return findings
+#
+# `_all_real_findings` is `tests/_corpus.py::all_real_findings`, imported at
+# the top of this module under its old local name so every call site below is
+# unchanged (whole-branch review Finding 4).
 
 
 def test_real_corpus_tier1_group_count_matches_an_independent_tally() -> None:
