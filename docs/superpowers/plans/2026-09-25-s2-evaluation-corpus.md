@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Author corpus v1 — twelve contrastive pairs and five scenarios with blinded-reviewer oracles — into one schema-valid ground-truth document, so the framework has something to be evaluated against.
+**Goal:** Author corpus v1 — ten contrastive pairs and five scenarios with blinded-reviewer oracles — into one schema-valid ground-truth document, so the framework has something to be evaluated against.
 
-**Architecture:** A candidate generator under `tools/` proposes pairs mechanically from corpus v0's adapter output and writes a JSON artifact; two factors corpus v0 cannot isolate get minimal hand-crafted IaC in a new scan root with its own fixtures; the ground truth itself is authored data validated by S1's committed validator; and the scenario oracles come from a blinded reviewer that never sees the author's orderings. Six gates enforce what the validator does not.
+**Architecture:** A candidate generator under `tools/` proposes pairs mechanically from corpus v0's adapter output and writes a JSON artifact; the one factor corpus v0 cannot isolate gets minimal hand-crafted IaC in a new scan root with its own fixtures; the ground truth itself is authored data validated by S1's committed validator; and the scenario oracles come from a blinded reviewer that never sees the author's orderings. Six gates enforce what the validator does not.
 
 **Tech Stack:** Python 3.12, uv, pytest, ruff, mypy strict. The three pinned scanners (Checkov 3.3.12, Trivy 0.74.0, tfsec 1.28.14) run **once**, over the new authored root only. Windows-native.
 
@@ -40,7 +40,8 @@ All measured through S3a's committed adapters over `tests/harvest/fixtures/` on 
 | resource pairs with identical class sets but differing max severity | **0** |
 | clean exposure pairs | `aws_security_group.default` vs `.web-node`; `aws_security_group_rule.egress` vs `.ingress` |
 | clean encryption pairs | `aws_s3_bucket.logs` against each of `data`, `financials`, `flowbucket`, `operations` |
-| factors corpus v0 cannot isolate | **privilege** and **severity** |
+| factors corpus v0 cannot isolate | **privilege** (hand-crafted) |
+| factors not pair-testable at all | **severity** — 0 pairs, by measurement, disclosed |
 
 ## File Structure
 
@@ -50,7 +51,6 @@ All measured through S3a's committed adapters over `tests/harvest/fixtures/` on 
 | `tools/paircand/generate.py` | propose pair candidates; write `artifacts/pair-candidates.json` | 1 |
 | `tests/paircand/test_generate.py` | generator tests | 1 |
 | `corpus/authored/iam_privilege.tf` | three IAM policies differing in scope alone | 2 |
-| `corpus/authored/storage_severity.tf` | resources sharing one class at differing severities | 2 |
 | `tools/corpus.lock.json` | declare the authored scan root and its cases | 2 |
 | `tests/harvest/fixtures/authored/` | golden scanner JSON for the authored root only | 2 |
 | `eval/ground_truth/corpus-v1.json` | the ground-truth document (cases, pairs, scenarios) | 3–6 |
@@ -386,7 +386,7 @@ Run all four gates, judging by exit code. Subject: `S2: pair-candidate generator
 Implements spec §4. **This is the only task that runs a scanner.**
 
 **Files:**
-- Create: `corpus/authored/iam_privilege.tf`, `corpus/authored/storage_severity.tf`
+- Create: `corpus/authored/iam_privilege.tf`
 - Modify: `tools/corpus.lock.json` (add cases)
 - Create: `tests/harvest/fixtures/authored/{checkov,trivy,tfsec}-terraform.json`
 - Create: `tests/test_authored_corpus.py`
@@ -463,14 +463,6 @@ resource "aws_s3_bucket" "no_cmk" {
   "path": "corpus/authored/iam_privilege.tf",
   "scan_root": "corpus/authored",
   "note": "Hand-crafted. Three aws_iam_policy resources differing only in policy breadth. Corpus v0 cannot form a privilege pair: every genuine IAM policy type in it is single-instance (S2 design section 1)."
-},
-{
-  "id": "authored-storage-severity",
-  "platform": "terraform",
-  "category": "storage",
-  "path": "corpus/authored/storage_severity.tf",
-  "scan_root": "corpus/authored",
-  "note": "Hand-crafted. Corpus v0 has zero resource pairs sharing an identical issue-class set while differing in maximum severity, because severity co-varies with which rule fires (S2 design section 1)."
 }
 ```
 
@@ -488,7 +480,6 @@ Expect non-zero exit codes: all three scanners exit non-zero **when they find mi
 
 - every authored `aws_iam_policy` resource appears in at least one finding, so no case is silently unscanned;
 - the three privilege cases are distinguishable: the set of issue classes or the count of findings differs across `narrow_scope`, `moderate_scope`, `broad_scope`;
-- **two findings exist that share one `issue_class` and carry different integer `severity_level`s** — the property the severity pair rests on. Assert the property, not the specific class;
 - corpus v0's five fixture files are byte-identical to their committed state (`git diff --quiet -- tests/harvest/fixtures/*.json` equivalent, or compare against `git show HEAD:<path>`). This is the guard that the one scanning task did not touch the control.
 
 - [ ] **Step 6: Gates and commit.** Subject: `S2: hand-crafted privilege and severity cases`.
@@ -561,7 +552,6 @@ Expect `valid`. An empty `contrastive_pairs`/`scenarios` is schema-valid at this
 | `aws_s3_bucket.data` twice, `criticality` 5 vs 1, `sensitivity` held equal | criticality pair 1 | terragoat pin |
 | `aws_s3_bucket.data_science` twice, `criticality` 4 vs 1, `sensitivity` held equal | criticality pair 2 | terragoat pin |
 | `aws_iam_policy.{narrow,moderate,broad}_scope` | privilege pairs 1–2 | `"hand-crafted"` |
-| the two severity resources | severity pairs 1–2 | `"hand-crafted"` |
 
 `aws_s3_bucket.logs` appears in two encryption pairs; one case may serve several pairs, and reusing it is better than authoring near-duplicates.
 
@@ -578,7 +568,7 @@ These two fields are **never** both used for the same situation. Q4 is an absent
 
 ---
 
-### Task 4: The twelve contrastive pairs
+### Task 4: The ten contrastive pairs
 
 Implements spec §3's authored half and §6's coverage target.
 
@@ -587,7 +577,7 @@ Implements spec §3's authored half and §6's coverage target.
 
 **Interfaces:**
 - Consumes: Task 3's `cases`; `artifacts/pair-candidates.json` for each pair's recorded class difference.
-- Produces: 12 `contrastive_pairs`, two per `factor_key`.
+- Produces: 10 `contrastive_pairs`, two each for the five pairable factors. **None for `severity`** — see the Measured facts table.
 
 - [ ] **Step 1: Author one pair completely**, as the template for the rest:
 
@@ -605,13 +595,13 @@ Implements spec §3's authored half and §6's coverage target.
 
 `expected_rank_order` and `expected_score_delta_sign` are schema **constants** — `"high_above_low"` and `"positive"`. Authoring a pair means choosing which case is `case_high`, not choosing a direction. Getting the orientation backwards produces a valid document that asserts the opposite of what you mean, and no test can catch it — so state the direction in the `rationale` in words as a cross-check on yourself.
 
-- [ ] **Step 2: Author the remaining eleven.** Two per factor: `severity`, `exposure`, `privilege`, `sensitivity`, `criticality`, `encryption`.
+- [ ] **Step 2: Author the remaining nine.** Two each for `exposure`, `privilege`, `sensitivity`, `criticality`, `encryption`. **No `severity` pair exists** — it is not pair-testable by any construction (spec §1), and gate 2 asserts exactly zero rather than letting the gap pass as an oversight.
 
 Every `rationale` must name the class difference or the declared-context difference the pair rests on, and say why nothing else differs. A rationale that only restates the factor name is a §G3 defect — it claims purity while showing nothing.
 
 - [ ] **Step 3: Check cross-pair consistency by hand before the gate does.** No single class difference may be cited as evidence for two different factors. If `{networking-egress-exposure}` is the basis of an `exposure` pair, it cannot also be the basis of a `severity` pair.
 
-- [ ] **Step 4: Validate and commit.** Subject: `S2: twelve contrastive pairs`.
+- [ ] **Step 4: Validate and commit.** Subject: `S2: ten contrastive pairs`.
 
 ---
 
@@ -696,7 +686,7 @@ Implements spec §6 and §7.
 - [ ] **Step 1: Write the six gates**, each docstring quoting the gate it closes. Each must cover something S1's validator does **not** — it already enforces unique ids, that pair sides and scenario tiers resolve, `case_high != case_low`, and `author != reviewer`, so do not re-implement those.
 
 1. `eval/ground_truth/corpus-v1.json` loads through the committed `load_and_validate` without error.
-2. Every one of the six `factor_key` values is the `factor_under_test` of **≥2** pairs.
+2. Each of the **five pairable** `factor_key` values is the `factor_under_test` of **≥2** pairs, and **`severity` is the `factor_under_test` of exactly 0** — asserted, not merely absent.
 3. Every one of the five `domain` values has ≥1 scenario, and every scenario orders ≥3 cases across ≥2 tiers.
 4. **No orphan cases** — every `case_id` is referenced by ≥1 pair or scenario. The validator checks references resolve; it does not check the converse.
 5. **Cross-pair consistency** — for each mined pair, the recorded class difference is still what the adapters produce; and the relation from class-difference to `factor_under_test` is a **function**. Hand-crafted cases carry `source: "hand-crafted"`; mined ones carry a `{repo, commit, path}` triple.

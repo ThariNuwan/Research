@@ -41,7 +41,17 @@ Measured from `tests/harvest/fixtures/` through S3a's committed adapters on this
 | **severity** | **No** | see below — presence of all four levels is not a controlled pair |
 | **privilege** | **No** | every genuine IAM policy type is single-instance: `aws_iam_policy_document` 1, `aws_iam_role_policy` 1, `aws_iam_user` 1, `aws_iam_user_policy` 1 |
 
-**Why severity cannot be paired from v0, corrected from an earlier draft of this table.** That draft reasoned "all four levels are present (CRITICAL 15, HIGH 133, MEDIUM 47, LOW 39), therefore a severity pair exists." Presence is not isolation. Measured: **zero** resource pairs share an identical issue-class set while differing in maximum severity, because severity is determined by which rule fires and which rule fires also determines the class — the two co-vary. Five classes *do* show intra-class severity variance (`iam-authentication-controls` 2–3, `networking-ingress-exposure` 4–5, `storage-key-management-cmk` 2–4, `storage-logging-audit` 2–3, `storage-public-accessibility` 4–5), but in every case the two resources are of **different types** and therefore differ in other classes too. So severity joins privilege as hand-crafted (§4).
+**Severity is not pair-testable at all. Corrected twice; this is the measured conclusion.**
+
+The first draft of this table reasoned "all four levels are present (CRITICAL 15, HIGH 133, MEDIUM 47, LOW 39), therefore a severity pair exists." Presence is not isolation.
+
+The second draft corrected that to "not minable from v0, therefore hand-craft it (§4)," on the grounds that five classes show intra-class severity variance (`iam-authentication-controls` 2–3, `networking-ingress-exposure` 4–5, `storage-key-management-cmk` 2–4, `storage-logging-audit` 2–3, `storage-public-accessibility` 4–5). **That was also wrong**, and hand-crafting was attempted before the error surfaced. In every one of those five cases the two resources are of **different types** and so differ in other classes as well — spanning severities *across* types is not isolability *within* one.
+
+Measured across corpus v0 **and** a hand-crafted attempt: **zero** same-type resource pairs have identical class sets while differing on any class's severity. And **checkov contributes no integer severity whatsoever** — all 240 of its findings on the Terraform roots carry the explicit `"unknown"`, so only Trivy and tfsec supply levels at all.
+
+The reason is structural rather than a property of this corpus: identical class sets mean the same rules fired, and a rule's severity is fixed. For two resources to differ in severity within a class, *different* rules must have fired — which changes the class set, or the resource type, or both. There is no configuration of a corpus that escapes this while holding everything else equal.
+
+**Consequence:** severity gets **no contrastive pair**, and the coverage target is five factors rather than six (§6). This costs little: severity enters the additive model as a direct term, so its pair would have been a sanity check on the engine rather than a test of the research contribution. It is disclosed as an uncovered factor in the results, with this reasoning.
 
 **Candidate supply, measured.** Over corpus v0: **249** same-type combinations considered, **129** with an empty class difference, **120** usable candidates. Grouped by the class family their difference touches: containers+networking 82, containers 21, storage 9, networking 7, iam 1. The clean single-family supply is comfortable where it exists — exposure has `aws_security_group.default` vs `web-node` (ingress + egress) and `aws_security_group_rule.egress` vs `ingress`; encryption has **four** clean pairs against `aws_s3_bucket.logs` (`data`, `financials`, `flowbucket`, `operations`), each differing only in `storage-encryption-at-rest` + `storage-key-management-cmk`. The single `iam`-family candidate is `aws_instance.db_app` vs `web_host`, which mixes `iam-authentication-controls` with `iam-hardcoded-secrets` and is privilege material in neither case.
 
@@ -95,14 +105,20 @@ What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5.
 
 `corpus/authored/`, with its scan root declared in `tools/corpus.lock.json` alongside v0's vendored roots.
 
-**Scope: the minimum v0 cannot express — two factors, not one.**
+**Scope: the minimum v0 cannot express — one factor.**
 
-- **privilege:** three IAM policies differing in scope alone — narrow, moderate, broad — yielding two pairs from three cases.
-- **severity:** two or three resources of one type, each triggering rules in a single shared issue class at different severities. §1 shows this is constructible because five classes span multiple severities; it is not minable because in v0 that variance only ever appears across different resource types.
+- **privilege:** three IAM policies in **one action family**, increasing in breadth, so their issue-class sets nest. Two pairs from three cases.
+
+Severity was originally scoped here too and has been **removed**: §1's measurement shows it is not pair-testable by any construction, not merely unminable.
 
 Anywhere a mined candidate turns out impure on inspection, its factor gets a hand-crafted pair too.
 
-A note on relative value, so the authored surface is spent knowingly: severity enters the additive model as a direct term, so its pair is a **sanity check on the engine** rather than a test of the research contribution. It is included because the marginal cost is two small resources in a scan the privilege cases already require — not because it carries an argument.
+**Two constraints discovered by attempting this, not by reasoning about it.**
+
+1. **A case with no findings cannot enter a contrastive pair** — there is nothing to rank. A genuinely least-privilege policy draws zero findings from all three scanners, which is correct behaviour (a true negative) and makes "clean versus broad" unavailable as a pair. Both sides must be flagged, so the pair spans *somewhat broad* to *very broad*.
+2. **All three policies must stay in one action family.** A first attempt reached for a different action (`sts:GetSessionToken`) to make the narrowest case produce *a* finding; the result was that the narrowest carried `iam-privilege-escalation-sensitive-perms` while the middle carried `iam-overpermissive-policy` — **no shared class**, a difference in kind rather than degree, and the narrowest arguably the more severe of the two. A pair built on that would assert an ordering its own classes contradict.
+
+Both constraints are recorded because they are invisible until the scanners run, and the next author will reason their way to the same two mistakes.
 
 **These files must be scanned.** `expected.findings` references real `resource_identity` and `issue_class` values, and there is no honest way to author those without seeing what the pinned scanners actually emit. S2 therefore runs the pinned scanners over the **new root only**, capturing fixtures to `tests/harvest/fixtures/authored/`. Corpus v0's five golden documents are not touched, re-captured, or rewritten. This is a deliberate, bounded relaxation of the don't-run-the-scanners rule, and it is bounded by path.
 
@@ -145,7 +161,8 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 
 | Target | Minimum | Rationale |
 |---|---|---|
-| contrastive pairs per factor | 2 × 6 factors = 12 | one pair per factor is a single point of failure |
+| contrastive pairs per pairable factor | 2 × 5 factors = **10** | one pair per factor is a single point of failure |
+| contrastive pairs for `severity` | **0, by measurement** | not pair-testable by any construction (§1) — disclosed, not quietly missing |
 | scenarios per domain | 1 × 5 domains = 5 | the five domains are the tested categories |
 | cases per scenario | 3, across ≥2 tiers | the schema enforces ≥2 tiers; 2 cases in 2 tiers is a pair, not an ordering |
 | cases exercising `defaulted_factors` | ≥1 | a `null` declared value (PLAN Q4) |
@@ -154,7 +171,7 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 **The six S2 acceptance gates.** Each covers something S1's validator does *not*:
 
 1. `eval/ground_truth/corpus-v1.json` loads through the committed `load_and_validate` without error.
-2. Every one of the six `factor_key` values is the `factor_under_test` of at least 2 pairs.
+2. Each of the **five pairable** `factor_key` values — `exposure`, `privilege`, `sensitivity`, `criticality`, `encryption` — is the `factor_under_test` of at least 2 pairs. And **`severity` is the `factor_under_test` of exactly 0**, asserted rather than merely absent, so the gap stays a recorded decision instead of drifting into an oversight someone later "fixes" with a pair that cannot isolate anything (§1).
 3. Every one of the five `domain` values has at least 1 scenario, and every scenario orders ≥3 cases across ≥2 tiers.
 4. **No orphan cases** — every `case_id` is referenced by at least one pair or scenario. The validator checks that references resolve; it does not check the converse.
 5. **Cross-pair consistency.** For every mined pair, the recorded class difference between its two cases is still what the adapters produce when re-derived. And the relation the pairs induce from class-difference to `factor_under_test` is a **function**: no single class difference is cited as evidence for two different factors. Hand-crafted cases carry `source: "hand-crafted"`; mined ones carry a `{repo, commit, path}` triple.
