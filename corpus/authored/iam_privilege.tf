@@ -1,17 +1,5 @@
-resource "aws_iam_policy" "narrow_scope" {
-  name = "s2-narrow-scope"
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["sts:GetSessionToken"]
-      Resource = "*"
-    }]
-  })
-}
-
-resource "aws_iam_policy" "moderate_scope" {
-  name = "s2-moderate-scope"
+resource "aws_iam_policy" "s3_bucket_scope" {
+  name = "s2-s3-bucket-scope"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -22,8 +10,20 @@ resource "aws_iam_policy" "moderate_scope" {
   })
 }
 
-resource "aws_iam_policy" "broad_scope" {
-  name = "s2-broad-scope"
+resource "aws_iam_policy" "s3_account_scope" {
+  name = "s2-s3-account-scope"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:*"]
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "unrestricted_scope" {
+  name = "s2-unrestricted-scope"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

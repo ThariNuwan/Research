@@ -69,15 +69,7 @@
       "category": "iam",
       "path": "corpus/authored/iam_privilege.tf",
       "scan_root": "corpus/authored",
-      "note": "Hand-crafted. Three aws_iam_policy resources differing only in policy breadth. Corpus v0 cannot form a privilege pair: every genuine IAM policy type in it is single-instance (S2 design section 1). Measured on this pin: a single narrow S3 read action on a narrow resource ARN (the original draft) drew zero findings from all three scanners - a correctly-scoped policy is a true negative, not a defect - so narrow_scope grants sts:GetSessionToken instead, an action AWS itself only permits with Resource '*' (not a breadth choice, an IAM constraint), which checkov's credentials-exposure check (CKV_AWS_287) still flags once. Finding counts across the three resources are 1 (narrow), 2 (moderate), 10 (broad)."
-    },
-    {
-      "id": "authored-storage-severity",
-      "platform": "terraform",
-      "category": "storage",
-      "path": "corpus/authored/storage_severity.tf",
-      "scan_root": "corpus/authored",
-      "note": "Hand-crafted. Corpus v0 has zero resource pairs sharing an identical issue-class set while differing in maximum severity, because severity co-varies with which rule fires (S2 design section 1). Verified on this pin: aws_ebs_volume.unencrypted_scratch (no `encrypted` attribute, mirroring TerraGoat's own web_host_storage) draws AVD-AWS-0027/AWS-0027 at LOW; aws_s3_bucket.no_cmk (no encryption block) draws AVD-AWS-0132/AWS-0132 at HIGH; both rules map to storage-key-management-cmk."
+      "note": "Hand-crafted. Three aws_iam_policy resources, one action family (s3:* then *), strictly nesting resource scope: s3_bucket_scope (s3:* on one bucket ARN prefix), s3_account_scope (s3:* on all buckets), unrestricted_scope (* on *). Corpus v0 cannot form a privilege pair: every genuine IAM policy type in it is single-instance (S2 design section 1). Fix round 1 (R8): an earlier draft varied action family across the three resources to guarantee each drew a finding, but that broke the breadth-only premise - narrow_scope and moderate_scope shared no issue class, and narrow's class was arguably more severe than moderate's. Re-authored in one action family instead; measured on this pin, the three resources' issue-class sets strictly nest: s3_bucket_scope {iam-overpermissive-policy} (2 findings) subset of s3_account_scope {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms} (7 findings) subset of unrestricted_scope {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms, unmapped:checkov:CKV_AWS_62, unmapped:checkov:CKV_AWS_63, unmapped:checkov:CKV2_AWS_40} (11 findings). All three carry at least one finding; the two broader resources each differ from the narrower one by class, not only by count."
     }
   ]
 }

@@ -21,9 +21,45 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMAdminPolicyDocument",
+        "fixed_definition": null,
+        "entity_tags": null,
+        "caller_file_path": null,
+        "caller_file_line_range": null,
+        "resource_address": null,
+        "severity": null,
+        "bc_category": null,
+        "benchmarks": {},
+        "description": null,
+        "short_description": null,
+        "vulnerability_details": null,
+        "connected_node": null,
+        "guideline": null,
+        "details": [],
+        "check_len": null,
+        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
+      },
+      {
+        "check_id": "CKV_AWS_287",
+        "bc_check_id": null,
+        "check_name": "Ensure IAM policies does not allow credentials exposure",
+        "check_result": {
+          "result": "PASSED",
+          "evaluated_keys": []
+        },
+        "code_block": null,
+        "file_path": "\\iam_privilege.tf",
+        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
+        "repo_file_path": "/corpus/authored/iam_privilege.tf",
+        "file_line_range": [
+          1,
+          11
+        ],
+        "resource": "aws_iam_policy.s3_bucket_scope",
+        "evaluations": null,
+        "check_class": "checkov.terraform.checks.resource.aws.IAMCredentialsExposure",
         "fixed_definition": null,
         "entity_tags": null,
         "caller_file_path": null,
@@ -57,7 +93,7 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMDataExfiltration",
         "fixed_definition": null,
@@ -93,7 +129,7 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMPermissionsManagement",
         "fixed_definition": null,
@@ -129,7 +165,7 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMPrivilegeEscalation",
         "fixed_definition": null,
@@ -168,7 +204,7 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMStarActionPolicyDocument",
         "fixed_definition": null,
@@ -204,7 +240,7 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMStarResourcePolicyDocument",
         "fixed_definition": null,
@@ -240,7 +276,7 @@
           1,
           11
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_bucket_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMWriteAccess",
         "fixed_definition": null,
@@ -279,7 +315,7 @@
           13,
           23
         ],
-        "resource": "aws_iam_policy.moderate_scope",
+        "resource": "aws_iam_policy.s3_account_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMAdminPolicyDocument",
         "fixed_definition": null,
@@ -315,81 +351,9 @@
           13,
           23
         ],
-        "resource": "aws_iam_policy.moderate_scope",
+        "resource": "aws_iam_policy.s3_account_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMCredentialsExposure",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
-      },
-      {
-        "check_id": "CKV_AWS_288",
-        "bc_check_id": null,
-        "check_name": "Ensure IAM policies does not allow data exfiltration",
-        "check_result": {
-          "result": "PASSED",
-          "evaluated_keys": []
-        },
-        "code_block": null,
-        "file_path": "\\iam_privilege.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
-        "repo_file_path": "/corpus/authored/iam_privilege.tf",
-        "file_line_range": [
-          13,
-          23
-        ],
-        "resource": "aws_iam_policy.moderate_scope",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.IAMDataExfiltration",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
-      },
-      {
-        "check_id": "CKV_AWS_289",
-        "bc_check_id": null,
-        "check_name": "Ensure IAM policies does not allow permissions management / resource exposure without constraints",
-        "check_result": {
-          "result": "PASSED",
-          "evaluated_keys": []
-        },
-        "code_block": null,
-        "file_path": "\\iam_privilege.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
-        "repo_file_path": "/corpus/authored/iam_privilege.tf",
-        "file_line_range": [
-          13,
-          23
-        ],
-        "resource": "aws_iam_policy.moderate_scope",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.IAMPermissionsManagement",
         "fixed_definition": null,
         "entity_tags": null,
         "caller_file_path": null,
@@ -423,7 +387,7 @@
           13,
           23
         ],
-        "resource": "aws_iam_policy.moderate_scope",
+        "resource": "aws_iam_policy.s3_account_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMPrivilegeEscalation",
         "fixed_definition": null,
@@ -462,7 +426,7 @@
           13,
           23
         ],
-        "resource": "aws_iam_policy.moderate_scope",
+        "resource": "aws_iam_policy.s3_account_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMStarActionPolicyDocument",
         "fixed_definition": null,
@@ -483,331 +447,6 @@
         "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
       },
       {
-        "check_id": "CKV_AWS_355",
-        "bc_check_id": null,
-        "check_name": "Ensure no IAM policies documents allow \"*\" as a statement's resource for restrictable actions",
-        "check_result": {
-          "result": "PASSED",
-          "evaluated_keys": []
-        },
-        "code_block": null,
-        "file_path": "\\iam_privilege.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
-        "repo_file_path": "/corpus/authored/iam_privilege.tf",
-        "file_line_range": [
-          13,
-          23
-        ],
-        "resource": "aws_iam_policy.moderate_scope",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.IAMStarResourcePolicyDocument",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
-      },
-      {
-        "check_id": "CKV_AWS_290",
-        "bc_check_id": null,
-        "check_name": "Ensure IAM policies does not allow write access without constraints",
-        "check_result": {
-          "result": "PASSED",
-          "evaluated_keys": []
-        },
-        "code_block": null,
-        "file_path": "\\iam_privilege.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
-        "repo_file_path": "/corpus/authored/iam_privilege.tf",
-        "file_line_range": [
-          13,
-          23
-        ],
-        "resource": "aws_iam_policy.moderate_scope",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.IAMWriteAccess",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
-      },
-      {
-        "check_id": "CKV_AWS_93",
-        "bc_check_id": null,
-        "check_name": "Ensure S3 bucket policy does not lockout all but root user. (Prevent lockouts needing root account fixes)",
-        "check_result": {
-          "result": "PASSED",
-          "evaluated_keys": [
-            "policy"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.S3ProtectAgainstPolicyLockout",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV2_AWS_2",
-        "bc_check_id": null,
-        "check_name": "Ensure that only encrypted EBS volumes are attached to EC2 instances",
-        "check_result": {
-          "result": "PASSED",
-          "entity": {
-            "aws_ebs_volume": {
-              "unencrypted_scratch": {
-                "__end_line__": 4,
-                "__start_line__": 1,
-                "availability_zone": [
-                  "us-west-2a"
-                ],
-                "size": [
-                  1
-                ],
-                "__address__": "aws_ebs_volume.unencrypted_scratch"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "encrypted"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          1,
-          4
-        ],
-        "resource": "aws_ebs_volume.unencrypted_scratch",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_19",
-        "bc_check_id": null,
-        "check_name": "Ensure all data stored in the S3 bucket is securely encrypted at rest",
-        "check_result": {
-          "result": "PASSED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "server_side_encryption_configuration/rule/apply_server_side_encryption_by_default/sse_algorithm",
-            "rule/apply_server_side_encryption_by_default/sse_algorithm"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_20",
-        "bc_check_id": null,
-        "check_name": "S3 Bucket has an ACL defined which allows public READ access.",
-        "check_result": {
-          "result": "PASSED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "access_control_policy",
-            "resource_type",
-            "access_control_policy/grant",
-            "access_control_policy/grant/*/grantee/uri",
-            "acl"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_57",
-        "bc_check_id": null,
-        "check_name": "S3 Bucket has an ACL defined which allows public WRITE access.",
-        "check_result": {
-          "result": "PASSED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "access_control_policy",
-            "resource_type",
-            "access_control_policy/grant",
-            "access_control_policy/grant/*/grantee/uri",
-            "access_control_policy/grant/*/permission",
-            "acl"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
         "check_id": "CKV2_AWS_40",
         "bc_check_id": null,
         "check_name": "Ensure AWS IAM policy does not allow full IAM privileges",
@@ -815,77 +454,11 @@
           "result": "PASSED",
           "entity": {
             "aws_iam_policy": {
-              "narrow_scope": {
+              "s3_bucket_scope": {
                 "__end_line__": 11,
                 "__start_line__": 1,
                 "name": [
-                  "s2-narrow-scope"
-                ],
-                "policy": [
-                  {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                      {
-                        "Effect": "Allow",
-                        "Action": [
-                          "sts:GetSessionToken"
-                        ],
-                        "Resource": "*"
-                      }
-                    ]
-                  }
-                ],
-                "__address__": "aws_iam_policy.narrow_scope"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "policy/Statement[?(@/Effect == Allow)]/Action[*]",
-            "statement[?(@/effect == Allow)]/actions[*]",
-            "inline_policy/Statement[?(@/Effect == Allow)]/Action[*]"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\iam_privilege.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
-        "repo_file_path": "/corpus/authored/iam_privilege.tf",
-        "file_line_range": [
-          1,
-          11
-        ],
-        "resource": "aws_iam_policy.narrow_scope",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
-      },
-      {
-        "check_id": "CKV2_AWS_40",
-        "bc_check_id": null,
-        "check_name": "Ensure AWS IAM policy does not allow full IAM privileges",
-        "check_result": {
-          "result": "PASSED",
-          "entity": {
-            "aws_iam_policy": {
-              "moderate_scope": {
-                "__end_line__": 23,
-                "__start_line__": 13,
-                "name": [
-                  "s2-moderate-scope"
+                  "s2-s3-bucket-scope"
                 ],
                 "policy": [
                   {
@@ -901,14 +474,80 @@
                     ]
                   }
                 ],
-                "__address__": "aws_iam_policy.moderate_scope"
+                "__address__": "aws_iam_policy.s3_bucket_scope"
               }
             }
           },
           "evaluated_keys": [
+            "inline_policy/Statement[?(@/Effect == Allow)]/Action[*]",
             "policy/Statement[?(@/Effect == Allow)]/Action[*]",
-            "statement[?(@/effect == Allow)]/actions[*]",
-            "inline_policy/Statement[?(@/Effect == Allow)]/Action[*]"
+            "statement[?(@/effect == Allow)]/actions[*]"
+          ]
+        },
+        "code_block": null,
+        "file_path": "\\iam_privilege.tf",
+        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
+        "repo_file_path": "/corpus/authored/iam_privilege.tf",
+        "file_line_range": [
+          1,
+          11
+        ],
+        "resource": "aws_iam_policy.s3_bucket_scope",
+        "evaluations": null,
+        "check_class": "checkov.common.graph.checks_infra.base_check",
+        "fixed_definition": null,
+        "entity_tags": null,
+        "caller_file_path": null,
+        "caller_file_line_range": null,
+        "resource_address": null,
+        "severity": null,
+        "bc_category": null,
+        "benchmarks": {},
+        "description": null,
+        "short_description": null,
+        "vulnerability_details": null,
+        "connected_node": null,
+        "guideline": null,
+        "details": [],
+        "check_len": null,
+        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
+      },
+      {
+        "check_id": "CKV2_AWS_40",
+        "bc_check_id": null,
+        "check_name": "Ensure AWS IAM policy does not allow full IAM privileges",
+        "check_result": {
+          "result": "PASSED",
+          "entity": {
+            "aws_iam_policy": {
+              "s3_account_scope": {
+                "__end_line__": 23,
+                "__start_line__": 13,
+                "name": [
+                  "s2-s3-account-scope"
+                ],
+                "policy": [
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "s3:*"
+                        ],
+                        "Resource": "*"
+                      }
+                    ]
+                  }
+                ],
+                "__address__": "aws_iam_policy.s3_account_scope"
+              }
+            }
+          },
+          "evaluated_keys": [
+            "inline_policy/Statement[?(@/Effect == Allow)]/Action[*]",
+            "policy/Statement[?(@/Effect == Allow)]/Action[*]",
+            "statement[?(@/effect == Allow)]/actions[*]"
           ]
         },
         "code_block": null,
@@ -919,7 +558,7 @@
           13,
           23
         ],
-        "resource": "aws_iam_policy.moderate_scope",
+        "resource": "aws_iam_policy.s3_account_scope",
         "evaluations": null,
         "check_class": "checkov.common.graph.checks_infra.base_check",
         "fixed_definition": null,
@@ -942,9 +581,9 @@
     ],
     "failed_checks": [
       {
-        "check_id": "CKV_AWS_287",
+        "check_id": "CKV_AWS_288",
         "bc_check_id": null,
-        "check_name": "Ensure IAM policies does not allow credentials exposure",
+        "check_name": "Ensure IAM policies does not allow data exfiltration",
         "check_result": {
           "result": "FAILED",
           "evaluated_keys": [
@@ -956,12 +595,126 @@
         "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
         "repo_file_path": "/corpus/authored/iam_privilege.tf",
         "file_line_range": [
-          1,
-          11
+          13,
+          23
         ],
-        "resource": "aws_iam_policy.narrow_scope",
+        "resource": "aws_iam_policy.s3_account_scope",
         "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.IAMCredentialsExposure",
+        "check_class": "checkov.terraform.checks.resource.aws.IAMDataExfiltration",
+        "fixed_definition": null,
+        "entity_tags": null,
+        "caller_file_path": null,
+        "caller_file_line_range": null,
+        "resource_address": null,
+        "severity": null,
+        "bc_category": null,
+        "benchmarks": {},
+        "description": null,
+        "short_description": null,
+        "vulnerability_details": null,
+        "connected_node": null,
+        "guideline": null,
+        "details": [],
+        "check_len": null,
+        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
+      },
+      {
+        "check_id": "CKV_AWS_289",
+        "bc_check_id": null,
+        "check_name": "Ensure IAM policies does not allow permissions management / resource exposure without constraints",
+        "check_result": {
+          "result": "FAILED",
+          "evaluated_keys": [
+            "policy/Statement/[0]/Action"
+          ]
+        },
+        "code_block": null,
+        "file_path": "\\iam_privilege.tf",
+        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
+        "repo_file_path": "/corpus/authored/iam_privilege.tf",
+        "file_line_range": [
+          13,
+          23
+        ],
+        "resource": "aws_iam_policy.s3_account_scope",
+        "evaluations": null,
+        "check_class": "checkov.terraform.checks.resource.aws.IAMPermissionsManagement",
+        "fixed_definition": null,
+        "entity_tags": null,
+        "caller_file_path": null,
+        "caller_file_line_range": null,
+        "resource_address": null,
+        "severity": null,
+        "bc_category": null,
+        "benchmarks": {},
+        "description": null,
+        "short_description": null,
+        "vulnerability_details": null,
+        "connected_node": null,
+        "guideline": null,
+        "details": [],
+        "check_len": null,
+        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
+      },
+      {
+        "check_id": "CKV_AWS_355",
+        "bc_check_id": null,
+        "check_name": "Ensure no IAM policies documents allow \"*\" as a statement's resource for restrictable actions",
+        "check_result": {
+          "result": "FAILED",
+          "evaluated_keys": [
+            "policy/Statement/[0]/Action"
+          ]
+        },
+        "code_block": null,
+        "file_path": "\\iam_privilege.tf",
+        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
+        "repo_file_path": "/corpus/authored/iam_privilege.tf",
+        "file_line_range": [
+          13,
+          23
+        ],
+        "resource": "aws_iam_policy.s3_account_scope",
+        "evaluations": null,
+        "check_class": "checkov.terraform.checks.resource.aws.IAMStarResourcePolicyDocument",
+        "fixed_definition": null,
+        "entity_tags": null,
+        "caller_file_path": null,
+        "caller_file_line_range": null,
+        "resource_address": null,
+        "severity": null,
+        "bc_category": null,
+        "benchmarks": {},
+        "description": null,
+        "short_description": null,
+        "vulnerability_details": null,
+        "connected_node": null,
+        "guideline": null,
+        "details": [],
+        "check_len": null,
+        "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
+      },
+      {
+        "check_id": "CKV_AWS_290",
+        "bc_check_id": null,
+        "check_name": "Ensure IAM policies does not allow write access without constraints",
+        "check_result": {
+          "result": "FAILED",
+          "evaluated_keys": [
+            "policy/Statement/[0]/Action"
+          ]
+        },
+        "code_block": null,
+        "file_path": "\\iam_privilege.tf",
+        "file_abs_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf",
+        "repo_file_path": "/corpus/authored/iam_privilege.tf",
+        "file_line_range": [
+          13,
+          23
+        ],
+        "resource": "aws_iam_policy.s3_account_scope",
+        "evaluations": null,
+        "check_class": "checkov.terraform.checks.resource.aws.IAMWriteAccess",
         "fixed_definition": null,
         "entity_tags": null,
         "caller_file_path": null,
@@ -998,7 +751,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMAdminPolicyDocument",
         "fixed_definition": null,
@@ -1036,7 +789,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMCredentialsExposure",
         "fixed_definition": null,
@@ -1074,7 +827,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMDataExfiltration",
         "fixed_definition": null,
@@ -1112,7 +865,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMPermissionsManagement",
         "fixed_definition": null,
@@ -1150,7 +903,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMPrivilegeEscalation",
         "fixed_definition": null,
@@ -1189,7 +942,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMStarActionPolicyDocument",
         "fixed_definition": null,
@@ -1227,7 +980,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMStarResourcePolicyDocument",
         "fixed_definition": null,
@@ -1265,7 +1018,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.terraform.checks.resource.aws.IAMWriteAccess",
         "fixed_definition": null,
@@ -1286,442 +1039,6 @@
         "definition_context_file_path": "D:\\Research\\corpus\\authored\\iam_privilege.tf"
       },
       {
-        "check_id": "CKV_AWS_3",
-        "bc_check_id": null,
-        "check_name": "Ensure all data stored in the EBS is securely encrypted",
-        "check_result": {
-          "result": "FAILED",
-          "evaluated_keys": [
-            "encrypted"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          1,
-          4
-        ],
-        "resource": "aws_ebs_volume.unencrypted_scratch",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.EBSEncryption",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_189",
-        "bc_check_id": null,
-        "check_name": "Ensure EBS Volume is encrypted by KMS using a customer managed Key (CMK)",
-        "check_result": {
-          "result": "FAILED",
-          "evaluated_keys": [
-            "kms_key_id"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          1,
-          4
-        ],
-        "resource": "aws_ebs_volume.unencrypted_scratch",
-        "evaluations": null,
-        "check_class": "checkov.terraform.checks.resource.aws.EBSVolumeEncryptedWithCMK",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV2_AWS_62",
-        "bc_check_id": null,
-        "check_name": "Ensure S3 buckets should have event notifications enabled",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV2_AWS_6",
-        "bc_check_id": null,
-        "check_name": "Ensure that S3 bucket has a Public Access block",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "block_public_policy",
-            "block_public_acls"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV2_AWS_61",
-        "bc_check_id": null,
-        "check_name": "Ensure that an S3 bucket has a lifecycle configuration",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "lifecycle_rule"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_18",
-        "bc_check_id": null,
-        "check_name": "Ensure the S3 bucket has access logging enabled",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "logging"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_144",
-        "bc_check_id": null,
-        "check_name": "Ensure that S3 bucket has cross-region replication enabled",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "replication_configuration/rules/*/status",
-            "resource_type",
-            "rule/*/status"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_21",
-        "bc_check_id": null,
-        "check_name": "Ensure all data stored in the S3 bucket have versioning enabled",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "versioning/enabled",
-            "versioning_configuration/status"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
-        "check_id": "CKV_AWS_145",
-        "bc_check_id": null,
-        "check_name": "Ensure that S3 buckets are encrypted with KMS by default",
-        "check_result": {
-          "result": "FAILED",
-          "entity": {
-            "aws_s3_bucket": {
-              "no_cmk": {
-                "__end_line__": 8,
-                "__start_line__": 6,
-                "bucket": [
-                  "s2-fixture-no-cmk"
-                ],
-                "__address__": "aws_s3_bucket.no_cmk"
-              }
-            }
-          },
-          "evaluated_keys": [
-            "resource_type",
-            "server_side_encryption_configuration/rule/apply_server_side_encryption_by_default/sse_algorithm",
-            "rule/apply_server_side_encryption_by_default/sse_algorithm"
-          ]
-        },
-        "code_block": null,
-        "file_path": "\\storage_severity.tf",
-        "file_abs_path": "D:\\Research\\corpus\\authored\\storage_severity.tf",
-        "repo_file_path": "/corpus/authored/storage_severity.tf",
-        "file_line_range": [
-          6,
-          8
-        ],
-        "resource": "aws_s3_bucket.no_cmk",
-        "evaluations": null,
-        "check_class": "checkov.common.graph.checks_infra.base_check",
-        "fixed_definition": null,
-        "entity_tags": null,
-        "caller_file_path": null,
-        "caller_file_line_range": null,
-        "resource_address": null,
-        "severity": null,
-        "bc_category": null,
-        "benchmarks": {},
-        "description": null,
-        "short_description": null,
-        "vulnerability_details": null,
-        "connected_node": null,
-        "guideline": null,
-        "details": [],
-        "check_len": null,
-        "definition_context_file_path": "D:\\Research\\corpus\\authored\\storage_severity.tf"
-      },
-      {
         "check_id": "CKV2_AWS_40",
         "bc_check_id": null,
         "check_name": "Ensure AWS IAM policy does not allow full IAM privileges",
@@ -1729,11 +1046,11 @@
           "result": "FAILED",
           "entity": {
             "aws_iam_policy": {
-              "broad_scope": {
+              "unrestricted_scope": {
                 "__end_line__": 35,
                 "__start_line__": 25,
                 "name": [
-                  "s2-broad-scope"
+                  "s2-unrestricted-scope"
                 ],
                 "policy": [
                   {
@@ -1749,14 +1066,14 @@
                     ]
                   }
                 ],
-                "__address__": "aws_iam_policy.broad_scope"
+                "__address__": "aws_iam_policy.unrestricted_scope"
               }
             }
           },
           "evaluated_keys": [
+            "inline_policy/Statement[?(@/Effect == Allow)]/Action[*]",
             "policy/Statement[?(@/Effect == Allow)]/Action[*]",
-            "statement[?(@/effect == Allow)]/actions[*]",
-            "inline_policy/Statement[?(@/Effect == Allow)]/Action[*]"
+            "statement[?(@/effect == Allow)]/actions[*]"
           ]
         },
         "code_block": null,
@@ -1767,7 +1084,7 @@
           25,
           35
         ],
-        "resource": "aws_iam_policy.broad_scope",
+        "resource": "aws_iam_policy.unrestricted_scope",
         "evaluations": null,
         "check_class": "checkov.common.graph.checks_infra.base_check",
         "fixed_definition": null,
@@ -1792,11 +1109,11 @@
     "parsing_errors": []
   },
   "summary": {
-    "passed": 22,
-    "failed": 19,
+    "passed": 14,
+    "failed": 13,
     "skipped": 0,
     "parsing_errors": 0,
-    "resource_count": 5,
+    "resource_count": 3,
     "checkov_version": "3.3.12"
   },
   "url": "Add an api key '--bc-api-key <api-key>' to see more detailed insights via https://bridgecrew.cloud"

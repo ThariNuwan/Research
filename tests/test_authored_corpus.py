@@ -1,9 +1,12 @@
-"""S2 Task 2: the hand-crafted privilege and severity cases (task brief step 5).
+"""S2 Task 2: the hand-crafted IAM privilege cases (task brief step 5, as revised by fix round 1).
 
-`corpus/authored/` holds the two factors corpus v0 cannot isolate - IAM
-privilege breadth and same-class severity spread - because it is authored
-against the taxonomy rather than vendored. This module scans it through the
-same adapters the rest of the pipeline uses (`CheckovAdapter`, `TfsecAdapter`,
+`corpus/authored/` holds the one factor corpus v0 cannot isolate at all: IAM
+privilege breadth. (A severity-spread case was authored alongside it and then
+removed - R9 - once measurement showed no same-type resource pair in this
+corpus or v0 can differ in severity within an identical issue-class set
+without the class set itself changing; that reasoning lives in the S2 design
+spec, not here.) This module scans the remaining root through the same
+adapters the rest of the pipeline uses (`CheckovAdapter`, `TfsecAdapter`,
 `TrivyAdapter`), against the raw JSON captured under
 `tests/harvest/fixtures/authored/`, and asserts against what that scan
 actually produced - never a literal restating what one particular run
@@ -14,11 +17,20 @@ R4 (task dispatch ruling): the fixture-integrity assertion for corpus v0's six
 *existing* fixtures is deliberately not written here. It is a controller-side
 check made once, after this task's commits land, against a HEAD that this
 task's own commits move - not a property of the code under test.
+
+R8 (fix round 1): the first draft of the three IAM policies varied *action
+family* across the three resources (a specific S3 read, then `s3:*`, then
+`*`) to guarantee each one drew a finding. That broke the breadth-only
+premise the pair rests on: the narrowest and middle resources shared no
+issue class at all, and the narrowest's class was arguably the more severe
+of the two - a difference in *kind*, not degree. All three resources now stay
+in one action family (`s3:*`, escalating only in `Resource` breadth, then
+`*` on `*` as the ceiling), so breadth is the only variable and their
+issue-class sets nest.
 """
 
 from __future__ import annotations
 
-import itertools
 import json
 from pathlib import Path
 from typing import Any
@@ -32,10 +44,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = REPO_ROOT / "tests" / "harvest" / "fixtures" / "authored"
 SCAN_ROOT = REPO_ROOT / "corpus" / "authored"
 
-IAM_POLICY_RESOURCES = (
-    "aws_iam_policy.narrow_scope",
-    "aws_iam_policy.moderate_scope",
-    "aws_iam_policy.broad_scope",
+# Ordered narrowest to broadest, matching the resource shapes in
+# corpus/authored/iam_privilege.tf: same action family (`s3:*`, then `*` as
+# the ceiling), escalating only in `Resource` breadth.
+ORDERED_IAM_POLICIES = (
+    "aws_iam_policy.s3_bucket_scope",
+    "aws_iam_policy.s3_account_scope",
+    "aws_iam_policy.unrestricted_scope",
 )
 
 
@@ -60,6 +75,10 @@ def _all_findings() -> tuple[NormalizedFinding, ...]:
     return checkov_result.findings + tfsec_result.findings + trivy_result.findings
 
 
+def _issue_classes(findings: tuple[NormalizedFinding, ...], resource: str) -> frozenset[str]:
+    return frozenset(f.issue_class for f in findings if f.resource_identity == resource)
+
+
 # --------------------------------------------------------------------------
 # Every authored aws_iam_policy resource was actually scanned.
 # --------------------------------------------------------------------------
@@ -68,73 +87,44 @@ def _all_findings() -> tuple[NormalizedFinding, ...]:
 def test_every_iam_policy_resource_has_at_least_one_finding() -> None:
     """No privilege case is silently unscanned (task brief step 5, bullet 1).
 
-    Measured while authoring this fixture: a policy granting one S3 read
-    action on one specific object-prefix ARN - the brief's own first draft of
-    `narrow_scope` - drew zero findings from all three scanners. That is a
-    correct scanner outcome, not a defect (a correctly-scoped policy is a true
-    negative), but it left `narrow_scope` silently unscanned, which is exactly
-    what this assertion exists to catch. `narrow_scope` now grants
-    `sts:GetSessionToken`, an action AWS itself only ever permits with
-    `Resource: "*"` - not a breadth choice on our part, an IAM constraint on
-    that action - which checkov's credentials-exposure check still flags.
+    Measured while first authoring this fixture: a policy granting one S3
+    read action on one specific object-prefix ARN drew zero findings from
+    all three scanners. That is a correct scanner outcome, not a defect (a
+    correctly-scoped policy is a true negative), but it would leave a case
+    silently unscanned, which is exactly what this assertion exists to
+    catch. Each of the three resources below carries at least one measured
+    finding (2, 7 and 11 respectively at authoring time).
     """
     identities = {finding.resource_identity for finding in _all_findings()}
-    for resource in IAM_POLICY_RESOURCES:
+    for resource in ORDERED_IAM_POLICIES:
         assert resource in identities, f"{resource} drew no finding from any of the three scanners"
 
 
 # --------------------------------------------------------------------------
-# The three privilege cases are distinguishable from one another.
+# The three privilege cases nest: each broader policy's issue classes are a
+# strict superset of the narrower one's.
 # --------------------------------------------------------------------------
 
 
-def test_privilege_cases_are_distinguishable() -> None:
-    """narrow_scope, moderate_scope and broad_scope each look different to the pipeline.
+def test_privilege_classes_strictly_nest_with_increasing_breadth() -> None:
+    """Each broader resource's issue-class set is a strict superset of the narrower one's (R8).
 
-    Task brief step 5, bullet 2: "the set of issue classes or the count of
-    findings differs across narrow_scope, moderate_scope, broad_scope."
-    Computes both signatures per resource and asserts all three are pairwise
-    distinct - not just that some pair differs, which a two-resource collision
-    could still satisfy by accident.
+    This is the property the authored pair rests on, not a specific class
+    name: `s3_bucket_scope`'s classes must be a proper subset of
+    `s3_account_scope`'s, and `s3_account_scope`'s a proper subset of
+    `unrestricted_scope`'s. A proper-subset relation implies the two sets
+    differ (so a broader resource is never merely a relabeling of a
+    narrower one) and orders that difference in the one direction breadth
+    is supposed to move - a same-size or shrinking class set as breadth
+    increases would fail this even if the sets were merely unequal.
     """
     findings = _all_findings()
-    signatures: dict[str, tuple[int, frozenset[str]]] = {}
-    for resource in IAM_POLICY_RESOURCES:
-        matching = [f for f in findings if f.resource_identity == resource]
-        signatures[resource] = (len(matching), frozenset(f.issue_class for f in matching))
+    class_sets = [_issue_classes(findings, resource) for resource in ORDERED_IAM_POLICIES]
 
-    distinct_signatures = set(signatures.values())
-    assert len(distinct_signatures) == len(IAM_POLICY_RESOURCES), (
-        f"privilege cases are not pairwise distinguishable: {signatures}"
-    )
-
-
-# --------------------------------------------------------------------------
-# The severity-pair property: two findings, one issue_class, different levels.
-# --------------------------------------------------------------------------
-
-
-def test_two_findings_share_an_issue_class_at_different_severity_levels() -> None:
-    """The property the authored severity pair rests on (task brief step 5, bullet 3).
-
-    Asserts the property itself - two findings sharing one `issue_class` with
-    two different *integer* `severity_level`s - rather than a specific class
-    name. A test naming `storage-key-management-cmk` directly would pass for
-    the wrong reason the moment a re-scan (a scanner upgrade, say) picked a
-    different class, which is exactly the failure mode the task dispatch
-    warns against. `severity_level` is `int | str` (`"unknown"` for checkov,
-    which never carries a native severity in this corpus - CLAUDE.md); only
-    the `int` values are comparable at all, so the `"unknown"` string values
-    are excluded from the search rather than silently coerced.
-    """
-    findings = _all_findings()
-    with_known_severity = [f for f in findings if isinstance(f.severity_level, int)]
-
-    found_pair = any(
-        left.issue_class == right.issue_class and left.severity_level != right.severity_level
-        for left, right in itertools.combinations(with_known_severity, 2)
-    )
-    assert found_pair, (
-        "no two findings share one issue_class at two different integer severity_levels: "
-        f"{[(f.issue_class, f.severity_level) for f in with_known_severity]}"
-    )
+    for narrower_resource, broader_resource, narrower_classes, broader_classes in zip(
+        ORDERED_IAM_POLICIES, ORDERED_IAM_POLICIES[1:], class_sets, class_sets[1:], strict=False
+    ):
+        assert narrower_classes < broader_classes, (
+            f"{narrower_resource}'s issue classes {sorted(narrower_classes)} are not a "
+            f"proper subset of {broader_resource}'s {sorted(broader_classes)}"
+        )
