@@ -14,12 +14,16 @@ that number; alert reduction is reported as two separate figures elsewhere
 (deduplication vs. priority-band reduction) and this module is only the
 first.
 
-A finding whose `resource_identity` is `identity.UNRESOLVED` is excluded
-before grouping starts. Two such findings "matching" is coincidence, not
-overlap - they may point at entirely different, unrelated resources that both
-happened to fail identity resolution - so `<unresolved>` findings never enter
-a `DedupeGroup` or a `CandidateOverlap`; they stand alone in the caller's
-accounting like every other finding this module does not group.
+A finding whose `resource_identity` is not usable - per `identity.is_unusable`,
+not a bare `== identity.UNRESOLVED` test (whole-branch review Finding 1: a
+partially-resolved Kubernetes identity like `apps/v1/Deployment/<unresolved>/
+<unresolved>` contains the sentinel without equalling it, and an empty
+`file_path`-derived identity is neither resolved nor the sentinel) - is
+excluded before grouping starts. Two such findings "matching" is coincidence,
+not overlap - they may point at entirely different, unrelated resources that
+both happened to fail identity resolution - so an unusable identity never
+enters a `DedupeGroup` or a `CandidateOverlap`; it stands alone in the
+caller's accounting like every other finding this module does not group.
 
 **Candidate scope, read literally from spec section 7's own words.**
 "Findings sharing identity and issue-class where either fingerprint is
@@ -183,9 +187,9 @@ def deduplicate(findings: Iterable[NormalizedFinding]) -> DedupeResult:
        from its neighbours by a fingerprint value that DID resolve, so there
        is nothing left to ask a human to adjudicate.
 
-    A finding whose `resource_identity` is `identity.UNRESOLVED` is excluded
-    before either stage runs, so it can appear in neither a group nor a
-    candidate - grouping two such findings together would only ever be
+    A finding whose `resource_identity` is not usable (`identity.is_unusable`)
+    is excluded before either stage runs, so it can appear in neither a group
+    nor a candidate - grouping two such findings together would only ever be
     coincidence, never evidence of overlap on a real resource.
 
     Reads `finding.has_resolved_fingerprint` rather than testing
@@ -194,7 +198,7 @@ def deduplicate(findings: Iterable[NormalizedFinding]) -> DedupeResult:
     """
     by_pair: dict[tuple[str, str], list[NormalizedFinding]] = defaultdict(list)
     for finding in findings:
-        if finding.resource_identity == identity.UNRESOLVED:
+        if identity.is_unusable(finding.resource_identity):
             continue
         by_pair[(finding.resource_identity, finding.issue_class)].append(finding)
 

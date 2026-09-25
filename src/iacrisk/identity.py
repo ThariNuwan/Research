@@ -16,6 +16,32 @@ First-class, never merged into the resolved form and never dropped. Its rate is
 reported as the identity fallback rate (PLAN Q9).
 """
 
+
+def is_unusable(value: str) -> bool:
+    """Whether a rendered identity string is not usable as a real resource identity.
+
+    Three conditions, all first-class per the explicit-state discipline, none
+    of them "resolved":
+
+    - it equals `UNRESOLVED` exactly (a fully unresolved identity);
+    - it *contains* `UNRESOLVED` as a substring (a partially unresolved
+      identity - `kubernetes_identity` substitutes the sentinel per component,
+      so `apps/v1/Deployment/<unresolved>/<unresolved>` contains it without
+      equalling it, and a bare `==` test against `UNRESOLVED` misses this
+      case entirely - whole-branch review Finding 1);
+    - it is empty or whitespace-only (checkov's `file`-kind identity is a
+      rebased `file_path` with no formatter of its own, so an empty
+      `file_path` yields the empty string: neither resolved nor the
+      sentinel, and - unguarded - a perfectly valid dedupe grouping key).
+
+    Whoever composes an identity from this string - an adapter deciding
+    `identity_kind`, `dedupe.py` deciding whether to group - must route
+    through this one predicate rather than restating any piece of it, so
+    "this identity is not usable" has exactly one definition project-wide.
+    """
+    return UNRESOLVED in value or not value.strip()
+
+
 DEFAULT_NAMESPACE = "default"
 """Kubernetes' documented default when `metadata.namespace` is omitted.
 

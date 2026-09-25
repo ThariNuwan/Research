@@ -233,11 +233,11 @@ def _platform_of(documents: Sequence[Any]) -> str:
 _CONTEXT_ELIGIBLE_KINDS = frozenset({"terraform", "kubernetes"})
 """The only two `identity_kind` values `context_eligible` may be `True` for (spec §2.1).
 
-Stated once and re-read wherever a kind can change after `classify_resource`
-returns, rather than re-derived in each such place: `_build_finding` downgrades
-a `kubernetes` kind to `unresolved` when `_resolve_kubernetes` falls through,
-and re-reads this set to settle `context_eligible` for that downgraded kind -
-one flag, one meaning, sourced from the kind alone.
+Stated once and read exactly once, at the end of `_build_finding`, after every
+branch that can downgrade `identity_kind` (`kubernetes` or `file`, to
+`unresolved`, via `identity.is_unusable`) has already run - rather than
+re-derived inline in each such branch. One flag, one meaning, sourced from the
+final kind alone.
 """
 
 
@@ -253,13 +253,23 @@ def _build_finding(
     either is counted as `dropped` (`in == out + dropped`, spec §10 acceptance
     gate 6) instead of crashing the adapter run or, worse, silently vanishing.
 
-    A `kubernetes`-shaped identity that still resolves to `identity.UNRESOLVED`
-    after `_resolve_kubernetes` runs - both lookups missed, or no index was
-    available to try them - is downgraded to `identity_kind = "unresolved"`
-    here, and `context_eligible` is re-settled from that downgraded kind
-    (`_CONTEXT_ELIGIBLE_KINDS`) rather than left at the `True` `classify_resource`
-    assigned before resolution had a chance to fail. `classify_resource` cannot
-    make this call itself - resolution has not happened yet when it runs.
+    A `kubernetes`-shaped identity that `_resolve_kubernetes` cannot fully use
+    - `identity.is_unusable` per the whole-branch review's Finding 1, not a
+    bare `== identity.UNRESOLVED` test, because `_resolve_kubernetes` can
+    return a *partially* resolved string (`apps/v1/Deployment/<unresolved>/
+    <unresolved>` from a quoted, still-templated Helm name) that contains the
+    sentinel without equalling it - both lookups missed, or no index was
+    available to try them, or resolved to something not fully usable - is
+    downgraded to `identity_kind = "unresolved"` here. `context_eligible` is
+    computed once at the end of this function, from whichever `identity_kind`
+    every such downgrade left standing (`_CONTEXT_ELIGIBLE_KINDS`), rather than
+    left at the `True` `classify_resource` guessed before resolution had a
+    chance to fail - `classify_resource` cannot make this call itself,
+    because resolution has not happened yet when it runs. The informative
+    partial string is kept as `resource_identity`, never overwritten with the
+    bare sentinel: knowing the kind was recognised but the name was not is
+    worth more than collapsing it, and the explicit state now lives in
+    `identity_kind` alone.
 
     A `file`-shaped identity is replaced with the rebased `file_path`, for the
     same reason `classify_resource`'s own docstring flags it as a placeholder:
@@ -269,7 +279,10 @@ def _build_finding(
     would put this adapter's identity for the file one character off trivy's
     identity for the same file - silently defeating the Task 8 cross-scanner
     join `CKV_DOCKER_2`/`DS-0002` and `CKV_DOCKER_3`/`DS-0026` are exactly the
-    kind of pair it exists to report.
+    kind of pair it exists to report. An empty `file_path` (Finding 1's
+    sub-case: no raw `file_path` at all) yields the empty string, which
+    `identity.is_unusable` also catches - a perfectly valid dedupe grouping
+    key otherwise, and neither resolved nor the sentinel.
     """
     raw_rule_id = check.get("check_id")
     if not raw_rule_id:
@@ -281,9 +294,12 @@ def _build_finding(
         return None, "resource missing or empty"
     resource_value = str(raw_resource)
 
-    resource_identity, identity_kind, context_eligible = classify_resource(
-        resource_value, rule_id, platform
-    )
+    # `context_eligible` is re-derived below from the *final* `identity_kind`,
+    # once every branch that can change it has run - `classify_resource`'s own
+    # guess is a pre-resolution placeholder for the two kinds resolution can
+    # still downgrade (`kubernetes`, `file`), so it is discarded here rather
+    # than carried forward and overwritten piecemeal.
+    resource_identity, identity_kind, _ = classify_resource(resource_value, rule_id, platform)
 
     raw_file_path = str(check.get("file_path") or "")
     file_path = rebase_to_scan_root(raw_file_path, scan_root) if raw_file_path else ""
@@ -295,9 +311,16 @@ def _build_finding(
     if identity_kind == "kubernetes":
         if index is not None:
             resource_identity = _resolve_kubernetes(resource_value, file_path, line_range, index)
-        if resource_identity == identity.UNRESOLVED:
+        if identity.is_unusable(resource_identity):
             identity_kind = "unresolved"
-            context_eligible = identity_kind in _CONTEXT_ELIGIBLE_KINDS
+
+    if identity_kind == "file" and identity.is_unusable(resource_identity):
+        identity_kind = "unresolved"
+
+    # Re-settled once, from whatever `identity_kind` ended up as above, rather
+    # than in each branch that can change it - one flag, one meaning, sourced
+    # from the kind alone (`_CONTEXT_ELIGIBLE_KINDS`'s own docstring).
+    context_eligible = identity_kind in _CONTEXT_ELIGIBLE_KINDS
 
     check_result = check.get("check_result") or {}
     fingerprint = fingerprint_from(check_result.get("evaluated_keys") or [])

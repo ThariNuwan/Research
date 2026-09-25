@@ -166,11 +166,24 @@ def _resolve_kubernetes(
     is the entire mechanism. Returns `<unresolved>` when there is no index, no
     line, or the line matches no span - the same three failure causes §4
     documents for the index itself.
+
+    A matched entry can still be only *partially* resolved - a quoted,
+    templated Helm name renders `apps/v1/Deployment/<unresolved>/<unresolved>`
+    (`identity.kubernetes_identity` substitutes the sentinel per component),
+    which is not equal to `identity.UNRESOLVED` but is not usable either
+    (whole-branch review Finding 1). `identity.is_unusable` is the one place
+    that judgment is made; a matched-but-unusable entry's identity kind comes
+    back `"unresolved"` too, and the informative partial string is returned
+    as-is rather than collapsed to the bare sentinel - `identity_kind` alone
+    carries the explicit state.
     """
     if index is not None and line_range is not None and file_path:
         entry = index.by_line(file_path, line_range[0])
         if entry is not None:
-            return entry.to_identity(), "kubernetes"
+            rendered = entry.to_identity()
+            if not identity.is_unusable(rendered):
+                return rendered, "kubernetes"
+            return rendered, "unresolved"
     return identity.UNRESOLVED, "unresolved"
 
 

@@ -77,8 +77,17 @@ class ResourceEntry:
 
     `namespace` is `None` only for a cluster-scoped kind. `namespace_defaulted`
     says the namespace was absent from the manifest and `DEFAULT_NAMESPACE` was
-    applied here; the two fields together distinguish all three states a
-    manifest can be in (declared, defaulted, not namespaced at all).
+    applied here; the two fields together distinguish three of the four states
+    a manifest can be in (declared, defaulted, not namespaced at all) - **not**
+    all four. A templated, still-Helm-unresolved namespace (`namespace: "{{
+    .Release.Namespace }}"`) is a fourth: it is neither absent (so
+    `namespace_defaulted` is `False`) nor a genuine declared value, and
+    `identity.kubernetes_identity` renders it as the `identity.UNRESOLVED`
+    component rather than the literal template string - a distinction these two
+    fields alone do not carry (whole-branch review Finding 1's docstring
+    correction; the value itself is caught downstream by
+    `identity.is_unusable`, which is what `dedupe.py` and the adapters key
+    unresolved-identity handling off of, not this dataclass's own fields).
 
     `start_line` and `end_line` are 1-based and inclusive, and span only the
     content of the document or container - leading comments, the `---` separator
