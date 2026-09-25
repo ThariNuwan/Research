@@ -923,6 +923,97 @@
       }
     }
   ],
-  "contrastive_pairs": [],
+  "contrastive_pairs": [
+    {
+      "pair_id": "exposure-security-group",
+      "factor_under_test": "exposure",
+      "case_high": "sg-web-node-high-exposure",
+      "case_low": "sg-default-low-exposure",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: sg-web-node-high-exposure ranks above sg-default-low-exposure. Both are aws_security_group resources sharing networking-config-hygiene. web-node additionally carries networking-ingress-exposure and networking-egress-exposure (three literal 0.0.0.0/0 cidr_blocks at ec2.tf:77-115); default carries neither (db-app.tf:117-134, no rule of its own). The class difference is exactly {networking-ingress-exposure, networking-egress-exposure}, recorded in artifacts/pair-candidates.json, and both added classes bear on Public Exposure and nothing else differs between the two groups, so the pair isolates exposure. Purity is an authored judgement, not a machine-proven property (design spec section 3)."
+    },
+    {
+      "pair_id": "exposure-security-group-rule",
+      "factor_under_test": "exposure",
+      "case_high": "sgr-egress-high-exposure",
+      "case_low": "sgr-ingress-low-exposure",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: sgr-egress-high-exposure ranks above sgr-ingress-low-exposure. Both are aws_security_group_rule resources sharing networking-config-hygiene; egress additionally carries networking-egress-exposure from a literal cidr_blocks = [\"0.0.0.0/0\"] at db-app.tf:150. The class difference is {networking-egress-exposure}. This pair is weaker evidence than exposure-security-group and must not be read as equivalent to it: the low side, sgr-ingress-low-exposure, carries unresolved_factors: [\"exposure\"] and excluded_from_quality_claims: true, because its cidr_blocks at db-app.tf:141 is the cross-resource interpolation ${aws_vpc.web_vpc.cidr_block}, not a literal, and the bounded extractor is literals-only. The ordering is nonetheless semantically sound on the code's meaning - world-open egress should outrank a rule whose exposure the extractor cannot resolve - but because the low side's exposure is unresolved rather than scored, this pair does not contribute to the headline prioritization-quality claim, only to the sensitivity/coverage reporting around unresolved factors."
+    },
+    {
+      "pair_id": "encryption-s3-data",
+      "factor_under_test": "encryption",
+      "case_high": "s3-data-encryption-gap",
+      "case_low": "s3-logs-encryption-ok",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-data-encryption-gap ranks above s3-logs-encryption-ok. Both are aws_s3_bucket resources sharing storage-public-accessibility, storage-data-lifecycle-hygiene, storage-data-recoverability and storage-logging-audit; aws_s3_bucket.data additionally carries storage-key-management-cmk and storage-encryption-at-rest, which aws_s3_bucket.logs does not draw from any of the three scanners. The class difference is exactly {storage-key-management-cmk, storage-encryption-at-rest} - both encryption classes and nothing else differs, so the pair isolates encryption risk."
+    },
+    {
+      "pair_id": "encryption-s3-financials",
+      "factor_under_test": "encryption",
+      "case_high": "s3-financials-encryption-gap",
+      "case_low": "s3-logs-encryption-ok",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-financials-encryption-gap ranks above s3-logs-encryption-ok. Same shared base of four classes as encryption-s3-data, with aws_s3_bucket.financials additionally carrying storage-key-management-cmk and storage-encryption-at-rest. The class difference is the same {storage-key-management-cmk, storage-encryption-at-rest} as the first encryption pair, which is consistent rather than a conflict since both pairs test the same factor; s3-logs-encryption-ok is deliberately reused as the low side of both pairs per the task dispatch rather than authoring a near-duplicate low case."
+    },
+    {
+      "pair_id": "sensitivity-s3-financials",
+      "factor_under_test": "sensitivity",
+      "case_high": "s3-financials-sensitivity-high",
+      "case_low": "s3-financials-sensitivity-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-financials-sensitivity-high ranks above s3-financials-sensitivity-low. Same resource (aws_s3_bucket.financials), same code, identical expected findings in both cases - there is no class difference at all. The two cases differ in exactly one declared value: sensitivity 5 versus 1, with criticality held equal at 3 in both. This is the cleanest isolation available in the corpus: not a class-difference argument but a controlled declared-context variation on an otherwise-identical case."
+    },
+    {
+      "pair_id": "sensitivity-s3-operations",
+      "factor_under_test": "sensitivity",
+      "case_high": "s3-operations-sensitivity-high",
+      "case_low": "s3-operations-sensitivity-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-operations-sensitivity-high ranks above s3-operations-sensitivity-low. Same resource (aws_s3_bucket.operations), same code, identical expected findings in both cases - again no class difference. The two cases differ in exactly one declared value: sensitivity 4 versus 1, criticality held equal at 3 in both. A second, independent sensitivity pair on a different resource than sensitivity-s3-financials, so the sensitivity claim does not rest on one bucket alone."
+    },
+    {
+      "pair_id": "criticality-s3-data",
+      "factor_under_test": "criticality",
+      "case_high": "s3-data-criticality-high",
+      "case_low": "s3-data-criticality-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-data-criticality-high ranks above s3-data-criticality-low. Same resource (aws_s3_bucket.data), same code, identical expected findings in both cases - no class difference. The two cases differ in exactly one declared value: criticality 5 versus 1, with sensitivity held equal at 3 in both. As with the sensitivity pairs, this is a controlled declared-context variation on an otherwise-identical case, not a class-difference argument."
+    },
+    {
+      "pair_id": "criticality-s3-data-science",
+      "factor_under_test": "criticality",
+      "case_high": "s3-data-science-criticality-high",
+      "case_low": "s3-data-science-criticality-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-data-science-criticality-high ranks above s3-data-science-criticality-low. Same resource (aws_s3_bucket.data_science), same code, identical expected findings in both cases - no class difference. The two cases differ in exactly one declared value: criticality 4 versus 1, sensitivity held equal at 3 in both. A second, independent criticality pair on a different resource than criticality-s3-data."
+    },
+    {
+      "pair_id": "privilege-iam-bucket-to-account",
+      "factor_under_test": "privilege",
+      "case_high": "iam-s3-account-scope",
+      "case_low": "iam-s3-bucket-scope",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: iam-s3-account-scope ranks above iam-s3-bucket-scope. Both are hand-crafted aws_iam_policy resources in the same s3 action family (corpus/authored/iam_privilege.tf), scoped s3:* to one bucket ARN prefix (bucket-scope, lines 1-11) versus s3:* on all buckets, Resource = \"*\" (account-scope, lines 13-23). bucket-scope's class set is {iam-overpermissive-policy}; account-scope's is {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms}. The class difference is exactly {iam-privilege-escalation-sensitive-perms} - a real taxonomy class that plainly bears on privilege scope, so the pair argues from it directly. This is the stronger-evidence half of the two privilege pairs (R10)."
+    },
+    {
+      "pair_id": "privilege-iam-account-to-unrestricted",
+      "factor_under_test": "privilege",
+      "case_high": "iam-unrestricted-scope",
+      "case_low": "iam-s3-account-scope",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: iam-unrestricted-scope ranks above iam-s3-account-scope. Both are hand-crafted aws_iam_policy resources in the same action family (corpus/authored/iam_privilege.tf): account-scope grants s3:* on Resource = \"*\" (lines 13-23), unrestricted-scope grants Action = \"*\" on Resource = \"*\" (lines 25-35) - the ceiling of the same family. account-scope's class set is {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms}; unrestricted-scope's adds three unmapped:checkov:* classes (CKV_AWS_62, CKV_AWS_63, CKV2_AWS_40) on top of the same two shared classes. The class difference is exactly {unmapped:checkov:CKV_AWS_62, unmapped:checkov:CKV_AWS_63, unmapped:checkov:CKV2_AWS_40} - entirely unmapped classes, which by definition the taxonomy does not classify, so nothing in that difference establishes that it bears on privilege. Per R10 this rationale does not rest on those classes as privilege evidence; it rests on the policy text, both sides hand-written in the same action family so breadth is known to be the only variable: s3:* on * (account-scope) versus * on * (unrestricted-scope) is strictly broader by inspection of the policy JSON itself. Spec section 4 permits a hand-crafted pair to rest on policy text; this is that case, and it is the weaker-evidence half of the two privilege pairs (R10) precisely because its measured class difference cannot be cited as the reason."
+    }
+  ],
   "scenarios": []
 }
