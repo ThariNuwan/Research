@@ -244,6 +244,13 @@ def test_gate_3_tfsec_paths_join_string_equal_with_checkov_and_trivy() -> None:
     a `file_path` that is a member of both checkov's and trivy's terraform-run
     path sets, and no tfsec path retains a backslash, a leading slash, or a
     drive letter.
+
+    Membership alone would not be set equality: an adapter that mapped all 119
+    findings onto one single valid shared path would satisfy every `in` check
+    above. So the distinct rebased paths are counted too, against the distinct
+    absolute filenames the raw fixture carries - both sides derived, neither a
+    literal. That closes the cardinality half of "set equality over the shared
+    files"; a collapse of many source files onto one would fail it.
     """
     results = _real_results()
     tfsec_findings = results[("tfsec", "terraform")].findings
@@ -265,6 +272,25 @@ def test_gate_3_tfsec_paths_join_string_equal_with_checkov_and_trivy() -> None:
         assert "\\" not in path
         assert not path.startswith("/")
         assert re.match(r"^[A-Za-z]:", path) is None
+
+    # Cardinality, from the raw fixture rather than from the adapter: however many
+    # distinct source files tfsec reported on, that many distinct rebased paths
+    # must survive. Equal counts plus the membership checks above together give
+    # set equality over the files tfsec touched.
+    raw = _load_fixture("tfsec-terraform.json")
+    assert isinstance(raw, dict)
+    raw_results = raw["results"]
+    assert isinstance(raw_results, list)
+    raw_filenames = {
+        entry["location"]["filename"]
+        for entry in raw_results
+        if isinstance(entry, dict) and isinstance(entry.get("location"), dict)
+    }
+    assert len(raw_filenames) > 1, "a one-file corpus could not detect a collapse"
+    assert len(set(tfsec_paths)) == len(raw_filenames), (
+        f"{len(raw_filenames)} distinct source files rebased onto "
+        f"{len(set(tfsec_paths))} distinct paths"
+    )
 
 
 # --- Gate 4 (reworded; see module docstring) -------------------------------------------
