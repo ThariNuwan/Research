@@ -177,13 +177,21 @@ The **per-scanner fingerprint-resolution rate is reported** as an evaluation-int
 |---|---|---|
 | Candidates, the condition above | **207** | every pair the pipeline declined to merge |
 | — **cross-scanner** | **116** | two or more scanners, one resource, one class → the rule-family overlap PLAN #19 asks the dissertation to account for |
-| — **same-scanner** | **91** | *one* scanner raising several distinct rules on one resource that this taxonomy maps to one class, with no fingerprint to separate them → a limit of **this method**, not scanner overlap at all |
+| — **same-scanner** | **91** | *one* scanner raising two or more findings on one resource in one class that no fingerprint separates → a limit of **this method**, not scanner overlap at all |
 
 Merging them would label the 91 as cross-scanner overlap, which is precisely the error PLAN Q7 forbids for alert reduction: *two separate numbers, never combined*.
 
-**What the 91 actually are, measured.** By raising scanner: **trivy 71, checkov 19, tfsec 1**. Trivy dominating is not incidental — it follows from §6, where trivy's fingerprint is always `None`, so *every* trivy pair sharing identity and class necessarily lands in Tier 2 and can never be separated. The largest single group is one trivy scan of the `docker-bench-security` DaemonSet's `docker-bench` container raising six KSV rules (`KSV-0001, 0012, 0017, 0020, 0021, 0105`) that all map to `containers-privileged-execution`. The checkov shape is narrower and cleaner: `CKV2_AWS_61` with `CKV2_AWS_62` on one bucket under `storage-data-lifecycle-hygiene`, on **6 S3 buckets** — buckets `flowbucket, data, financials, operations, data_science, logs`.
+**What the 91 actually are, measured.** By raising scanner: **trivy 71, checkov 19, tfsec 1**. Trivy dominating is not incidental — it follows from §6, where trivy's fingerprint is always `None`, so *every* trivy pair sharing identity and class necessarily lands in Tier 2 and can never be separated. The largest single group is one trivy scan of the `docker-bench-security` DaemonSet's `docker-bench` container raising six KSV rules (`KSV-0001, 0012, 0017, 0020, 0021, 0105`) that all map to `containers-privileged-execution`. Of checkov's 19, the cleanest shape accounts for **6**: `CKV2_AWS_61` with `CKV2_AWS_62` on one bucket under `storage-data-lifecycle-hygiene`, on the buckets `flowbucket, data, financials, operations, data_science, logs`. The other 13 are `CKV_K8S_16/20/23/40` and `CKV_K8S_22/31` groups, plus the two single-rule cases below.
 
-So the 91 compose two causes, neither of which is scanner disagreement: the taxonomy **deliberately** groups many rule IDs into 28 classes, and the scanner supplies no fingerprint with which to tell same-class findings apart. The first is a design choice; the second is a data limit.
+So the 91 compose **three** mechanisms, none of which is scanner disagreement:
+
+1. the taxonomy **deliberately** groups many rule IDs into 28 classes — a design choice;
+2. the scanner supplies no fingerprint with which to tell same-class findings apart — a data limit;
+3. **one rule firing more than once on one resource** — measured on exactly **3** of the 91, where the group carries a single distinct rule id: tfsec `AVD-AWS-0057` ×5 on `aws_iam_user_policy.userpolicy` (five statements in one policy), checkov `CKV_SECRET_2` ×2 on one secret hash spanning `lambda.tf` and `providers.tf`, and checkov `CKV_K8S_21` ×2 on `v1/Service/default/health-check-service` declared in two files.
+
+**Erratum, corrected 2026-09-25.** Mechanism 3 was missing, and the table row above read "*one* scanner raising several **distinct rules**". For those 3 the taxonomy-grouping cause does not apply at all — there is only one rule — so the earlier wording described 88 of the 91 and mis-described the rest. The whole-branch review found this by measuring the rule-id cardinality of every candidate; the counts were right, the mechanism sentence was not, and it is the sentence the limitations section quotes.
+
+Mechanism 3 is also the shape the Rationale below already names — "two separate open ingress rules on one security group" — which makes it the best evidence in the section that the fingerprint is doing the job §6 added it for.
 
 That makes the same-scanner figure the more valuable of the two for the write-up — it quantifies what **this method** cannot separate rather than a property of the scanners — and it belongs in the limitations section, not the alert-reduction result.
 

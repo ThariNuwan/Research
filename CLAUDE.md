@@ -134,9 +134,13 @@ will get wrong without stating them explicitly:
   removed (3.7%), from 35 groups, exactly 1 of them cross-scanner.
 - **Tier 2 is two numbers that must never be combined.** 207 candidates total,
   splitting into 116 cross-scanner (genuine rule-family overlap between
-  scanners) and 91 same-scanner (one scanner raising several rules the
-  taxonomy maps to one class, with no fingerprint to separate them - a limit
-  of this method, not scanner overlap). Reporting 207 as cross-scanner overlap
+  scanners) and 91 same-scanner (one scanner raising two or more findings on
+  one resource in one class that no fingerprint separates - a limit of this
+  method, not scanner overlap). Three mechanisms produce the 91, not two: the
+  taxonomy grouping many rule IDs into 28 classes, the absent fingerprint, and
+  **one rule firing more than once on one resource** - measured on exactly 3 of
+  the 91, which carry a single distinct rule id and so have no taxonomy-grouping
+  cause at all (spec §7's 2026-09-25 erratum). Reporting 207 as cross-scanner overlap
   mislabels the 91; the same-scanner figure belongs in the limitations
   discussion, never in the alert-reduction result. By raising scanner the 91
   split trivy 71, checkov 19, tfsec 1 - trivy dominates structurally because
@@ -237,9 +241,15 @@ subtree), five declared cases over two scan roots.
 From `artifacts/rule-inventory.json`, 1055 rows: **489 of them (46.4%) carry no
 severity at all, and every one of the 489 is Checkov** — 221 on the Terraform
 root, 268 on the Kubernetes root. Severity reaches Checkov's JSON only through
-the API-key `policyMetadata` path; the public path fills `guideline` and `id` and
-leaves severity null. The other 566 rows (Trivy 447, tfsec 119) carry exactly
-four levels: CRITICAL, HIGH, MEDIUM, LOW.
+the API-key `policyMetadata` path. The other 566 rows (Trivy 447, tfsec 119)
+carry exactly four levels: CRITICAL, HIGH, MEDIUM, LOW.
+
+**Corrected 2026-09-25.** This paragraph previously said the public path "fills
+`guideline` and `id`". Measured on the committed fixtures: `check_id` is present
+on 489 of 489, but **`guideline` is null on 489 of 489** — it is not filled
+either, which is what `scanners/checkov.py`'s `_optional_str` docstring already
+records. The S3a whole-branch review caught the contradiction between this file
+and the fixtures.
 
 Read that as a property of **corpus v0 as measured on this host**, not of the
 scanners: Trivy's severity vocabulary carries a fifth level this corpus does not
