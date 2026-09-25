@@ -9,14 +9,14 @@ count must equal `out + dropped`, and every state the record can carry
 (`unmapped:`, `unknown`, an unresolved identity, an unresolved fingerprint) is
 counted explicitly rather than folded into a rate that would hide it.
 
-**Spec section 8's cause list is corrected here, in two ways, both measured
+**Spec section 8's cause list is corrected here, in three ways, all measured
 against the committed fixtures rather than argued.** First, "non-resource
 kind" is not an unresolved-identity cause at all - Task 5 gives non-resource
 findings real, resolved identities (`identity_kind` values `secret`, `file`,
 `provider`) - so it is reported here as its own context-eligibility breakdown
 (`identity_kind_counts`, `context_eligible`, `context_ineligible`) rather than
-folded into the unresolved-cause counters. Second, the remaining three causes
-- unparseable file, no line supplied, and a supplied line matching no
+folded into the unresolved-cause counters. Second, three of the remaining
+causes - unparseable file, no line supplied, and a supplied line matching no
 indexed span - are all kept as separate, named counters, including the third
 one. Fix round 2 corrected an earlier version of this module that dropped the
 third counter on the reasoning that it has zero population in corpus v0;
@@ -27,11 +27,37 @@ exercises. Reporting it as an explicit zero, rather than omitting the counter,
 is what lets a future corpus that does exercise it be seen rather than
 silently folded into "no line supplied".
 
-One finding in corpus v0 hits two of the three causes at once: its file is
+**Third, whole-branch review Finding 2: a fourth cause, `INDEX_NOT_CONSULTED`,
+for a platform whose resolution never touches the Kubernetes resource index at
+all.** The other three causes are all resource-*index* causes - they describe
+*why a lookup against the index failed* - but an earlier version of
+`_unresolved_cause` ran them over every unresolved finding regardless of
+platform. `tfsec.py`'s `_resolve_terraform` returns unresolved for any
+`resource` shape it does not recognise (a three-dot value such as
+`module.database.aws_db_instance.default`, which the underscore-anchored
+regex does not match), and such a finding carries a real, parseable `.tf` file
+and a real `line_range` - so under the old classifier it would land in
+`LINE_UNMATCHED`, whose own docstring says "a line number was supplied, on a
+parseable file, but matched no indexed span." That is false for it: no
+Kubernetes index lookup was ever attempted for a Terraform-platform finding,
+`ResourceIndex.by_line` was never called, and there was no span to match or
+fail to match. `finding.platform` is the discriminator - Terraform resolution
+(`checkov.classify_resource`, `trivy._resolve_terraform`,
+`tfsec._resolve_terraform`) is entirely field-based and never consults
+`ResourceIndex`, where Kubernetes resolution always does. Zero population in
+corpus v0 (tfsec resolves 119/119, and no checkov or trivy Terraform finding
+is unresolved either) - reported as an explicit zero for the same reason
+`LINE_UNMATCHED` is, so a future corpus that does exercise a malformed tfsec
+`resource` value is counted under its true cause rather than mislabelled as an
+index miss.
+
+One finding in corpus v0 hits two of the causes at once: its file is
 unparseable **and** its raw record carries no line number at all. Unparseable-
 file takes precedence over both line-based causes - the file never entered the
-resource index, so whatever the line field says is moot - and each unresolved
-finding is assigned to exactly one cause, never more than one, so the three
+resource index, so whatever the line field says is moot - and `platform !=
+"kubernetes"` takes precedence over all three index-based causes, since none
+of them applies at all when the index was never in play. Each unresolved
+finding is assigned to exactly one cause, never more than one, so the four
 counters sum to the unresolved total without double counting.
 
 Per scanner-and-platform coverage is keyed `(scanner, platform)`, not `scanner`
@@ -59,17 +85,31 @@ from iacrisk.dedupe import DedupeResult
 from iacrisk.finding import NormalizedFinding
 from iacrisk.scanners.base import AdapterResult
 
-UNPARSEABLE_FILE = "unparseable_file"
-"""One of three unresolved-identity causes this module distinguishes (module docstring).
+INDEX_NOT_CONSULTED = "index_not_consulted"
+"""One of four unresolved-identity causes this module distinguishes (module docstring).
 
-Checked first in `_unresolved_cause`: it wins over either line-based cause
-whenever more than one condition holds on the same finding.
+Checked first in `_unresolved_cause`, before any of the three index-lookup
+causes below: it wins whenever `finding.platform != "kubernetes"`, because
+none of `UNPARSEABLE_FILE`, `NO_LINE_SUPPLIED` or `LINE_UNMATCHED` describes a
+real event for a finding whose resolution never consulted the Kubernetes
+resource index in the first place (whole-branch review Finding 2). Zero
+population in corpus v0 - reported as an explicit zero, matching
+`LINE_UNMATCHED`'s own precedent for a real, documented cause this corpus does
+not happen to exercise.
+"""
+
+UNPARSEABLE_FILE = "unparseable_file"
+"""One of four unresolved-identity causes this module distinguishes (module docstring).
+
+Checked second in `_unresolved_cause`, after `INDEX_NOT_CONSULTED`: among the
+three index-lookup causes it wins over either line-based cause whenever more
+than one condition holds on the same finding.
 """
 
 NO_LINE_SUPPLIED = "no_line_supplied"
 """The scanner's raw record carried no line number at all (`line_range is None`).
 
-Checked second, after `UNPARSEABLE_FILE`.
+Checked third, after `INDEX_NOT_CONSULTED` and `UNPARSEABLE_FILE`.
 """
 
 LINE_UNMATCHED = "line_unmatched"
@@ -86,7 +126,9 @@ it also absorbs the third state `_resolve_kubernetes` names: no index was
 supplied at all. That case is distinguishable only by the adapter, which does
 not record which of its three branches returned `<unresolved>`, and no caller
 omits the index on a Kubernetes run - so the conflation is a limit of what this
-module can see rather than one it chooses.
+module can see rather than one it chooses. This is reached only for a
+`kubernetes`-platform finding: `INDEX_NOT_CONSULTED` is checked first and
+claims every other platform (module docstring).
 """
 
 
@@ -114,6 +156,7 @@ class ScannerCoverage:
     dropped: tuple[tuple[str, str], ...]
     identity_resolved: int
     identity_unresolved: int
+    unresolved_index_not_consulted: int
     unresolved_unparseable_file: int
     unresolved_no_line_supplied: int
     unresolved_line_unmatched: int
@@ -168,6 +211,7 @@ class ScannerCoverage:
             "identity_resolved": self.identity_resolved,
             "identity_unresolved": self.identity_unresolved,
             "identity_resolution_rate": self.identity_resolution_rate,
+            "unresolved_index_not_consulted": self.unresolved_index_not_consulted,
             "unresolved_unparseable_file": self.unresolved_unparseable_file,
             "unresolved_no_line_supplied": self.unresolved_no_line_supplied,
             "unresolved_line_unmatched": self.unresolved_line_unmatched,
@@ -226,24 +270,38 @@ class RetentionReport:
 
 
 def _unresolved_cause(finding: NormalizedFinding, unparseable: frozenset[str]) -> str:
-    """Which of the three causes one unresolved-identity finding is assigned to.
+    """Which of the four causes one unresolved-identity finding is assigned to.
 
-    Unparseable-file is checked first and wins whenever more than one
-    condition holds on the same finding - the file never entered the resource
-    index, so whatever `line_range` says is moot once that is true (module
-    docstring; the one corpus v0 finding, a `KSV-0117` on a
-    `metadata-db/templates` Helm template, that is both unparseable and
-    lineless). Between the two line-based causes, an absent `line_range` is
-    checked before an unmatched one - a finding with no line at all was never
-    going to reach `ResourceIndex.by_line`, so `LINE_UNMATCHED` covers the cases
-    where a line was present to look up, rather than merely absent. It does not
-    claim the lookup itself ran: an adapter given no index returns
-    `<unresolved>` without consulting one, and nothing in `NormalizedFinding`
-    distinguishes that from a lookup that missed (see `LINE_UNMATCHED`).
-    Assigning to exactly one cause is what keeps `unresolved_unparseable_file +
+    `INDEX_NOT_CONSULTED` is checked first, ahead of every index-lookup cause,
+    and wins outright whenever `finding.platform != "kubernetes"` (whole-branch
+    review Finding 2): the three causes below all describe a reason a
+    Kubernetes resource-index lookup failed, and none of them is true for a
+    finding whose resolution never attempted one - Terraform resolution in
+    every adapter is field-based and never calls `ResourceIndex.by_line` or
+    `.by_address` at all. Checking platform first, before file_path/line_range
+    are even inspected, is what stops a Terraform finding's incidental
+    `unparseable`/`line_range` state from being misread as an index miss it
+    never had a chance to be.
+
+    Among the three Kubernetes-only causes, unparseable-file is checked next
+    and wins whenever more than one condition holds on the same finding - the
+    file never entered the resource index, so whatever `line_range` says is
+    moot once that is true (module docstring; the one corpus v0 finding, a
+    `KSV-0117` on a `metadata-db/templates` Helm template, that is both
+    unparseable and lineless). Between the two line-based causes, an absent
+    `line_range` is checked before an unmatched one - a finding with no line at
+    all was never going to reach `ResourceIndex.by_line`, so `LINE_UNMATCHED`
+    covers the cases where a line was present to look up, rather than merely
+    absent. It does not claim the lookup itself ran: an adapter given no index
+    returns `<unresolved>` without consulting one, and nothing in
+    `NormalizedFinding` distinguishes that from a lookup that missed (see
+    `LINE_UNMATCHED`). Assigning to exactly one cause is what keeps
+    `unresolved_index_not_consulted + unresolved_unparseable_file +
     unresolved_no_line_supplied + unresolved_line_unmatched` equal to the
     unresolved total instead of double counting.
     """
+    if finding.platform != "kubernetes":
+        return INDEX_NOT_CONSULTED
     if finding.file_path in unparseable:
         return UNPARSEABLE_FILE
     if finding.line_range is None:
@@ -281,6 +339,7 @@ def _coverage_for(
         dropped=result.dropped,
         identity_resolved=identity_resolved,
         identity_unresolved=identity_unresolved,
+        unresolved_index_not_consulted=causes[INDEX_NOT_CONSULTED],
         unresolved_unparseable_file=causes[UNPARSEABLE_FILE],
         unresolved_no_line_supplied=causes[NO_LINE_SUPPLIED],
         unresolved_line_unmatched=causes[LINE_UNMATCHED],

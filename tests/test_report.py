@@ -201,6 +201,40 @@ def test_a_line_matching_no_span_is_the_line_unmatched_cause_not_no_line_supplie
     assert coverage.unresolved_unparseable_file == 0
 
 
+def test_a_terraform_platform_unresolved_finding_is_index_not_consulted() -> None:
+    """Whole-branch review Finding 2: an unresolved identity on a platform whose
+    resolution never touches the Kubernetes resource index at all - modeled
+    here on tfsec's own failure mode (`_resolve_terraform` falls through to
+    `<unresolved>` for a `resource` shape it does not recognise, e.g. the
+    three-dot `module.database.aws_db_instance.default`) - must not be
+    misclassified under one of the three index-lookup causes just because it
+    happens to carry a real, parseable file and a real `line_range`. Neither
+    was ever consulted: Terraform resolution is field-based in every adapter
+    and never calls `ResourceIndex.by_line`. Without the platform check, this
+    exact finding (a parseable-looking file, a supplied line, not in
+    `unparseable`) would fall through to `LINE_UNMATCHED` - which is precisely
+    the mislabelling Finding 2 reported. Constructed directly since corpus v0
+    measures zero population for this cause (tfsec resolves 119/119).
+    """
+    tfsec_style_unresolved = _finding(
+        scanner="tfsec",
+        platform="terraform",
+        identity_kind="unresolved",
+        resource_identity=identity.UNRESOLVED,
+        file_path="db-app.tf",
+        line_range=(117, 134),
+    )
+    result = AdapterResult(findings=(tfsec_style_unresolved,), dropped=())
+
+    report = build_report({("tfsec", "terraform"): result}, _EMPTY_DEDUPE, frozenset())
+    coverage = report.scanners[("tfsec", "terraform")]
+
+    assert coverage.unresolved_index_not_consulted == 1
+    assert coverage.unresolved_unparseable_file == 0
+    assert coverage.unresolved_no_line_supplied == 0
+    assert coverage.unresolved_line_unmatched == 0
+
+
 # --- R27: tuple-keyed mapping, checkov surviving both platforms --------------------
 
 
@@ -402,18 +436,21 @@ def test_real_corpus_only_trivy_kubernetes_has_unresolved_identities() -> None:
 
 def test_real_corpus_unresolved_causes_sum_to_the_unresolved_total() -> None:
     """Single-assignment, not precedence: each unresolved finding is assigned to
-    exactly one of the three cause buckets, so they sum to the total with no
-    double count and no residual. This holds under ANY precedence ordering
-    among the three (`_unresolved_cause` always returns exactly one string),
-    so it cannot by itself prove which cause a specific finding lands in -
-    that is what `test_real_corpus_unparseable_file_precedence_over_missing_line`
-    below checks, as a separate and independent claim.
+    exactly one of the four cause buckets (whole-branch review Finding 2 added
+    `unresolved_index_not_consulted`, the platform-level fourth cause), so they
+    sum to the total with no double count and no residual. This holds under
+    ANY precedence ordering among the four (`_unresolved_cause` always returns
+    exactly one string), so it cannot by itself prove which cause a specific
+    finding lands in - that is what
+    `test_real_corpus_unparseable_file_precedence_over_missing_line` below
+    checks, as a separate and independent claim.
     """
     report = _real_report()
     coverage = report.scanners[("trivy", "kubernetes")]
     assert coverage.identity_unresolved > 0  # non-vacuous
     assert (
-        coverage.unresolved_unparseable_file
+        coverage.unresolved_index_not_consulted
+        + coverage.unresolved_unparseable_file
         + coverage.unresolved_no_line_supplied
         + coverage.unresolved_line_unmatched
         == coverage.identity_unresolved
@@ -590,6 +627,7 @@ def test_module_level_conformance_guard_exists() -> None:
         dropped=(),
         identity_resolved=1,
         identity_unresolved=0,
+        unresolved_index_not_consulted=0,
         unresolved_unparseable_file=0,
         unresolved_no_line_supplied=0,
         unresolved_line_unmatched=0,
