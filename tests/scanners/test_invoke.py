@@ -164,6 +164,28 @@ def test_resolve_exe_never_falls_back_to_a_bare_name(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------
 
 
+def test_scanner_timeout_seconds_agrees_with_harvests_own_constant() -> None:
+    """`invoke.py`'s `SCANNER_TIMEOUT_SECONDS` is deliberately re-derived from
+    `tools/harvest/run.py`'s own constant of the same name, not imported -
+    `src/` may not import `tools/harvest/`
+    (`tests/test_architecture.py::test_harvest_does_not_define_a_normalized_finding`
+    and the module docstrings of both files name the same isolation rule). A
+    *test* may import both, though: the architecture guard binds `src/`, not
+    `tests/`, and `tests/harvest/test_run.py` already imports
+    `tools.harvest.run` for its own assertions. The two constants are meant to
+    stay in step - "nothing about the timeout differs between a harvest run
+    and one made here" (`invoke.py`'s own docstring) - so this is the same
+    restated-constant guard `tests/test_finding.py::
+    test_the_unmapped_prefix_agrees_with_the_taxonomy_module` already applies
+    to `finding.UNMAPPED_PREFIX`/`taxonomy.UNMAPPED_PREFIX` (whole-branch
+    review Finding 6), shaped identically: an unguarded duplicate is one edit
+    away from a silent timeout drift between the two call sites.
+    """
+    from tools.harvest.run import SCANNER_TIMEOUT_SECONDS as HARVEST_SCANNER_TIMEOUT_SECONDS
+
+    assert invoke.SCANNER_TIMEOUT_SECONDS == HARVEST_SCANNER_TIMEOUT_SECONDS
+
+
 def test_scanner_argv_matches_the_proven_vectors() -> None:
     assert invoke.SCANNER_ARGV["checkov"] == (
         "--output",
