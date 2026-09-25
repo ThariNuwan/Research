@@ -129,8 +129,8 @@
       },
       "declared_context": {
         "aws_s3_bucket.logs": {
-          "sensitivity": 2,
-          "criticality": 2
+          "sensitivity": 3,
+          "criticality": 3
         }
       },
       "expected": {
@@ -949,7 +949,7 @@
       "case_low": "s3-logs-encryption-ok",
       "expected_rank_order": "high_above_low",
       "expected_score_delta_sign": "positive",
-      "rationale": "Direction: s3-data-encryption-gap ranks above s3-logs-encryption-ok. Both are aws_s3_bucket resources sharing storage-public-accessibility, storage-data-lifecycle-hygiene, storage-data-recoverability and storage-logging-audit; aws_s3_bucket.data additionally carries storage-key-management-cmk and storage-encryption-at-rest, which aws_s3_bucket.logs does not draw from any of the three scanners. The class difference is exactly {storage-key-management-cmk, storage-encryption-at-rest} - both encryption classes and nothing else differs, so the pair isolates encryption risk."
+      "rationale": "Direction: s3-data-encryption-gap ranks above s3-logs-encryption-ok. Both are aws_s3_bucket resources sharing storage-public-accessibility, storage-data-lifecycle-hygiene, storage-data-recoverability and storage-logging-audit; aws_s3_bucket.data additionally carries storage-key-management-cmk and storage-encryption-at-rest, which aws_s3_bucket.logs does not draw from any of the three scanners. The class difference is exactly {storage-key-management-cmk, storage-encryption-at-rest} - both encryption classes. Declared context is held equal at sensitivity 3, criticality 3 on both sides, so nothing else differs and the pair isolates encryption risk."
     },
     {
       "pair_id": "encryption-s3-financials",
@@ -958,7 +958,7 @@
       "case_low": "s3-logs-encryption-ok",
       "expected_rank_order": "high_above_low",
       "expected_score_delta_sign": "positive",
-      "rationale": "Direction: s3-financials-encryption-gap ranks above s3-logs-encryption-ok. Same shared base of four classes as encryption-s3-data, with aws_s3_bucket.financials additionally carrying storage-key-management-cmk and storage-encryption-at-rest. The class difference is the same {storage-key-management-cmk, storage-encryption-at-rest} as the first encryption pair, which is consistent rather than a conflict since both pairs test the same factor; s3-logs-encryption-ok is deliberately reused as the low side of both pairs per the task dispatch rather than authoring a near-duplicate low case."
+      "rationale": "Direction: s3-financials-encryption-gap ranks above s3-logs-encryption-ok. Same shared base of four classes as encryption-s3-data, with aws_s3_bucket.financials additionally carrying storage-key-management-cmk and storage-encryption-at-rest. The class difference is the same {storage-key-management-cmk, storage-encryption-at-rest} as the first encryption pair, which is consistent rather than a conflict since both pairs test the same factor. Declared context is held equal at sensitivity 3, criticality 3 on both sides (aws_s3_bucket.financials and aws_s3_bucket.logs alike), so the pair isolates encryption risk rather than mixing in a context delta; s3-logs-encryption-ok is deliberately reused as the low side of both pairs per the task dispatch rather than authoring a near-duplicate low case."
     },
     {
       "pair_id": "sensitivity-s3-financials",
