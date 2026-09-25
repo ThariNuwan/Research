@@ -189,9 +189,13 @@ def test_kubernetes_identity_resolution_rate_matches_the_index_measured_independ
     adapter grading its own homework (mirrors `test_checkov.py`'s reasoning).
 
     Measured on this fixture: 313 of 332 resolve (94.3%), 217 of those to a
-    container. The 19 misses are 15 in the unparseable `metadata-db/templates/`
-    Helm template (a `StartLine` present but matching no span) plus 4 `KSV-0117`
-    findings with no `StartLine` at all.
+    container. The 19 misses are 15 on files under the unparseable
+    `metadata-db/templates/` Helm template (the file itself failed to parse,
+    so `build_index` produced no span for it to fall through the by-line
+    lookup against - the `report.py` `UNPARSEABLE_FILE` cause, not
+    `LINE_UNMATCHED`, which is reserved for a parseable file whose line
+    genuinely matched no indexed span) plus 4 `KSV-0117` findings with no
+    `StartLine` at all.
     """
     index = _kubernetes_index()
     raw = _raw_misconfigurations("trivy-kubernetes.json")
@@ -248,7 +252,7 @@ def test_a_known_kubernetes_finding_resolves_to_its_container() -> None:
     assert "[container=batch-check]" in finding.resource_identity
 
 
-def test_a_line_matching_no_span_is_unresolved_and_counted() -> None:
+def test_a_finding_on_an_unparseable_file_is_unresolved_and_counted() -> None:
     """One of the 15 unparseable-Helm-template misses: `KSV-0001` on
     `metadata-db/templates/deployment.yaml` carries a real `StartLine`, but the
     file is one of the 4 Helm templates `build_index` could not parse (§4), so
