@@ -62,6 +62,22 @@
       "path": "corpus/vendor/kubernetes-goat/scenarios",
       "scan_root": "corpus/vendor/kubernetes-goat/scenarios",
       "note": "A directory, not a file: 24 files across 15 scenario directories. 16 are plain Kubernetes manifests (Deployment, Job, ClusterRole/RoleBinding, Kyverno policy); the other 8 are the metadata-db Helm chart. Measured across those 8 rather than assumed: Chart.yaml and values.yaml carry no Go template syntax and parse as plain YAML; 4 are templated YAML manifests a plain YAML parser cannot read (templates/deployment.yaml, templates/ingress.yaml, templates/service.yaml, templates/tests/test-connection.yaml); 2 are not YAML at all (templates/NOTES.txt, templates/_helpers.tpl). A skip list covering all 8 would silently drop two parseable files including the chart metadata. Helm is in conceptual scope but not the evaluation focus."
+    },
+    {
+      "id": "authored-iam-privilege",
+      "platform": "terraform",
+      "category": "iam",
+      "path": "corpus/authored/iam_privilege.tf",
+      "scan_root": "corpus/authored",
+      "note": "Hand-crafted. Three aws_iam_policy resources differing only in policy breadth. Corpus v0 cannot form a privilege pair: every genuine IAM policy type in it is single-instance (S2 design section 1). Measured on this pin: a single narrow S3 read action on a narrow resource ARN (the original draft) drew zero findings from all three scanners - a correctly-scoped policy is a true negative, not a defect - so narrow_scope grants sts:GetSessionToken instead, an action AWS itself only permits with Resource '*' (not a breadth choice, an IAM constraint), which checkov's credentials-exposure check (CKV_AWS_287) still flags once. Finding counts across the three resources are 1 (narrow), 2 (moderate), 10 (broad)."
+    },
+    {
+      "id": "authored-storage-severity",
+      "platform": "terraform",
+      "category": "storage",
+      "path": "corpus/authored/storage_severity.tf",
+      "scan_root": "corpus/authored",
+      "note": "Hand-crafted. Corpus v0 has zero resource pairs sharing an identical issue-class set while differing in maximum severity, because severity co-varies with which rule fires (S2 design section 1). Verified on this pin: aws_ebs_volume.unencrypted_scratch (no `encrypted` attribute, mirroring TerraGoat's own web_host_storage) draws AVD-AWS-0027/AWS-0027 at LOW; aws_s3_bucket.no_cmk (no encryption block) draws AVD-AWS-0132/AWS-0132 at HIGH; both rules map to storage-key-management-cmk."
     }
   ]
 }

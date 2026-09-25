@@ -180,7 +180,19 @@ def test_manifest_and_directory_name_the_same_six_fixtures() -> None:
     glob that matched nothing would make a subset test vacuous.
     """
     scanners = _load(SCANNER_LOCK)["scanners"]
-    scan_roots = {case["scan_root"] for case in _load(CORPUS_LOCK)["cases"]}
+    # Scoped to `corpus/vendor/` scan roots, not every case in the lockfile: this
+    # manifest is corpus v0's own capture record (both its `scan_root` values are
+    # `corpus/vendor/...`, measured against `artifacts/scanner-behavior.json`
+    # itself), and S2 Task 2 added a third scan root, `corpus/authored`, whose
+    # captures live under `tests/harvest/fixtures/authored/` and were never meant
+    # to be part of this six-capture manifest. Deriving from every case
+    # indiscriminately would make this test track corpus.lock.json's total size
+    # rather than the fixed thing it is actually checking.
+    scan_roots = {
+        case["scan_root"]
+        for case in _load(CORPUS_LOCK)["cases"]
+        if case["scan_root"].startswith("corpus/vendor/")
+    }
     derived = len(scanners) * len(scan_roots)
     assert derived == EXPECTED_CAPTURE_COUNT, (
         f"{len(scanners)} scanners x {len(scan_roots)} distinct scan roots is {derived} "

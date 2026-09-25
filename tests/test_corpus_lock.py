@@ -360,8 +360,16 @@ def test_the_four_terraform_cases_share_one_scan_root() -> None:
 
     Counts compared against module-level literals, so an emptied `cases` array
     cannot satisfy them: `len([]) == 0` would agree with a derived count.
+
+    Filtered by `scan_root`, not by `platform == "terraform"`: S2 Task 2 added two
+    more terraform-platform cases (`authored-iam-privilege`,
+    `authored-storage-severity`) that deliberately declare a different scan root,
+    `corpus/authored` - a second, unrelated directory, not a fifth file dropped
+    into TerraGoat's. A platform-wide filter would fold them into `terraform` here
+    and immediately fail the very "one shared root" invariant this test exists to
+    pin for the four TerraGoat cases specifically.
     """
-    terraform = [case for case in _lock()["cases"] if case["platform"] == "terraform"]
+    terraform = [case for case in _lock()["cases"] if case["scan_root"] == TERRAFORM_SCAN_ROOT]
     assert len(terraform) == TERRAFORM_CASE_COUNT, (
         f"expected {TERRAFORM_CASE_COUNT} terraform cases, found {len(terraform)}: "
         f"{sorted(case['id'] for case in terraform)}"
