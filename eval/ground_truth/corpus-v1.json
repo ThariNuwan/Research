@@ -1,0 +1,928 @@
+{
+  "schema_version": 1,
+  "description": "Corpus v1 - contrastive pairs and scenarios. Authored in S2 before any scoring engine existed; see the design spec section 0.",
+  "cases": [
+    {
+      "case_id": "sg-default-low-exposure",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_security_group.default": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group.default",
+            "issue_class": "networking-config-hygiene"
+          }
+        ],
+        "notes": "aws_security_group.default is declared in db-app.tf:117-134, not ec2.tf - verified against real adapter output over tests/harvest/fixtures/*-terraform.json (checkov CKV_AWS_23, trivy AWS-0099, tfsec AVD-AWS-0099, all mapping to networking-config-hygiene; no ingress/egress class). Serves as the low side of the exposure pair against sg-web-node-high-exposure: the group carries no rule of its own, only a naming-hygiene finding."
+      }
+    },
+    {
+      "case_id": "sg-web-node-high-exposure",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/ec2.tf"
+      },
+      "declared_context": {
+        "aws_security_group.web-node": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group.web-node",
+            "issue_class": "networking-config-hygiene"
+          },
+          {
+            "resource_identity": "aws_security_group.web-node",
+            "issue_class": "networking-egress-exposure"
+          },
+          {
+            "resource_identity": "aws_security_group.web-node",
+            "issue_class": "networking-ingress-exposure"
+          }
+        ],
+        "notes": "aws_security_group.web-node is declared in ec2.tf:77-115, with three literal 0.0.0.0/0 cidr_blocks (ingress 22, ingress 80, egress) - measured over real adapter output: checkov CKV_AWS_23/382/24/260, trivy AWS-0099/0104/0107/0124, tfsec AVD-AWS-0099/0104/0107/0124. Serves as the high side of the exposure pair against sg-default-low-exposure."
+      }
+    },
+    {
+      "case_id": "sgr-ingress-low-exposure",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_security_group_rule.ingress": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group_rule.ingress",
+            "issue_class": "networking-config-hygiene",
+            "unresolved_factors": [
+              "exposure"
+            ],
+            "excluded_from_quality_claims": true
+          }
+        ],
+        "notes": "aws_security_group_rule.ingress is declared in db-app.tf:136-143. Its cidr_blocks value at db-app.tf:141 is `cidr_blocks = [\"${aws_vpc.web_vpc.cidr_block}\"]` - a reference to another resource's attribute, not a literal CIDR. The bounded extractor's closed list of exposure patterns is literals-only (design spec section 3 / CLAUDE.md's context- extraction layer), so Public Exposure cannot be resolved for this finding from the IaC alone; it is recorded unresolved rather than defaulted to low. Measured over real adapter output: checkov CKV_AWS_23, trivy AWS-0124, tfsec AVD-AWS-0124, all mapping to networking-config-hygiene - no ingress-exposure class is emitted for this resource by any of the three scanners, so the unresolved state is carried purely as context, not asserted as a scanner finding this case does not have."
+      }
+    },
+    {
+      "case_id": "sgr-egress-high-exposure",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_security_group_rule.egress": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group_rule.egress",
+            "issue_class": "networking-config-hygiene"
+          },
+          {
+            "resource_identity": "aws_security_group_rule.egress",
+            "issue_class": "networking-egress-exposure"
+          }
+        ],
+        "notes": "aws_security_group_rule.egress is declared in db-app.tf:145-152, with a literal cidr_blocks = [\"0.0.0.0/0\"] at line 150. Measured over real adapter output: checkov CKV_AWS_23/382, trivy AWS-0104/0124, tfsec AVD-AWS-0104/0124. Serves as the high side of the exposure pair against sgr-ingress-low-exposure."
+      }
+    },
+    {
+      "case_id": "s3-logs-encryption-ok",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.logs": {
+          "sensitivity": 2,
+          "criticality": 2
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-logging-audit"
+          }
+        ],
+        "notes": "aws_s3_bucket.logs is declared in s3.tf:113-141. Measured over real adapter output, this bucket draws no storage-key-management-cmk and no storage-encryption-at-rest finding from any of the three scanners - unlike aws_s3_bucket.data/financials/operations/data_science, none of which is SSE-KMS-configured. It is the low side of both encryption pairs (s3-data-encryption-gap, s3-financials-encryption-gap); reused rather than duplicated per the task dispatch's own instruction."
+      }
+    },
+    {
+      "case_id": "s3-data-encryption-gap",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.data is declared in s3.tf:1-21. storage-encryption-at-rest is tfsec-only in corpus v0 (AVD-AWS-0088; neither checkov nor trivy's terraform rule set maps a rule to that class for this fixture). High side of the encryption pair against s3-logs-encryption-ok."
+      }
+    },
+    {
+      "case_id": "s3-financials-encryption-gap",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.financials": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.financials is declared in s3.tf:42-63, same issue-class shape as aws_s3_bucket.data. High side of the second encryption pair against s3-logs-encryption-ok."
+      }
+    },
+    {
+      "case_id": "s3-financials-sensitivity-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.financials": {
+          "sensitivity": 5,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-financials-encryption-gap - differs only in declared sensitivity (5 here, 1 in s3-financials-sensitivity-low), criticality held equal at 3. The cleanest isolation of Resource Sensitivity available: everything else about the case is identical."
+      }
+    },
+    {
+      "case_id": "s3-financials-sensitivity-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.financials": {
+          "sensitivity": 1,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-financials-sensitivity-high - differs only in declared sensitivity (1 here, 5 there), criticality held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-operations-sensitivity-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.operations": {
+          "sensitivity": 4,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.operations is declared in s3.tf:65-87. Same resource, same code, same findings as s3-operations-sensitivity-low - differs only in declared sensitivity (4 here, 1 there), criticality held equal at 3. Second sensitivity pair, independent of the financials resource."
+      }
+    },
+    {
+      "case_id": "s3-operations-sensitivity-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.operations": {
+          "sensitivity": 1,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-operations-sensitivity-high - differs only in declared sensitivity (1 here, 4 there), criticality held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-data-criticality-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": {
+          "sensitivity": 3,
+          "criticality": 5
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-data-encryption-gap and s3-data-criticality-low - differs from the latter only in declared criticality (5 here, 1 there), sensitivity held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-data-criticality-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": {
+          "sensitivity": 3,
+          "criticality": 1
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-data-criticality-high - differs only in declared criticality (1 here, 5 there), sensitivity held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-data-science-criticality-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data_science": {
+          "sensitivity": 3,
+          "criticality": 4
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.data_science is declared in s3.tf:89-111. Measured over real adapter output, this bucket draws no storage-logging-audit finding (unlike data/financials/operations) - neither checkov's CKV_AWS_18 nor trivy's AWS-0089 fires on it. Same resource, same code, same findings as s3-data-science-criticality-low - differs only in declared criticality (4 here, 1 there), sensitivity held equal at 3. Second criticality pair, independent of the data resource."
+      }
+    },
+    {
+      "case_id": "s3-data-science-criticality-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data_science": {
+          "sensitivity": 3,
+          "criticality": 1
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-data-science-criticality-high - differs only in declared criticality (1 here, 4 there), sensitivity held equal at 3."
+      }
+    },
+    {
+      "case_id": "iam-s3-bucket-scope",
+      "platform": "terraform",
+      "domain": "iam",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_iam_policy.s3_bucket_scope": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_iam_policy.s3_bucket_scope",
+            "issue_class": "iam-overpermissive-policy"
+          }
+        ],
+        "notes": "corpus/authored/iam_privilege.tf:1-11. Narrowest of the three nested privilege policies - s3:* scoped to one bucket ARN prefix. Measured over real adapter output on tests/harvest/fixtures/authored/*-terraform.json: tfsec AVD-AWS-0057 and trivy AWS-0345, both mapping to iam-overpermissive-policy; checkov flags nothing on this resource. 2 findings total, matching tools/corpus.lock.json's authored-iam-privilege note."
+      }
+    },
+    {
+      "case_id": "iam-s3-account-scope",
+      "platform": "terraform",
+      "domain": "iam",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_iam_policy.s3_account_scope": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_iam_policy.s3_account_scope",
+            "issue_class": "iam-overpermissive-policy"
+          },
+          {
+            "resource_identity": "aws_iam_policy.s3_account_scope",
+            "issue_class": "iam-privilege-escalation-sensitive-perms"
+          }
+        ],
+        "notes": "corpus/authored/iam_privilege.tf:13-23. Middle of the three nested privilege policies - s3:* on all buckets (Resource = \"*\"), one action family, breadth-only escalation from s3-bucket-scope. Measured over real adapter output: checkov CKV_AWS_288/289/355/290, tfsec AVD-AWS-0057 (x2), trivy AWS-0345 - 7 findings total, matching the corpus lockfile note. Its issue-class set {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms} is a proper superset of s3-bucket-scope's {iam-overpermissive-policy} and a proper subset of unrestricted-scope's - the nesting property tests/test_authored_corpus.py pins as a regression. Serves as the shared middle case for both privilege pairs (s3_bucket_scope < s3_account_scope < unrestricted_scope)."
+      }
+    },
+    {
+      "case_id": "iam-unrestricted-scope",
+      "platform": "terraform",
+      "domain": "iam",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_iam_policy.unrestricted_scope": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "unmapped:checkov:CKV_AWS_62"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "iam-privilege-escalation-sensitive-perms"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "iam-overpermissive-policy"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "unmapped:checkov:CKV_AWS_63"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "unmapped:checkov:CKV2_AWS_40"
+          }
+        ],
+        "notes": "corpus/authored/iam_privilege.tf:25-35. Broadest of the three - Action = \"*\" on Resource = \"*\", the ceiling of the same action family. Measured over real adapter output: checkov CKV_AWS_62/287/288/289/286/63/355/290 and CKV2_AWS_40, tfsec AVD-AWS-0057 (x2) - 11 findings total, matching the corpus lockfile note. Three of checkov's rule ids (CKV_AWS_62, CKV_AWS_63, CKV2_AWS_40) take the explicit unmapped:checkov:<rule_id> class per taxonomy.json's fallback rather than a guessed class - carried here exactly as the taxonomy resolves them, not collapsed into iam-overpermissive-policy."
+      }
+    },
+    {
+      "case_id": "ec2-db-app-compute",
+      "platform": "terraform",
+      "domain": "compute",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_instance.db_app": {
+          "sensitivity": 3,
+          "criticality": 4
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_instance.db_app",
+            "issue_class": "compute-reliability-observability"
+          },
+          {
+            "resource_identity": "aws_instance.db_app",
+            "issue_class": "compute-instance-metadata-hardening"
+          },
+          {
+            "resource_identity": "aws_instance.db_app",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_instance.db_app is declared in db-app.tf:243-413. Measured over real adapter output: checkov CKV_AWS_126/135/79/8, trivy AWS-0028/0131, tfsec AVD-AWS-0131/0028."
+      }
+    },
+    {
+      "case_id": "ec2-web-host-compute",
+      "platform": "terraform",
+      "domain": "compute",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/ec2.tf"
+      },
+      "declared_context": {
+        "aws_instance.web_host": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "iam-hardcoded-secrets"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "compute-reliability-observability"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "compute-instance-metadata-hardening"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "storage-encryption-at-rest"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "iam-authentication-controls"
+          }
+        ],
+        "notes": "aws_instance.web_host is declared in ec2.tf:1-32; its user_data block hardcodes an AWS access key pair at ec2.tf:9-19 (fake AKIAIOSFODNN7EXAMAAA credential, flagged CRITICAL by trivy AWS-0029 and tfsec AVD-AWS-0029). Measured over real adapter output: checkov CKV_AWS_46/126/135/79/8, CKV2_AWS_41, trivy AWS-0028/0029/0131, tfsec AVD-AWS-0131/0028/0029. Orderable against ec2-db-app-compute and ebs-web-host-storage-compute by both finding count (5 distinct classes) and the one CRITICAL-severity row."
+      }
+    },
+    {
+      "case_id": "ebs-web-host-storage-compute",
+      "platform": "terraform",
+      "domain": "compute",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/ec2.tf"
+      },
+      "declared_context": {
+        "aws_ebs_volume.web_host_storage": {
+          "sensitivity": null,
+          "criticality": 2
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_ebs_volume.web_host_storage",
+            "issue_class": "storage-encryption-at-rest",
+            "defaulted_factors": [
+              "sensitivity"
+            ],
+            "excluded_from_quality_claims": true
+          },
+          {
+            "resource_identity": "aws_ebs_volume.web_host_storage",
+            "issue_class": "storage-key-management-cmk",
+            "defaulted_factors": [
+              "sensitivity"
+            ],
+            "excluded_from_quality_claims": true
+          }
+        ],
+        "notes": "aws_ebs_volume.web_host_storage is declared in ec2.tf:34-51, the unencrypted companion volume to aws_instance.web_host. Measured over real adapter output: checkov CKV_AWS_3/189, CKV2_AWS_2, trivy AWS-0026/0027, tfsec AVD-AWS-0026/0027 - 2 distinct classes. declared_context.sensitivity is deliberately null here (PLAN Q4's missing-declared-value): this exercises the default-fallback path, so both findings are held out of prioritization-quality claims. The smallest of the three compute cases by class count, orderable below ec2-db-app-compute and ec2-web-host-compute."
+      }
+    },
+    {
+      "case_id": "k8s-goat-home-workload",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "https://github.com/madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/kubernetes-goat-home/deployment.yaml"
+      },
+      "declared_context": {
+        "apps/v1/Deployment/default/kubernetes-goat-home-deployment": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-host-isolation-breakout"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-image-supply-chain"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-linux-capabilities"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-privileged-execution"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-securitycontext-hardening"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-workload-reliability"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "networking-isolation-segmentation"
+          }
+        ],
+        "notes": "The Kubernetes-Goat home page Deployment, scenarios/kubernetes-goat-home/deployment.yaml. Measured over real adapter output (checkov + trivy pooled over the kubernetes scan root, index-resolved via ResourceIndex.by_address): the full 7-class workload-level set every top-level Deployment/DaemonSet/Job in this corpus carries. Richest of the three containers cases by class count; the public- facing entry point of the scenario set."
+      }
+    },
+    {
+      "case_id": "k8s-kube-bench-node-workload",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "https://github.com/madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/kube-bench-security/node-job.yaml"
+      },
+      "declared_context": {
+        "batch/v1/Job/default/kube-bench-node": {
+          "sensitivity": 2,
+          "criticality": 2
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-host-isolation-breakout"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-image-supply-chain"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-linux-capabilities"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-privileged-execution"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-securitycontext-hardening"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-workload-reliability"
+          }
+        ],
+        "notes": "The kube-bench node-check Job, scenarios/kube-bench-security/node-job.yaml. Measured over real adapter output: 6 distinct classes - the same workload-level set as k8s-goat-home-workload minus networking-isolation-segmentation, which does not fire on this Job. A batch security-tooling job rather than a user-facing service; orderable below k8s-goat-home-workload by class count and above k8s-internal-proxy-api-container."
+      }
+    },
+    {
+      "case_id": "k8s-internal-proxy-api-container",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "https://github.com/madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/internal-proxy/deployment.yaml"
+      },
+      "declared_context": {
+        "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-image-supply-chain"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-linux-capabilities"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-privileged-execution"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-securitycontext-hardening"
+          }
+        ],
+        "notes": "The internal-api container within the internal-proxy Deployment, scenarios/internal-proxy/deployment.yaml, resolved via ResourceIndex.by_address(container=\"internal-api\"). Measured over real adapter output: 4 distinct classes - container-scoped findings only, missing containers-workload-reliability and networking-isolation-segmentation which attach to the workload as a whole rather than this one container. Narrowest of the three containers cases by class count, and an internal (non-public) service rather than the goat-home entry point."
+      }
+    }
+  ],
+  "contrastive_pairs": [],
+  "scenarios": []
+}
