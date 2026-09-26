@@ -1,6 +1,6 @@
 # S2 — Evaluation corpus v1 and its ground truth (design)
 
-**Status:** awaiting review
+**Status:** approved and implemented (S2 closed 2026-09-26); §1.1 and §6 carry errata found during implementation
 **Author:** Jayathissa E.A.T.N. (258243J)
 **Date:** 2026-09-25
 **Scope:** Sub-project S2 — corpus v1 (contrastive pairs + scenarios) and the ground-truth document they are recorded in. No scoring, no harness.
