@@ -483,7 +483,7 @@ Expect non-zero exit codes: all three scanners exit non-zero **when they find mi
 - the three privilege cases are distinguishable: the set of issue classes or the count of findings differs across `narrow_scope`, `moderate_scope`, `broad_scope`;
 - corpus v0's five fixture files are byte-identical to their committed state (`git diff --quiet -- tests/harvest/fixtures/*.json` equivalent, or compare against `git show HEAD:<path>`). This is the guard that the one scanning task did not touch the control.
 
-- [ ] **Step 6: Gates and commit.** Subject: `S2: hand-crafted privilege and severity cases`.
+- [ ] **Step 6: Gates and commit.** Subject: `S2: hand-crafted privilege cases` (severity was dropped mid-task; see spec §1).
 
 ---
 
@@ -697,7 +697,7 @@ Implements spec §6 and §7.
 
 - [ ] **Step 2: Confirm each gate can fail.** Every gate describes already-authored data, so none can start red. For each, **mutate the data, confirm the gate fails, revert, confirm it passes, and report both exit codes.** A green suite proves the data passes its gates; only a mutation proves the gates could fail.
 
-- [ ] **Step 3: Update `CLAUDE.md`'s Current state** — S2 complete; S3b and S4 next. Add: the corpus v1 counts (cases, 12 pairs, 5 scenarios); that **privilege and severity are hand-crafted because corpus v0 cannot isolate them**, with the one-line reason for each; that the oracle reviewer is a blinded LLM with agreement reported as a number, and the pre-registered rule that `disagree` scenarios are excluded from the headline figure; and that single-factor purity is an **authored judgement**, not machine-proven, because no class-to-factor mapping exists.
+- [ ] **Step 3: Update `CLAUDE.md`'s Current state** — S2 complete; S3b and S4 next. Add: the corpus v1 counts (26 cases, 10 pairs, 5 scenarios); that **privilege and exposure each need one hand-crafted pair because corpus v0 cannot isolate them**, and that **`severity` has no contrastive pair at all** because it is not pair-testable by any construction, with the one-line reason for each; that the oracle reviewer is a blinded LLM with agreement reported as a number, and the pre-registered rule that `disagree` scenarios are excluded from the headline figure; and that single-factor purity is an **authored judgement**, not machine-proven, because no class-to-factor mapping exists.
 
 - [ ] **Step 4: Write the handoff**, following `docs/superpowers/specs/2026-09-19-s1-handoff.md`'s shape — numbered risks, each with what it costs if ignored. Carry at least: purity being an authored judgement (spec residual risk 1); the reviewer sharing a model family with the author's tooling; the second fixture directory; that `expected_band` is set only on flagged findings so S4's sensitivity analysis must exclude them; and that S1's rubric citation audit is **still outstanding** and blocks quoting any `source` string.
 
