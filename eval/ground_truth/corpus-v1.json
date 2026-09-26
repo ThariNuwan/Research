@@ -1093,5 +1093,119 @@
       "rationale": "Direction: s3-public-exposed ranks above s3-private-baseline-not-public. Both are hand-crafted aws_s3_bucket resources in corpus/authored/storage_public_exposure.tf, identical in every respect except public exposure, so breadth of exposure is the only variable by construction. Measured class difference is exactly {storage-public-accessibility}: the public bucket carries it, the private one does not, and no class is present only on the private side. That class is one the Public Exposure factor's closed supported-pattern list names directly - \"public storage (public-access-block disabled or public ACL/policy)\" - and the factor's level 5 describes this exact shape, a bucket with public-access-block disabled plus a public policy serving anonymous internet users. Declared context is held equal at sensitivity 3 / criticality 3 on both sides, so no declared factor contributes to the delta. One disclosure, because it is narrower than the class difference suggests: on this resource identity the class is carried by checkov CKV2_AWS_6 alone, while tfsec's and trivy's eight equivalent findings attribute it to the sibling aws_s3_bucket_public_access_block.public_exposed, which is not a case here. That is the semantically right attribution - the bucket is the exposed asset - but it is single-sourced, so this pair is less redundantly evidenced than the ingress pair it sits beside. This pair replaces the retired exposure-security-group-rule, which rested on networking-egress-exposure - a class the taxonomy defines as \"a distinct property from inbound exposure\" and which appears in no level of this factor (design spec section 1.1)."
     }
   ],
-  "scenarios": []
+  "scenarios": [
+    {
+      "scenario_id": "networking-exposure-precedence-over-declared-context",
+      "domain": "networking",
+      "expected_ordering": [
+        [
+          "sg-web-node-high-exposure"
+        ],
+        [
+          "sgr-ingress-low-exposure"
+        ],
+        [
+          "sgr-egress-high-exposure",
+          "sg-default-low-exposure"
+        ]
+      ],
+      "rationale": "REVISED 2026-09-26 — see the note below; the original ordering rested on a fact that turned out to be false. All four cases declare identical context on the affected resource (sensitivity=3, criticality=3), so neither Resource Sensitivity nor Environment Criticality can separate them: Public Exposure is the only rubric factor with room to move. sg-web-node-high-exposure carries literal 0.0.0.0/0 cidr_blocks on its ingress rules (ec2.tf:77-115), which the factor's precedence rule forces to >=4, so it takes the top tier alone. sgr-ingress-low-exposure's cidr_blocks is not a literal at all — it is ${aws_vpc.web_vpc.cidr_block} (db-app.tf:141) — so under the closed literals-only pattern list its exposure is unresolved, not resolved-low, and the rubric scores that state conservatively at 3: deliberately below the forced >=4 floor and deliberately above a confirmed-absent exposure. It therefore sits second, alone. The bottom tier is a genuine tie between sgr-egress-high-exposure and sg-default-low-exposure, and the reason is the correction: networking-egress-exposure does NOT bear on the Public Exposure factor. The factor's closed supported-pattern list names SG/NSG *ingress* open to 0.0.0.0/0 and is silent on egress, and the taxonomy defines networking-egress-exposure as 'a distinct property from inbound exposure'. So the egress case carries no supported exposure signal, exactly like sg-default-low-exposure, and nothing in the rubric separates them. Noting the cost of that honestly: an unrestricted egress rule is a real data-exfiltration path, and a practitioner would not call it equal in risk to a security group with no rule of its own. The rubric has no factor that represents it — egress maps to none of the six — so this tie is the model's gap surfacing in the oracle rather than a judgement that the two are equally dangerous. That gap is recorded for S4 in the design spec's section 1.1.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "agree"
+      }
+    },
+    {
+      "scenario_id": "storage-declared-context-symmetry-and-encryption-floor",
+      "domain": "storage",
+      "expected_ordering": [
+        [
+          "s3-financials-sensitivity-high",
+          "s3-data-criticality-high"
+        ],
+        [
+          "s3-operations-sensitivity-high",
+          "s3-data-science-criticality-high"
+        ],
+        [
+          "s3-logs-encryption-ok"
+        ]
+      ],
+      "rationale": "s3-financials-sensitivity-high (sensitivity=5, criticality=3, corpus-v1.json:258-260) and s3-data-criticality-high (sensitivity=3, criticality=5, corpus-v1.json:438-440) are the same shape of case pointed in opposite directions -- one factor pinned at the ceiling, the other held at the shared baseline of 3 -- and both carry the identical six-class finding set (storage-public-accessibility, storage-data-lifecycle-hygiene, storage-data-recoverability, storage-logging-audit, storage-key-management-cmk, storage-encryption-at-rest). Under the rubric's own model structure -- 'equal_weighted: true' over an additive formula (rubric.json:8-9) -- a factor pair of (5,3) and (3,5) contributes identically to the sum regardless of which named factor carries which value, so nothing in the rubric separates them; they share the top tier. s3-operations-sensitivity-high (sensitivity=4, criticality=3, corpus-v1.json:349-350) and s3-data-science-criticality-high (sensitivity=3, criticality=4, corpus-v1.json:529-530) are the same pattern one step down -- a combined declared-context total of 7 rather than 8, again split symmetrically -- so the same equal-weighting argument ties them to each other; they rank below the first tier because their combined total is strictly lower, and the finding-class sets are close enough (six for operations, five for data_science -- data_science draws no storage-logging-audit finding, corpus-v1.json:556) that neither dominates the other on breadth. s3-logs-encryption-ok is the floor, and its declared context plays no part in that: as of corpus-v1.json commit 919c488 (which equalized both encryption pairs' declared context to remove a confound Task 4's review found) its declared context is (sensitivity=3, criticality=3, corpus-v1.json:132-133) -- equal to every top-tier case above it, so nothing in this ordering rests on an authored value happening to be lower. The floor comes from the code instead: aws_s3_bucket.logs is the only one of the five buckets with a real server_side_encryption_configuration block, KMS-keyed, at corpus/vendor/terragoat/terraform/aws/s3.tf:119-126 (within the resource declared at s3.tf:113-141), while aws_s3_bucket.data, .financials, .operations and .data_science are each explicitly commented '# bucket is not encrypted' in that same file (s3.tf:3, 43, 66, 90) and, measured over real adapter output, draw a storage-key-management-cmk and a storage-encryption-at-rest finding that aws_s3_bucket.logs does not (corpus-v1.json:155). Encryption Risk is genuinely zero for this case because the control is actually present in the code, not because an authored context value happens to be lower.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "agree"
+      }
+    },
+    {
+      "scenario_id": "iam-privilege-breadth-nesting",
+      "domain": "iam",
+      "expected_ordering": [
+        [
+          "iam-unrestricted-scope"
+        ],
+        [
+          "iam-s3-account-scope"
+        ],
+        [
+          "iam-s3-bucket-scope"
+        ]
+      ],
+      "rationale": "All three cases share identical declared context (sensitivity=3, criticality=3 on the single governed policy resource -- corpus-v1.json:606-609, 627-630, 651-654), so IAM Privilege Scope is the only factor with room to move. The case notes record a literal nesting property rather than a judgement asserted fresh here: iam-s3-account-scope's issue-class set is stated as 'a proper superset of s3-bucket-scope's {iam-overpermissive-policy} and a proper subset of unrestricted-scope's' (corpus-v1.json:643), and checking the class lists directly confirms it -- iam-s3-bucket-scope draws {iam-overpermissive-policy} only (corpus-v1.json:611-617); iam-s3-account-scope draws that same class plus iam-privilege-escalation-sensitive-perms (corpus-v1.json:632-642); iam-unrestricted-scope draws both of those plus three further checkov-only classes taken via the taxonomy's explicit unmapped:checkov:<rule_id> fallback (corpus-v1.json:657-679). Each case's finding set is a strict superset of the one below it, and all three describe the same action family (s3:*) widening from one bucket ARN to the whole account to an unrestricted Resource=\"*\"/Action=\"*\" grant -- the textbook shape of the rubric's Privilege ladder (rubric.json:136-182), moving from 'moderate, service-scoped' toward 'full administrative / unbounded authority'. Three strict tiers, not ties, because the superset relation gives a clean, checkable basis for a strict order at every step.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "agree"
+      }
+    },
+    {
+      "scenario_id": "compute-severity-and-finding-breadth-over-single-point-criticality",
+      "domain": "compute",
+      "expected_ordering": [
+        [
+          "ec2-web-host-compute"
+        ],
+        [
+          "ec2-db-app-compute"
+        ],
+        [
+          "ebs-web-host-storage-compute"
+        ]
+      ],
+      "rationale": "None of the three cases share identical declared context, so both Environment Criticality and finding-set shape carry weight. ec2-web-host-compute (sensitivity=3, criticality=3, corpus-v1.json:726-728) draws five classes -- iam-hardcoded-secrets, compute-reliability-observability, compute-instance-metadata-hardening, storage-encryption-at-rest, iam-authentication-controls (corpus-v1.json:734-752) -- a proper superset of ec2-db-app-compute's three (compute-reliability-observability, compute-instance-metadata-hardening, storage-encryption-at-rest, corpus-v1.json:701-711). Its notes further record that the hardcoded credential is 'flagged CRITICAL by trivy AWS-0029 and tfsec AVD-AWS-0029' (corpus-v1.json:754) -- the top of the rubric's Scanner Severity ladder (rubric.json:72-76). ec2-db-app-compute's declared criticality is one point higher (4 vs 3, corpus-v1.json:695), but a one-point gap on a single factor does not offset an additional CRITICAL-severity finding plus two extra finding classes present in neither other case -- severity is a rubric factor free to drive ranking even without a contrastive pair. Top tier: ec2-web-host-compute. ec2-db-app-compute sits above ebs-web-host-storage-compute on two independent grounds: its declared criticality is confirmed at 4 versus ebs's confirmed 2 (corpus-v1.json:695, 769) -- a full two-point gap -- and its declared sensitivity is a resolved value (3) where ebs's is null and explicitly defaulted (corpus-v1.json:768), which ebs's own notes flag by marking both of its findings excluded_from_quality_claims (corpus-v1.json:780, 788). ebs's notes independently state it is 'the smallest of the three compute cases by class count, orderable below ec2-db-app-compute and ec2-web-host-compute' (corpus-v1.json:791) -- checkable directly against the class lists (2 for ebs vs 3 for db-app) and a claim this ordering agrees with rather than merely repeats.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "partial",
+        "disagreement_note": "Blinded reviewer ordered ec2-db-app-compute above ec2-web-host-compute; the author ordered them the other way. One tier move, so partial. The reviewer read the Privilege factor from source: aws_instance.db_app carries iam_instance_profile = aws_iam_instance_profile.ec2profile (db-app.tf:247), whose role's aws_iam_role_policy.ec2policy grants s3:*, ec2:*, rds:* on Resource \"*\" (db-app.tf:206-225), while aws_instance.web_host has no instance profile at all (ec2.tf:1). The controller verified both. The author's ordering rested instead on a proper-superset finding set plus a CRITICAL hardcoded-secret severity. Recorded plainly: the reviewer's reading is the better grounded of the two, because Privilege is one of the six rubric factors and finding breadth is not a factor at all. The author's ordering nonetheless stands as ground truth under the resolution rule pre-registered in design section 5, which exists so that disagreements are not resolved after the fact toward whichever answer suits the outcome. This scenario should be treated as contested, and re-authoring it would require a fresh blinded review rather than a patch."
+      }
+    },
+    {
+      "scenario_id": "containers-workload-dominance-and-a-genuine-tie",
+      "domain": "containers",
+      "expected_ordering": [
+        [
+          "k8s-goat-home-workload"
+        ],
+        [
+          "k8s-kube-bench-node-workload",
+          "k8s-internal-proxy-api-container"
+        ]
+      ],
+      "rationale": "k8s-goat-home-workload strictly dominates both other cases and needs no tie: its declared context (sensitivity=3, criticality=3, corpus-v1.json:805-806) is at or above both siblings' on every axis, and its seven-class finding set (corpus-v1.json:812-838) is a superset of both k8s-kube-bench-node-workload's six classes (the identical set minus networking-isolation-segmentation, corpus-v1.json:859-883) and k8s-internal-proxy-api-container's four (corpus-v1.json:905-920, all of which also appear in goat-home's set). Top tier, alone. k8s-kube-bench-node-workload and k8s-internal-proxy-api-container do not admit a clean order, and this deliberately does not follow the ordering the case notes themselves suggest ('orderable below k8s-goat-home-workload by class count and above k8s-internal-proxy-api-container', corpus-v1.json:885), because that comparison looks only at class count and the two cases pull in opposite directions once declared context is considered. On class breadth, kube-bench-node-workload dominates: its six classes are a strict superset of internal-proxy-api-container's four (every one of internal-proxy's classes -- containers-image-supply-chain, containers-linux-capabilities, containers-privileged-execution, containers-securitycontext-hardening -- appears in kube-bench's set, which adds containers-host-isolation-breakout and containers-workload-reliability). But on declared context, internal-proxy-api-container dominates: sensitivity=3/criticality=3 (corpus-v1.json:899-900) against kube-bench's sensitivity=2/criticality=2 (corpus-v1.json:854-855) -- lower on both factors, not one. Neither finding breadth nor declared context is privileged over the other in the rubric's additive, equal-weighted model, so with each case dominating on a different axis this scenario does not assert a strict order between them, and they share the second tier.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "partial",
+        "disagreement_note": "Blinded reviewer placed k8s-internal-proxy-api-container in the top tier alongside k8s-goat-home-workload, leaving k8s-kube-bench-node-workload alone below; the author tied internal-proxy with kube-bench below goat-home. One tier move, so partial. The substance is a factor-mapping question both sides flagged independently: kube-bench-node's hostPID and sensitive hostPath mounts are a real host-isolation-breakout finding, and whether that credits toward the Privilege factor is genuinely unsettled - the reviewer read Privilege's security-context language narrowly (the Kubernetes securityContext object) and declined to credit pod-spec elevation, saying so explicitly. The containers-host-isolation-breakout class maps cleanly onto none of the six factors as literally worded, which is the same class of gap recorded for networking-egress-exposure in design section 1.1. Author's ordering stands per the pre-registered rule."
+      }
+    }
+  ]
 }
