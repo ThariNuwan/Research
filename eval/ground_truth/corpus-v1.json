@@ -919,7 +919,7 @@
             "issue_class": "containers-securitycontext-hardening"
           }
         ],
-        "notes": "The internal-api container within the internal-proxy Deployment, scenarios/internal-proxy/deployment.yaml, resolved via ResourceIndex.by_address(container=\"internal-api\"). Measured over real adapter output: 4 distinct classes - container-scoped findings only, missing containers-workload-reliability and networking-isolation-segmentation which attach to the workload as a whole rather than this one container. Narrowest of the three containers cases by class count, and an internal (non-public) service rather than the goat-home entry point."
+        "notes": "The internal-api container within the internal-proxy Deployment, scenarios/internal-proxy/deployment.yaml, resolved via ResourceIndex.by_address(container=\"internal-api\"). Measured over real adapter output: 4 distinct classes - container-scoped findings only, missing containers-workload-reliability, networking-isolation-segmentation and containers-host-isolation-breakout - three classes, all of which attach to the workload as a whole (namespace sharing, hostPath mounts and SA-token automount are pod-level properties) rather than to this one container. Narrowest of the three containers cases by class count, and an internal (non-public) service rather than the goat-home entry point."
       }
     },
     {
@@ -956,7 +956,7 @@
             "issue_class": "storage-logging-audit"
           }
         ],
-        "notes": "Hand-crafted low side of the exposure pair. Identical to its public twin except that its aws_s3_bucket_public_access_block sets all four block flags true and no bucket policy grants Principal \"*\". Draws the same five baseline storage classes and no exposure class."
+        "notes": "Hand-crafted low side of the exposure pair. Identical to its public twin except that its aws_s3_bucket_public_access_block sets all four block flags true and no bucket policy grants Principal \"*\". Draws the same five baseline storage classes and no exposure class. The absence is genuine rather than an attribution artefact: its own public-access-block sibling, aws_s3_bucket_public_access_block.private_baseline, draws no findings from any of the three scanners, so there is no exposure signal anywhere on this side of the pair to have been attributed elsewhere."
       }
     },
     {
@@ -997,7 +997,7 @@
             "issue_class": "storage-public-accessibility"
           }
         ],
-        "notes": "Hand-crafted high side of the exposure pair. Identical to its private twin except that its public-access-block sets all four flags false and a bucket policy grants s3:GetObject to Principal \"*\", which is exactly the rubric's Public Exposure level 5 shape."
+        "notes": "Hand-crafted high side of the exposure pair. Identical to its private twin except that its public-access-block sets all four flags false and a bucket policy grants s3:GetObject to Principal \"*\" - exactly the rubric's Public Exposure level 5 shape. Evidentiary scope, stated because it is narrower than it looks: on THIS resource identity the storage-public-accessibility class comes from checkov CKV2_AWS_6 alone - a graph check that resolves the bucket-to-public-access-block relationship, and therefore the semantically correct attribution, since the bucket is the exposed asset. tfsec (AVD-AWS-0086/0087/0091/0093) and trivy (AWS-0086/0087/0091/0093) map the same class but attribute all eight findings to the sibling identity aws_s3_bucket_public_access_block.public_exposed, which is not a case in this corpus. checkov CKV_AWS_70 on aws_s3_bucket_policy.public_exposed is unmapped and also outside any case. So the pair's bucket-level exposure evidence is single-sourced: right evidence, one scanner. Were CKV2_AWS_6 to disappear, this identity would carry no exposure class and the pair would collapse."
       }
     }
   ],
@@ -1090,7 +1090,7 @@
       "case_low": "s3-private-baseline-not-public",
       "expected_rank_order": "high_above_low",
       "expected_score_delta_sign": "positive",
-      "rationale": "Direction: s3-public-exposed ranks above s3-private-baseline-not-public. Both are hand-crafted aws_s3_bucket resources in corpus/authored/storage_public_exposure.tf, identical in every respect except public exposure, so breadth of exposure is the only variable by construction. Measured class difference is exactly {storage-public-accessibility}: the public bucket carries it, the private one does not, and no class is present only on the private side. That class is one the Public Exposure factor's closed supported-pattern list names directly - \"public storage (public-access-block disabled or public ACL/policy)\" - and the factor's level 5 describes this exact shape, a bucket with public-access-block disabled plus a public policy serving anonymous internet users. Declared context is held equal at sensitivity 3 / criticality 3 on both sides, so no declared factor contributes to the delta. This pair replaces the retired exposure-security-group-rule, which rested on networking-egress-exposure - a class the taxonomy defines as \"a distinct property from inbound exposure\" and which appears in no level of this factor (design spec section 1.1)."
+      "rationale": "Direction: s3-public-exposed ranks above s3-private-baseline-not-public. Both are hand-crafted aws_s3_bucket resources in corpus/authored/storage_public_exposure.tf, identical in every respect except public exposure, so breadth of exposure is the only variable by construction. Measured class difference is exactly {storage-public-accessibility}: the public bucket carries it, the private one does not, and no class is present only on the private side. That class is one the Public Exposure factor's closed supported-pattern list names directly - \"public storage (public-access-block disabled or public ACL/policy)\" - and the factor's level 5 describes this exact shape, a bucket with public-access-block disabled plus a public policy serving anonymous internet users. Declared context is held equal at sensitivity 3 / criticality 3 on both sides, so no declared factor contributes to the delta. One disclosure, because it is narrower than the class difference suggests: on this resource identity the class is carried by checkov CKV2_AWS_6 alone, while tfsec's and trivy's eight equivalent findings attribute it to the sibling aws_s3_bucket_public_access_block.public_exposed, which is not a case here. That is the semantically right attribution - the bucket is the exposed asset - but it is single-sourced, so this pair is less redundantly evidenced than the ingress pair it sits beside. This pair replaces the retired exposure-security-group-rule, which rested on networking-egress-exposure - a class the taxonomy defines as \"a distinct property from inbound exposure\" and which appears in no level of this factor (design spec section 1.1)."
     }
   ],
   "scenarios": []
