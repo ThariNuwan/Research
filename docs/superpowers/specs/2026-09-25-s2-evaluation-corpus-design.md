@@ -36,7 +36,7 @@ Measured from `tests/harvest/fixtures/` through S3a's committed adapters on this
 |---|---|---|
 | sensitivity | **Yes, with no new code** | declared-context variation on one resource |
 | criticality | **Yes, with no new code** | declared-context variation on one resource |
-| exposure | Yes | `aws_security_group.default` carries `networking-config-hygiene` only; `aws_security_group.web-node` adds `networking-ingress-exposure` *and* `networking-egress-exposure` — both feed exposure |
+| exposure | **One pair only** | `aws_security_group.default` carries `networking-config-hygiene` only; `aws_security_group.web-node` adds `networking-ingress-exposure` — **the ingress half is what carries the claim**, see the erratum below |
 | encryption | Yes | `aws_instance.db_app` carries `storage-encryption-at-rest`; `aws_instance.web_host` does not |
 | **severity** | **No** | see below — presence of all four levels is not a controlled pair |
 | **privilege** | **No** | every genuine IAM policy type is single-instance: `aws_iam_policy_document` 1, `aws_iam_role_policy` 1, `aws_iam_user` 1, `aws_iam_user_policy` 1 |
@@ -53,7 +53,27 @@ The reason is structural rather than a property of this corpus: identical class 
 
 **Consequence:** severity gets **no contrastive pair**, and the coverage target is five factors rather than six (§6). This costs little: severity enters the additive model as a direct term, so its pair would have been a sanity check on the engine rather than a test of the research contribution. It is disclosed as an uncovered factor in the results, with this reasoning.
 
-**Candidate supply, measured.** Over corpus v0: **249** same-type combinations considered, **129** with an empty class difference, **120** usable candidates. Grouped by the class family their difference touches: containers+networking 82, containers 21, storage 9, networking 7, iam 1. The clean single-family supply is comfortable where it exists — exposure has `aws_security_group.default` vs `web-node` (ingress + egress) and `aws_security_group_rule.egress` vs `ingress`; encryption has **four** clean pairs against `aws_s3_bucket.logs` (`data`, `financials`, `flowbucket`, `operations`), each differing only in `storage-encryption-at-rest` + `storage-key-management-cmk`. The single `iam`-family candidate is `aws_instance.db_app` vs `web_host`, which mixes `iam-authentication-controls` with `iam-hardcoded-secrets` and is privilege material in neither case.
+**Candidate supply, measured.** Over corpus v0: **249** same-type combinations considered, **129** with an empty class difference, **120** usable candidates. Grouped by the class family their difference touches: containers+networking 82, containers 21, storage 9, networking 7, iam 1. Encryption is comfortable — **four** clean pairs against `aws_s3_bucket.logs` (`data`, `financials`, `flowbucket`, `operations`), each differing only in `storage-encryption-at-rest` + `storage-key-management-cmk`. The single `iam`-family candidate is `aws_instance.db_app` vs `web_host`, which mixes `iam-authentication-controls` with `iam-hardcoded-secrets` and is privilege material in neither case.
+
+### 1.1 Erratum — a class named for a factor is not evidence of that factor
+
+**Corrected 2026-09-26, after a pair had already been committed on the wrong basis.**
+
+An earlier revision of this section listed **two** minable exposure pairs, the second being `aws_security_group_rule.egress` vs `ingress`, whose class difference is `{networking-egress-exposure}`. That pair was authored, committed, and is **invalid**.
+
+The rubric's Public Exposure factor is **inbound-only**. Its own text scopes it to "internet/network reachability of the flagged resource … resolved only over the closed supported-pattern list in PLAN.md Q9: SG/NSG **ingress** open to 0.0.0.0/0 or ::/0 attached to the target, public-IP / publicly_accessible / public-endpoint flags, public storage (public-access-block disabled or public ACL/policy), and Kubernetes Service LoadBalancer/NodePort and Ingress." Level 4 reads "security-group / NSG **ingress** open to 0.0.0.0/0". **Egress appears in no level.**
+
+The taxonomy says the same thing against itself. `networking-egress-exposure` is defined as "unrestricted **egress** to any destination, creating a data-exfiltration path (**a distinct property from inbound exposure**)."
+
+So the class contains the word *exposure* and does not bear on the Exposure factor. This is the **same trap as `iam-authentication-controls`** recorded above — a class named for a factor it does not feed — and it was walked into for the same reason: the controller's candidate measurement matched on the class *name*, which is precisely the failure mode the missing class-to-factor mapping (§1) should have warned against. Two instances now make it a pattern, not an accident: **a class name is never evidence of a factor.**
+
+Consequences, all measured:
+
+- The surviving `exposure-security-group` pair is **valid**, because its difference includes `networking-ingress-exposure` and `aws_security_group.web-node` carries three literal `0.0.0.0/0` ingress blocks at `ec2.tf:77-115`. The ingress half carries the claim; any clause resting on the egress half does not.
+- **No valid second exposure pair can be mined.** Zero same-type resource pairs in corpus v0 differ only in a class the exposure pattern list supports (`networking-ingress-exposure` or `storage-public-accessibility`).
+- The second exposure pair is therefore **hand-crafted** (§4), and it is anchored in the pattern list rather than in a class name.
+
+**`networking-egress-exposure` maps to no rubric factor at all.** Data exfiltration is not exposure, privilege, encryption, sensitivity or criticality, and it is not severity. A finding in that class scores only on severity plus the declared factors. That is a genuine gap in the scoring model rather than an S2 problem, and it belongs in the handoff for S4 to rule on — either the factor set widens, or the model states that egress risk is out of scope.
 
 Seven Terraform resource *types* have more than one instance (`aws_rds_cluster` 9, `aws_s3_bucket` 6, `aws_subnet` 4, then `aws_security_group`, `aws_security_group_rule`, `aws_instance`, `aws_vpc` at 2 each); of those, **5 have instances whose issue-class sets genuinely differ**. 28 distinct issue classes appear across the corpus, and 39 distinct Kubernetes identities.
 
@@ -105,9 +125,12 @@ What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5.
 
 `corpus/authored/`, with its scan root declared in `tools/corpus.lock.json` alongside v0's vendored roots.
 
-**Scope: the minimum v0 cannot express — one factor.**
+**Scope: the minimum v0 cannot express — two factors.**
 
 - **privilege:** three IAM policies in **one action family**, increasing in breadth, so their issue-class sets nest. Two pairs from three cases.
+- **exposure, second pair:** two `aws_s3_bucket` resources identical in every respect **except that one is publicly exposed**, so their class sets differ by exactly `{storage-public-accessibility}` — a class the exposure pattern list explicitly supports ("public storage (public-access-block disabled or public ACL/policy)") and which the factor's level 5 describes directly. Required because §1.1's erratum invalidated the mined second pair and no valid replacement exists in v0.
+
+**Why buckets rather than security groups, since security groups are the obvious choice.** The natural instinct is two security groups exercising the factor's own level 2 ("ingress limited to a narrow public CIDR") against level 4 (`0.0.0.0/0`). That does not work: the scanners flag network exposure **binary**. A narrow `/24` draws no finding at all, so the low side would be a case with no findings — which the constraint below already rules out of any pair — and the result would merely duplicate the surviving pair's shape. The bucket construction works because both sides draw the same baseline storage findings and only the public one adds the exposure class.
 
 Severity was originally scoped here too and has been **removed**: §1's measurement shows it is not pair-testable by any construction, not merely unminable.
 

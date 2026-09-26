@@ -64,6 +64,14 @@
       "note": "A directory, not a file: 24 files across 15 scenario directories. 16 are plain Kubernetes manifests (Deployment, Job, ClusterRole/RoleBinding, Kyverno policy); the other 8 are the metadata-db Helm chart. Measured across those 8 rather than assumed: Chart.yaml and values.yaml carry no Go template syntax and parse as plain YAML; 4 are templated YAML manifests a plain YAML parser cannot read (templates/deployment.yaml, templates/ingress.yaml, templates/service.yaml, templates/tests/test-connection.yaml); 2 are not YAML at all (templates/NOTES.txt, templates/_helpers.tpl). A skip list covering all 8 would silently drop two parseable files including the chart metadata. Helm is in conceptual scope but not the evaluation focus."
     },
     {
+      "id": "authored-storage-public-exposure",
+      "platform": "terraform",
+      "category": "storage",
+      "path": "corpus/authored/storage_public_exposure.tf",
+      "scan_root": "corpus/authored",
+      "note": "Hand-crafted. Two aws_s3_bucket resources identical except that one is publicly exposed, so their issue-class sets differ by exactly {storage-public-accessibility} - a class the rubric's Public Exposure pattern list explicitly supports and which the factor's level 5 describes directly. Corpus v0 cannot supply this pair: zero same-type resource pairs in it differ only in a supported exposure class (S2 design section 1.1). It replaces a mined pair that rested on networking-egress-exposure, which the taxonomy itself calls a distinct property from inbound exposure and which appears in no level of the Public Exposure factor. Not security groups: the scanners flag network exposure binary, so a narrow public CIDR draws no finding and could not be a pair's low side."
+    },
+    {
       "id": "authored-iam-privilege",
       "platform": "terraform",
       "category": "iam",

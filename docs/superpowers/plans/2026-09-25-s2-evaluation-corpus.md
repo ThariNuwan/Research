@@ -38,7 +38,7 @@ All measured through S3a's committed adapters over `tests/harvest/fixtures/` on 
 | with an empty class difference | 129 |
 | usable candidates | 120 |
 | resource pairs with identical class sets but differing max severity | **0** |
-| clean exposure pairs | `aws_security_group.default` vs `.web-node`; `aws_security_group_rule.egress` vs `.ingress` |
+| clean exposure pairs minable | **one only** — `aws_security_group.default` vs `.web-node`, on its *ingress* half. `networking-egress-exposure` does not bear on the Public Exposure factor (spec §1.1) |
 | clean encryption pairs | `aws_s3_bucket.logs` against each of `data`, `financials`, `flowbucket`, `operations` |
 | factors corpus v0 cannot isolate | **privilege** (hand-crafted) |
 | factors not pair-testable at all | **severity** — 0 pairs, by measurement, disclosed |
@@ -51,6 +51,7 @@ All measured through S3a's committed adapters over `tests/harvest/fixtures/` on 
 | `tools/paircand/generate.py` | propose pair candidates; write `artifacts/pair-candidates.json` | 1 |
 | `tests/paircand/test_generate.py` | generator tests | 1 |
 | `corpus/authored/iam_privilege.tf` | three IAM policies differing in scope alone | 2 |
+| `corpus/authored/storage_public_exposure.tf` | two buckets differing only in public exposure | 2 |
 | `tools/corpus.lock.json` | declare the authored scan root and its cases | 2 |
 | `tests/harvest/fixtures/authored/` | golden scanner JSON for the authored root only | 2 |
 | `eval/ground_truth/corpus-v1.json` | the ground-truth document (cases, pairs, scenarios) | 3–6 |
