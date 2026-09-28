@@ -448,6 +448,108 @@ def test_gate_5_can_fail_on_a_dishonest_source_shape() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Gate 5 companion: declared-context isolation for the four pairs whose class
+# difference is empty by construction (sensitivity/criticality pairs, where
+# both sides are the same resource and both sides' expected findings are
+# identical). Design spec section 6's gate 5 description credits "the
+# declared-context isolation property (exactly one declared value differs,
+# its companion held equal)" as the mechanism covering those four pairs, but
+# until this test existed nothing in the repository asserted it - the
+# recorded-vs-actual half of `_check_gate_5` is vacuous for them, because both
+# sides resolve to the same `resource_identity` and so the class difference is
+# empty regardless of correctness.
+# ---------------------------------------------------------------------------
+
+
+def _declared_values(case: dict[str, Any]) -> dict[str, Any]:
+    (values,) = case["declared_context"].values()
+    resolved: dict[str, Any] = values
+    return resolved
+
+
+def _check_declared_context_isolation(document: dict[str, Any]) -> None:
+    """The mechanism design spec section 6 credits gate 5 with, made mechanical.
+
+    A pair testing `sensitivity` or `criticality` must differ on that factor
+    alone: the companion factor equal on both sides, both sides' tested value
+    resolved (not null), and `case_high`'s value strictly greater than
+    `case_low`'s. A pair testing a code factor (`exposure`, `encryption`,
+    `privilege`) must have declared context equal on both factors, so no
+    declared value contributes to that pair's ordering claim.
+    """
+    cases = _case_by_id(document)
+    for pair in document["contrastive_pairs"]:
+        factor = pair["factor_under_test"]
+        high = _declared_values(cases[pair["case_high"]])
+        low = _declared_values(cases[pair["case_low"]])
+        if factor in ("sensitivity", "criticality"):
+            companion = "criticality" if factor == "sensitivity" else "sensitivity"
+            assert high[companion] == low[companion], (
+                f"pair {pair['pair_id']!r} tests {factor!r} but its companion factor "
+                f"{companion!r} differs: high={high[companion]!r} low={low[companion]!r}"
+            )
+            assert high[factor] is not None and low[factor] is not None, (
+                f"pair {pair['pair_id']!r} tests {factor!r} but one side's declared "
+                f"value is null: high={high[factor]!r} low={low[factor]!r}"
+            )
+            assert high[factor] > low[factor], (
+                f"pair {pair['pair_id']!r}: case_high's declared {factor} "
+                f"({high[factor]!r}) is not strictly greater than case_low's "
+                f"({low[factor]!r})"
+            )
+        else:
+            assert high == low, (
+                f"pair {pair['pair_id']!r} tests a code factor ({factor!r}) but "
+                f"declared context differs: high={high!r} low={low!r}, which would "
+                "confound the class-difference evidence with an undisclosed "
+                "declared-context delta"
+            )
+
+
+def test_gate_5_declared_context_isolation_for_declared_factor_pairs() -> None:
+    """Companion to gate 5 (design spec section 6): the mechanism the spec
+    prose credits for covering the four sensitivity/criticality pairs whose
+    class difference is empty by construction - "exactly one declared value
+    differs, its companion held equal" - asserted directly rather than left
+    as an inference a reader has to make from valid data passing.
+    """
+    _check_declared_context_isolation(_document())
+
+
+def test_gate_5_declared_context_isolation_can_fail_when_a_companion_drifts() -> None:
+    """Proof: a future edit that changes one companion value silently turns a
+    single-factor pair into a two-factor confound, and gate 5's own
+    function-relation check cannot see it - both sides still resolve to the
+    same resource and an empty class difference either way. Flipping
+    `sensitivity-s3-financials`'s low-side criticality from 3 to 1 leaves the
+    class difference untouched but breaks the companion-equal half of the
+    isolation property, so this check has to be the one that catches it.
+    """
+    broken = _mutated(_document())
+    cases = {case["case_id"]: case for case in broken["cases"]}
+    low_case = cases["s3-financials-sensitivity-low"]
+    (identity,) = low_case["declared_context"].keys()
+    low_case["declared_context"][identity]["criticality"] = 1
+    with pytest.raises(AssertionError):
+        _check_declared_context_isolation(broken)
+
+
+def test_gate_5_declared_context_isolation_can_fail_on_a_code_factor_context_drift() -> None:
+    """Proof of the other half: a code-factor pair (`encryption`) whose two
+    sides' declared context is made to differ must fail. Every code-factor
+    pair's own rationale claims declared context is "held equal" - this is
+    the check that would catch a silent edit breaking that claim.
+    """
+    broken = _mutated(_document())
+    cases = {case["case_id"]: case for case in broken["cases"]}
+    high_case = cases["s3-data-encryption-gap"]
+    (identity,) = high_case["declared_context"].keys()
+    high_case["declared_context"][identity]["sensitivity"] = 5
+    with pytest.raises(AssertionError):
+        _check_declared_context_isolation(broken)
+
+
+# ---------------------------------------------------------------------------
 # Gate 6: defaulted_factors and unresolved_factors each non-empty on >=1
 # expected finding; every scenario oracle is complete.
 # ---------------------------------------------------------------------------

@@ -1,17 +1,19 @@
-"""S2 Task 2: the hand-crafted IAM privilege cases (task brief step 5, as revised by fix round 1).
+"""S2 Task 2: the hand-crafted authored-root cases (task brief step 5, as revised by fix round 1).
 
-`corpus/authored/` holds the one factor corpus v0 cannot isolate at all: IAM
-privilege breadth. (A severity-spread case was authored alongside it and then
-removed - R9 - once measurement showed no same-type resource pair in this
-corpus or v0 can differ in severity within an identical issue-class set
-without the class set itself changing; that reasoning lives in the S2 design
-spec, not here.) This module scans the remaining root through the same
-adapters the rest of the pipeline uses (`CheckovAdapter`, `TfsecAdapter`,
-`TrivyAdapter`), against the raw JSON captured under
-`tests/harvest/fixtures/authored/`, and asserts against what that scan
-actually produced - never a literal restating what one particular run
-happened to find, per the dispatch's own warning about a class-specific test
-passing for the wrong reason.
+`corpus/authored/` holds the two factors corpus v0 cannot isolate at all:
+IAM privilege breadth (`iam_privilege.tf`, this module's main subject) and
+the second Exposure pair (`storage_public_exposure.tf`, design spec section
+4's "why buckets rather than security groups"). (A severity-spread case was
+authored alongside the privilege one and then removed - R9 - once
+measurement showed no same-type resource pair in this corpus or v0 can
+differ in severity within an identical issue-class set without the class
+set itself changing; that reasoning lives in the S2 design spec, not here.)
+This module scans the whole authored root through the same adapters the
+rest of the pipeline uses (`CheckovAdapter`, `TfsecAdapter`, `TrivyAdapter`),
+against the raw JSON captured under `tests/harvest/fixtures/authored/`, and
+asserts against what that scan actually produced - never a literal restating
+what one particular run happened to find, per the dispatch's own warning
+about a class-specific test passing for the wrong reason.
 
 R4 (task dispatch ruling): the fixture-integrity assertion for corpus v0's six
 *existing* fixtures is deliberately not written here. It is a controller-side
@@ -51,6 +53,13 @@ ORDERED_IAM_POLICIES = (
     "aws_iam_policy.s3_bucket_scope",
     "aws_iam_policy.s3_account_scope",
     "aws_iam_policy.unrestricted_scope",
+)
+
+# The two authored S3 buckets (corpus/authored/storage_public_exposure.tf) -
+# the second Exposure pair's hand-crafted cases.
+AUTHORED_STORAGE_BUCKETS = (
+    "aws_s3_bucket.private_baseline",
+    "aws_s3_bucket.public_exposed",
 )
 
 
@@ -97,6 +106,24 @@ def test_every_iam_policy_resource_has_at_least_one_finding() -> None:
     """
     identities = {finding.resource_identity for finding in _all_findings()}
     for resource in ORDERED_IAM_POLICIES:
+        assert resource in identities, f"{resource} drew no finding from any of the three scanners"
+
+
+def test_every_authored_storage_bucket_has_at_least_one_finding() -> None:
+    """No storage-exposure case is silently unscanned, mirroring the IAM guard above.
+
+    `s3-private-baseline-not-public`'s own notes record that its
+    public-access-block sibling (`aws_s3_bucket_public_access_block.private_baseline`)
+    draws zero findings from any of the three scanners - a genuine absence,
+    not a defect. That is a property of the sibling resource, not of the
+    bucket itself: both `aws_s3_bucket.private_baseline` and
+    `aws_s3_bucket.public_exposed` must still draw at least one finding each,
+    or the pair's low side would be a case with no findings at all - the
+    "cannot enter a contrastive pair" constraint design spec section 4
+    records.
+    """
+    identities = {finding.resource_identity for finding in _all_findings()}
+    for resource in AUTHORED_STORAGE_BUCKETS:
         assert resource in identities, f"{resource} drew no finding from any of the three scanners"
 
 

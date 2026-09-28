@@ -180,15 +180,22 @@ future session will get wrong without stating them explicitly:
   severity at all in this corpus. Gate 2 asserts the zero directly rather than
   leaving it as an absence a later reader could "fix" with a pair that
   isolates nothing.
-- **Two taxonomy classes map to no rubric factor**: `networking-egress-exposure`
-  (data exfiltration; a distinct property from inbound exposure) and
+- **Three taxonomy classes map to no rubric factor**: `networking-egress-exposure`
+  (data exfiltration; a distinct property from inbound exposure),
   `containers-host-isolation-breakout` (hostPID / hostPath / SA-token
-  automount). Findings in those classes score on severity plus declared
-  context only, with no factor capturing the risk itself. S4 must rule: widen
-  the factor set, or state the risk is out of scope.
+  automount), and `iam-hardcoded-secrets` (credential exposure in provider
+  config, user_data, Lambda env or manifests - exercised by
+  `ec2-web-host-compute`, ec2.tf:15-16, CRITICAL). Findings in those classes
+  score on severity plus declared context only, with no factor capturing the
+  risk itself. `compute-instance-metadata-hardening` and
+  `containers-image-supply-chain` read as further candidates of the same
+  shape, and the set is not established as complete - a systematic
+  28-class x 6-factor sweep is S4's, once a factor-mapping rule exists. S4
+  must rule: widen the factor set, or state the risk is out of scope.
 - **The oracle is a blinded LLM reviewer, and agreement is reported as a
-  number, not a claim**: exact-tier agreement 3 of 5 scenarios, rank
-  correlation 1.000 / 1.000 / 1.000 / 0.333 / 0.500, 0 `disagree` verdicts. The
+  number, not a claim**: exact-tier agreement 3 of 5 scenarios; rank
+  correlation (Kendall's τ_b) by scenario: storage 1.000, networking 1.000,
+  iam 1.000, compute 0.333, containers 0.500; 0 `disagree` verdicts. The
   pre-registered rule (design spec §5): the author's ordering stands as ground
   truth regardless of verdict, and any `disagree` scenario would be excluded
   from the headline figure and reported separately — none was, so all five
@@ -208,7 +215,7 @@ future session will get wrong without stating them explicitly:
 - **Two numbers, never averaged into one.** Pairs: 10 authored, 10
   contributing — none touches a case flagged `excluded_from_quality_claims`.
   Scenarios: 5 authored, 3 free of excluded cases — the networking scenario
-  contains `sgr-ingress-low-exposure` and the compute scenario contains
+  contains `sgr-ingress-vpc-interpolated` and the compute scenario contains
   `ebs-web-host-storage-compute`, both flagged `excluded_from_quality_claims`.
 
 `docs/superpowers/specs/2026-09-25-s2-handoff.md` records these and more
