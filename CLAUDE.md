@@ -69,10 +69,11 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0, S1 and S3a complete. S3b is next and takes layer 3 (context extraction). S0
-pinned the toolchain and harvested an empirical rule-ID inventory over a
-vendored corpus. S1 authored the five specification artifacts the runtime and
-the harness are built against:
+S0, S1, S3a and S2 complete. S3b and S4 are next: S3b takes layer 3 (context
+extraction), S4 the scoring engine and reporting. S0 pinned the toolchain and
+harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
+the five specification artifacts the runtime and the harness are built
+against:
 
 - `src/iacrisk/data/taxonomy.json` — 28 issue classes over the five tested
   categories, plus one mapping row per observed `(scanner, rule_id)`. All 255
@@ -105,23 +106,22 @@ quote a `source` string in the dissertation until an audit of all 33 levels
 against the primary sources is committed.** A green suite is not that audit —
 the anchor test only checks that a standard's *name* appears in the string.
 
-Two sub-projects draw on this. **S2** authors the evaluation corpus and its
-ground truth against `eval/ground_truth.schema.json` — gate 4 is met for the
-schema and the validator, not for a corpus of real cases, which do not exist
-yet. When authoring, use `defaulted_factors` and `unresolved_factors` as the
-distinct fields they are: PLAN Q4's missing-declared-value and PLAN Q9's
+Two sub-projects draw on this. **S2** (complete — see below) authored the
+evaluation corpus and its ground truth against `eval/ground_truth.schema.json`.
+When authoring, `defaulted_factors` and `unresolved_factors` are the distinct
+fields they are on purpose: PLAN Q4's missing-declared-value and PLAN Q9's
 extractor-failure are reported as separate rates, and merging them makes that
 report impossible after the fact. **S3** builds the scanner adapters under
-`src/iacrisk/scanners/`, the bounded context extractor, and the scoring engine
-that enforces the coherence rules and the exposure precedence rule S1 carries as
-data. One trap to carry forward: `normalize_severity` returns `int | str`, where
-the string is the explicit `unknown` state — every call site must branch on it
-before arithmetic, or an unguarded `+` concatenates or raises rather than
-scoring.
+`src/iacrisk/scanners/` (S3a, complete), the bounded context extractor (S3b,
+next), and the scoring engine that enforces the coherence rules and the
+exposure precedence rule S1 carries as data (S4). One trap to carry forward:
+`normalize_severity` returns `int | str`, where the string is the explicit
+`unknown` state — every call site must branch on it before arithmetic, or an
+unguarded `+` concatenates or raises rather than scoring.
 
 `docs/superpowers/specs/2026-09-19-s1-handoff.md` records these and five more
 residual risks in full, with what each one costs if ignored. Read it before
-starting either sub-project.
+starting S3b.
 
 **S3a** built layers 1-2 plus Q8 deduplication: file discovery, the Kubernetes
 resource index, the three scanner adapters under `src/iacrisk/scanners/`, the
@@ -165,6 +165,62 @@ will get wrong without stating them explicitly:
 `docs/superpowers/specs/2026-09-22-s3a-handoff.md` records these and more
 residual risks in full, with what each one costs if ignored. Read it before
 starting S3b.
+
+**S2** authored corpus v1, the evaluation ground truth against
+`eval/ground_truth.schema.json`: **26 cases (21 vendored, 5 hand-crafted), 10
+contrastive pairs, 5 scenarios**, covering all five domains, with zero orphan
+cases. Its six acceptance gates are `tests/test_s2_gates.py`. A few facts a
+future session will get wrong without stating them explicitly:
+
+- **`severity` has no contrastive pair, by measurement, not by oversight.**
+  Zero same-type resource pairs in the corpus share an identical issue-class
+  set while differing in maximum severity — a rule's severity is fixed, so two
+  resources differing in severity within one class means a *different* rule
+  fired, which changes the class set too. Checkov also contributes no integer
+  severity at all in this corpus. Gate 2 asserts the zero directly rather than
+  leaving it as an absence a later reader could "fix" with a pair that
+  isolates nothing.
+- **Three taxonomy classes map to no rubric factor**: `networking-egress-exposure`
+  (data exfiltration; a distinct property from inbound exposure),
+  `containers-host-isolation-breakout` (hostPID / hostPath / SA-token
+  automount), and `iam-hardcoded-secrets` (credential exposure in provider
+  config, user_data, Lambda env or manifests - exercised by
+  `ec2-web-host-compute`, ec2.tf:15-16, CRITICAL). Findings in those classes
+  score on severity plus declared context only, with no factor capturing the
+  risk itself. `compute-instance-metadata-hardening` and
+  `containers-image-supply-chain` read as further candidates of the same
+  shape, and the set is not established as complete - a systematic
+  28-class x 6-factor sweep is S4's, once a factor-mapping rule exists. S4
+  must rule: widen the factor set, or state the risk is out of scope.
+- **The oracle is a blinded LLM reviewer, and agreement is reported as a
+  number, not a claim**: exact-tier agreement 3 of 5 scenarios; rank
+  correlation (Kendall's τ_b) by scenario: storage 1.000, networking 1.000,
+  iam 1.000, compute 0.333, containers 0.500; 0 `disagree` verdicts. The
+  pre-registered rule (design spec §5): the author's ordering stands as ground
+  truth regardless of verdict, and any `disagree` scenario would be excluded
+  from the headline figure and reported separately — none was, so all five
+  contribute, two only partially.
+- **The compute scenario is contested.** The blinded reviewer's ordering is
+  better grounded — it read the Privilege factor from source
+  (`db-app.tf:206-225`, `:247`), which the author's ordering did not — but the
+  author's stands under the pre-registered rule. Re-authoring it needs a fresh
+  blinded review, not a patch.
+- **Single-factor purity is an authored judgement, not machine-proven.** No
+  class-to-factor mapping exists anywhere in the data, and a class named for a
+  factor is not evidence of that factor: `iam-authentication-controls` and
+  `networking-egress-exposure` both looked like factor evidence and were not,
+  caught only by inspection. `tools/paircand/generate.py` makes each pair's
+  class difference explicit and re-derivable; it does not establish that the
+  named factor is the correct one.
+- **Two numbers, never averaged into one.** Pairs: 10 authored, 10
+  contributing — none touches a case flagged `excluded_from_quality_claims`.
+  Scenarios: 5 authored, 3 free of excluded cases — the networking scenario
+  contains `sgr-ingress-vpc-interpolated` and the compute scenario contains
+  `ebs-web-host-storage-compute`, both flagged `excluded_from_quality_claims`.
+
+`docs/superpowers/specs/2026-09-25-s2-handoff.md` records these and more
+residual risks in full, with what each one costs if ignored. Read it before
+starting S4.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

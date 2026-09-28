@@ -1,6 +1,6 @@
 # S2 — Evaluation corpus v1 and its ground truth (design)
 
-**Status:** awaiting review
+**Status:** approved and implemented (S2 closed 2026-09-26); §1.1 and §6 carry errata found during implementation
 **Author:** Jayathissa E.A.T.N. (258243J)
 **Date:** 2026-09-25
 **Scope:** Sub-project S2 — corpus v1 (contrastive pairs + scenarios) and the ground-truth document they are recorded in. No scoring, no harness.
@@ -36,14 +36,46 @@ Measured from `tests/harvest/fixtures/` through S3a's committed adapters on this
 |---|---|---|
 | sensitivity | **Yes, with no new code** | declared-context variation on one resource |
 | criticality | **Yes, with no new code** | declared-context variation on one resource |
-| exposure | Yes | `aws_security_group.default` carries `networking-config-hygiene` only; `aws_security_group.web-node` adds `networking-ingress-exposure` *and* `networking-egress-exposure` — both feed exposure |
+| exposure | **One pair only** | `aws_security_group.default` carries `networking-config-hygiene` only; `aws_security_group.web-node` adds `networking-ingress-exposure` — **the ingress half is what carries the claim**, see the erratum below |
 | encryption | Yes | `aws_instance.db_app` carries `storage-encryption-at-rest`; `aws_instance.web_host` does not |
 | **severity** | **No** | see below — presence of all four levels is not a controlled pair |
 | **privilege** | **No** | every genuine IAM policy type is single-instance: `aws_iam_policy_document` 1, `aws_iam_role_policy` 1, `aws_iam_user` 1, `aws_iam_user_policy` 1 |
 
-**Why severity cannot be paired from v0, corrected from an earlier draft of this table.** That draft reasoned "all four levels are present (CRITICAL 15, HIGH 133, MEDIUM 47, LOW 39), therefore a severity pair exists." Presence is not isolation. Measured: **zero** resource pairs share an identical issue-class set while differing in maximum severity, because severity is determined by which rule fires and which rule fires also determines the class — the two co-vary. Five classes *do* show intra-class severity variance (`iam-authentication-controls` 2–3, `networking-ingress-exposure` 4–5, `storage-key-management-cmk` 2–4, `storage-logging-audit` 2–3, `storage-public-accessibility` 4–5), but in every case the two resources are of **different types** and therefore differ in other classes too. So severity joins privilege as hand-crafted (§4).
+**Severity is not pair-testable at all. Corrected twice; this is the measured conclusion.**
 
-**Candidate supply, measured.** Over corpus v0: **249** same-type combinations considered, **129** with an empty class difference, **120** usable candidates. Grouped by the class family their difference touches: containers+networking 82, containers 21, storage 9, networking 7, iam 1. The clean single-family supply is comfortable where it exists — exposure has `aws_security_group.default` vs `web-node` (ingress + egress) and `aws_security_group_rule.egress` vs `ingress`; encryption has **four** clean pairs against `aws_s3_bucket.logs` (`data`, `financials`, `flowbucket`, `operations`), each differing only in `storage-encryption-at-rest` + `storage-key-management-cmk`. The single `iam`-family candidate is `aws_instance.db_app` vs `web_host`, which mixes `iam-authentication-controls` with `iam-hardcoded-secrets` and is privilege material in neither case.
+The first draft of this table reasoned "all four levels are present (CRITICAL 15, HIGH 133, MEDIUM 47, LOW 39), therefore a severity pair exists." Presence is not isolation.
+
+The second draft corrected that to "not minable from v0, therefore hand-craft it (§4)," on the grounds that five classes show intra-class severity variance (`iam-authentication-controls` 2–3, `networking-ingress-exposure` 4–5, `storage-key-management-cmk` 2–4, `storage-logging-audit` 2–3, `storage-public-accessibility` 4–5). **That was also wrong** on both the count and one range: re-measured directly over `real_findings()`, **13** classes show intra-class severity variance, not five — seven of them on the Terraform roots alone — and `storage-public-accessibility` spans **2–5**, not 4–5 (the corrected 13-class list: `compute-managed-cluster-hardening` 3–4, `containers-host-isolation-breakout` 3–4, `containers-image-supply-chain` 3–4, `containers-linux-capabilities` 2–3, `containers-privileged-execution` 2–4, `containers-securitycontext-hardening` 2–4, `iam-authentication-controls` 2–3, `iam-overpermissive-policy` 4–5, `networking-ingress-exposure` 4–5, `storage-key-management-cmk` 2–4, `storage-logging-audit` 2–3, `storage-public-accessibility` 2–5, `storage-transit-encryption` 4–5). Hand-crafting was attempted before the count-and-range error surfaced.
+
+The follow-on reasoning ("the two resources are of different types") does not generalize to the true 13-class scope either, and generalizes for a more basic reason than type: `networking-ingress-exposure` on `aws_security_group.web-node` alone carries both severity 4 (trivy `AWS-0107`) and severity 5 (tfsec `AVD-AWS-0107`) for the identical class on the identical resource — two scanners disagreeing about one instance, not two differently-typed resources at all. Across the 13 classes the variance comes from a mix of causes — different resource types, several same-typed instances whose other classes differ, and inter-scanner disagreement on a single resource — none of which yields an isolable same-type, identical-class-set pair. That negative is what `clean_severity_pairs == 0`, re-derived mechanically by `enumerate_candidates` rather than asserted here, actually confirms.
+
+Measured across corpus v0 **and** a hand-crafted attempt: **zero** same-type resource pairs have identical class sets while differing on any class's severity. And **checkov contributes no integer severity whatsoever on Terraform**: 221 of its findings on corpus v0's Terraform root carry the explicit `"unknown"` (the figure `CLAUDE.md` states for that root), and the authored root (§4) adds a further 31, also all `"unknown"` — 252 total across both roots — so only Trivy and tfsec supply levels at all.
+
+The reason is structural rather than a property of this corpus: identical class sets mean the same rules fired, and a rule's severity is fixed. For two resources to differ in severity within a class, *different* rules must have fired — which changes the class set, or the resource type, or both. There is no configuration of a corpus that escapes this while holding everything else equal.
+
+**Consequence:** severity gets **no contrastive pair**, and the coverage target is five factors rather than six (§6). This costs little: severity enters the additive model as a direct term, so its pair would have been a sanity check on the engine rather than a test of the research contribution. It is disclosed as an uncovered factor in the results, with this reasoning.
+
+**Candidate supply, measured.** Over corpus v0: **249** same-type combinations considered, **129** with an empty class difference, **120** usable candidates. Grouped by the class family their difference touches: containers+networking 82, containers 21, storage 9, networking 7, iam 1. Encryption is comfortable — **four** clean pairs against `aws_s3_bucket.logs` (`data`, `financials`, `flowbucket`, `operations`), each differing only in `storage-encryption-at-rest` + `storage-key-management-cmk`. The single `iam`-family candidate is `aws_instance.db_app` vs `web_host`, which mixes `iam-authentication-controls` with `iam-hardcoded-secrets` and is privilege material in neither case.
+
+### 1.1 Erratum — a class named for a factor is not evidence of that factor
+
+**Corrected 2026-09-26, after a pair had already been committed on the wrong basis.**
+
+An earlier revision of this section listed **two** minable exposure pairs, the second being `aws_security_group_rule.egress` vs `ingress`, whose class difference is `{networking-egress-exposure}`. That pair was authored, committed, and is **invalid**.
+
+The rubric's Public Exposure factor is **inbound-only**. Its own text scopes it to "internet/network reachability of the flagged resource … resolved only over the closed supported-pattern list in PLAN.md Q9: SG/NSG **ingress** open to 0.0.0.0/0 or ::/0 attached to the target, public-IP / publicly_accessible / public-endpoint flags, public storage (public-access-block disabled or public ACL/policy), and Kubernetes Service LoadBalancer/NodePort and Ingress." Level 4 reads "security-group / NSG **ingress** open to 0.0.0.0/0". **Egress appears in no level.**
+
+The taxonomy says the same thing against itself. `networking-egress-exposure` is defined as "unrestricted **egress** to any destination, creating a data-exfiltration path (**a distinct property from inbound exposure**)."
+
+So the class contains the word *exposure* and does not bear on the Exposure factor. This is the **same trap as `iam-authentication-controls`** recorded above — a class named for a factor it does not feed — and it was walked into for the same reason: the controller's candidate measurement matched on the class *name*, which is precisely the failure mode the missing class-to-factor mapping (§1) should have warned against. Two instances now make it a pattern, not an accident: **a class name is never evidence of a factor.**
+
+Consequences, all measured:
+
+- The surviving `exposure-security-group` pair is **valid**, because its difference includes `networking-ingress-exposure` and `aws_security_group.web-node` carries three literal `0.0.0.0/0` ingress blocks at `ec2.tf:77-115`. The ingress half carries the claim; any clause resting on the egress half does not.
+- **No valid second exposure pair can be mined.** Zero same-type resource pairs in corpus v0 differ only in a class the exposure pattern list supports (`networking-ingress-exposure` or `storage-public-accessibility`).
+- The second exposure pair is therefore **hand-crafted** (§4), and it is anchored in the pattern list rather than in a class name.
+
+**`networking-egress-exposure` maps to no rubric factor at all.** Data exfiltration is not exposure, privilege, encryption, sensitivity or criticality, and it is not severity. A finding in that class scores only on severity plus the declared factors. That is a genuine gap in the scoring model rather than an S2 problem, and it belongs in the handoff for S4 to rule on — either the factor set widens, or the model states that egress risk is out of scope.
 
 Seven Terraform resource *types* have more than one instance (`aws_rds_cluster` 9, `aws_s3_bucket` 6, `aws_subnet` 4, then `aws_security_group`, `aws_security_group_rule`, `aws_instance`, `aws_vpc` at 2 each); of those, **5 have instances whose issue-class sets genuinely differ**. 28 distinct issue classes appear across the corpus, and 39 distinct Kubernetes identities.
 
@@ -85,7 +117,7 @@ It enumerates same-type resources from adapter output over corpus v0 and emits, 
 
 **What it does not do, stated because an earlier draft of this section claimed otherwise.** It does not prove single-factor purity. Proving that needs a class-to-factor mapping, which does not exist and which S2 is not the place to invent (§1). Purity is therefore an **authored judgement**: the human reads the listed class difference, names the `factor_under_test`, and justifies purity in the `rationale`. The generator *supports* that judgement by making the difference explicit and re-derivable; it does not replace it, and the spec does not dress it up as mechanical.
 
-It also emits one negative figure: the count of resource pairs sharing an identical class set while differing in maximum severity. §1 measured that as **0**, and having the generator recompute it keeps that claim re-derivable instead of a one-time observation someone has to trust. If a re-capture ever makes it non-zero, severity becomes minable and §4's hand-crafted severity cases can retire.
+It also emits one negative figure: the count of resource pairs sharing an identical class set while differing in maximum severity. §1 measured that as **0**, and having the generator recompute it keeps that claim re-derivable instead of a one-time observation someone has to trust. If a re-capture ever makes it non-zero, severity becomes minable, at which point §4's decision to scope severity out entirely (and hand-craft no severity case) would be worth revisiting — not a case to retire, since §4 records that severity was removed from its scope before any such case was authored.
 
 What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5. The set of pairs induces a class-difference-to-factor relation, and that relation must be a function: if one pair rests the `exposure` claim on a class difference and another rests `severity` on the same difference, one of them is wrong. That catches the realistic authoring error without inventing the table.
 
@@ -95,14 +127,23 @@ What *is* mechanically enforceable is **cross-pair consistency** — §6 gate 5.
 
 `corpus/authored/`, with its scan root declared in `tools/corpus.lock.json` alongside v0's vendored roots.
 
-**Scope: the minimum v0 cannot express — two factors, not one.**
+**Scope: the minimum v0 cannot express — two factors.**
 
-- **privilege:** three IAM policies differing in scope alone — narrow, moderate, broad — yielding two pairs from three cases.
-- **severity:** two or three resources of one type, each triggering rules in a single shared issue class at different severities. §1 shows this is constructible because five classes span multiple severities; it is not minable because in v0 that variance only ever appears across different resource types.
+- **privilege:** three IAM policies in **one action family**, increasing in breadth, so their issue-class sets nest. Two pairs from three cases.
+- **exposure, second pair:** two `aws_s3_bucket` resources identical in every respect **except that one is publicly exposed**, so their class sets differ by exactly `{storage-public-accessibility}` — a class the exposure pattern list explicitly supports ("public storage (public-access-block disabled or public ACL/policy)") and which the factor's level 5 describes directly. Required because §1.1's erratum invalidated the mined second pair and no valid replacement exists in v0.
+
+**Why buckets rather than security groups, since security groups are the obvious choice.** The natural instinct is two security groups exercising the factor's own level 2 ("ingress limited to a narrow public CIDR") against level 4 (`0.0.0.0/0`). That does not work: the scanners flag network exposure **binary**. A narrow `/24` draws no finding at all, so the low side would be a case with no findings — which the constraint below already rules out of any pair — and the result would merely duplicate the surviving pair's shape. The bucket construction works because both sides draw the same baseline storage findings and only the public one adds the exposure class.
+
+Severity was originally scoped here too and has been **removed**: §1's measurement shows it is not pair-testable by any construction, not merely unminable.
 
 Anywhere a mined candidate turns out impure on inspection, its factor gets a hand-crafted pair too.
 
-A note on relative value, so the authored surface is spent knowingly: severity enters the additive model as a direct term, so its pair is a **sanity check on the engine** rather than a test of the research contribution. It is included because the marginal cost is two small resources in a scan the privilege cases already require — not because it carries an argument.
+**Two constraints discovered by attempting this, not by reasoning about it.**
+
+1. **A case with no findings cannot enter a contrastive pair** — there is nothing to rank. A genuinely least-privilege policy draws zero findings from all three scanners, which is correct behaviour (a true negative) and makes "clean versus broad" unavailable as a pair. Both sides must be flagged, so the pair spans *somewhat broad* to *very broad*.
+2. **All three policies must stay in one action family.** A first attempt reached for a different action (`sts:GetSessionToken`) to make the narrowest case produce *a* finding; the result was that the narrowest carried `iam-privilege-escalation-sensitive-perms` while the middle carried `iam-overpermissive-policy` — **no shared class**, a difference in kind rather than degree, and the narrowest arguably the more severe of the two. A pair built on that would assert an ordering its own classes contradict.
+
+Both constraints are recorded because they are invisible until the scanners run, and the next author will reason their way to the same two mistakes.
 
 **These files must be scanned.** `expected.findings` references real `resource_identity` and `issue_class` values, and there is no honest way to author those without seeing what the pinned scanners actually emit. S2 therefore runs the pinned scanners over the **new root only**, capturing fixtures to `tests/harvest/fixtures/authored/`. Corpus v0's five golden documents are not touched, re-captured, or rewritten. This is a deliberate, bounded relaxation of the don't-run-the-scanners rule, and it is bounded by path.
 
@@ -145,7 +186,8 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 
 | Target | Minimum | Rationale |
 |---|---|---|
-| contrastive pairs per factor | 2 × 6 factors = 12 | one pair per factor is a single point of failure |
+| contrastive pairs per pairable factor | 2 × 5 factors = **10** | one pair per factor is a single point of failure |
+| contrastive pairs for `severity` | **0, by measurement** | not pair-testable by any construction (§1) — disclosed, not quietly missing |
 | scenarios per domain | 1 × 5 domains = 5 | the five domains are the tested categories |
 | cases per scenario | 3, across ≥2 tiers | the schema enforces ≥2 tiers; 2 cases in 2 tiers is a pair, not an ordering |
 | cases exercising `defaulted_factors` | ≥1 | a `null` declared value (PLAN Q4) |
@@ -154,10 +196,10 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 **The six S2 acceptance gates.** Each covers something S1's validator does *not*:
 
 1. `eval/ground_truth/corpus-v1.json` loads through the committed `load_and_validate` without error.
-2. Every one of the six `factor_key` values is the `factor_under_test` of at least 2 pairs.
+2. Each of the **five pairable** `factor_key` values — `exposure`, `privilege`, `sensitivity`, `criticality`, `encryption` — is the `factor_under_test` of at least 2 pairs. And **`severity` is the `factor_under_test` of exactly 0**, asserted rather than merely absent, so the gap stays a recorded decision instead of drifting into an oversight someone later "fixes" with a pair that cannot isolate anything (§1).
 3. Every one of the five `domain` values has at least 1 scenario, and every scenario orders ≥3 cases across ≥2 tiers.
 4. **No orphan cases** — every `case_id` is referenced by at least one pair or scenario. The validator checks that references resolve; it does not check the converse.
-5. **Cross-pair consistency.** For every mined pair, the recorded class difference between its two cases is still what the adapters produce when re-derived. And the relation the pairs induce from class-difference to `factor_under_test` is a **function**: no single class difference is cited as evidence for two different factors. Hand-crafted cases carry `source: "hand-crafted"`; mined ones carry a `{repo, commit, path}` triple.
+5. **Cross-pair consistency.** For every mined pair, the recorded class difference between its two cases is still what the adapters produce when re-derived. And the relation the pairs induce from class-difference to `factor_under_test` is a **function**: no single class difference is cited as evidence for two different factors. **The function check covers only pairs with a non-empty class difference, and must.** The four declared-factor pairs rest on declared context alone — both sides are the same resource with identical expected findings — so their class difference is *empty by construction*. Including them would make the empty set a shared key mapping to both `sensitivity` and `criticality` and fail the gate on the corpus's own correct data. Those four are covered instead by the declared-context isolation property (exactly one declared value differs, its companion held equal, and the tested factor's `case_high` value strictly greater than `case_low`'s), so between the two mechanisms every pair is checked and neither check is weakened. **This property is asserted mechanically**, not merely inferred from valid data passing: `tests/test_s2_gates.py::test_gate_5_declared_context_isolation_for_declared_factor_pairs`, a companion check beside gate 5's function-relation half, verifies it for every pair in the document — companion-equal-and-tested-value-greater for the two declared factors, equal-on-both-factors for the three code factors, whose own rationales separately claim declared context is held equal — and is mutation-tested (two cases: a drifted companion value, a drifted code-factor context) to confirm it can fail. Recorded because an earlier revision of this section omitted it and the implementer had to infer it to make the gate pass on valid data. Hand-crafted cases carry `source: "hand-crafted"`; mined ones carry a `{repo, commit, path}` triple.
 6. Both `defaulted_factors` and `unresolved_factors` are non-empty on at least one expected finding each, and every scenario oracle is complete: a `reviewer_verdict` in the enum, a `reviewer` distinct from the `author`, and a `registered_at` that parses as a date in the past.
 
 **What gate 6 can and cannot carry.** An earlier draft of this section had gate 6 assert that every `registered_at` predates the earliest scoring artifact. That test would be **vacuous**: no scoring module exists, so there is nothing to compare against, and it would pass while proving nothing — the precise defect S3a shipped three times before it was caught. Stated plainly instead:
@@ -180,7 +222,7 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 
 - **Scoring and reporting** (S4) and the **evaluation harness** (S5). S2 produces the data those consume and computes no metric itself.
 - **A second vendored real-world repository.** Corpus v1 is built on deliberately-insecure teaching repos plus minimal hand-crafted cases. That limits external validity, and that limitation is **stated in the results** rather than solved here — consistent with PLAN's existing exclusion of multi-cloud production repos.
-- **`expected_band` beyond the few unambiguous cases**, each flagged so the Q10 threshold sensitivity analysis can exclude them instead of appearing to fail.
+- **`expected_band` on any case.** It is set nowhere in corpus v1 (handoff item 9) — this corpus tests orderings, not band placement — so there is no case yet for the Q10 threshold sensitivity analysis to exclude. A future corpus that does set it on the few unambiguous cases should flag each one so that analysis can exclude it instead of appearing to fail.
 - **Auto-inference mode's ground truth.** S2 authors the declared-context path; the convention-based inference mode is evaluated against the same cases later, not given its own corpus.
 
 ---
@@ -189,6 +231,6 @@ Fixed a priori, before any case is authored, and enforced as tests in `tests/tes
 
 1. **Single-factor purity is an authored judgement, not a proven property.** This is the largest residual risk in S2 and it follows from the missing class-to-factor mapping (§1). The generator makes each pair's class difference explicit and re-derivable, and gate 5 enforces that the induced class-difference-to-factor relation is a function — but nothing establishes that the *named* factor is the right one. A pair can be internally consistent, mechanically clean, and still test the wrong factor. **Cost if wrong:** a contrastive-pair pass rate that measures something other than what the results claim it measures, with no artifact that would reveal it. The only real mitigation is that the reviewer of §5 sees the pairs too; a disagreement there is the signal to look.
 2. **A hand-crafted pair is a pair the framework's author wrote.** Mitigated by keeping authoring to the minimum v0 cannot express, by recording the class difference mechanically for everything else, and by disclosing the hand-crafted count. Not eliminated.
-2. **The blinded reviewer shares a model family with the author's tooling.** Correlated blind spots are possible and cannot be measured from inside. A supervisor review of a sample would bound it; that is available later and does not block S2.
-3. **Scanning the authored root introduces a second fixture set.** Two fixture directories mean two things that can drift. Bounded by never touching v0's, and by the authored fixtures being regenerable from committed files.
-4. **`iam-authentication-controls` looks like privilege material and is not.** Only half of this is testable: the generator emits no `aws_rds_cluster` candidate because all nine instances share an identical class set, and that is pinned as a regression test. The judgement — that the class is authentication configuration rather than privilege scope — cannot be tested and lives in §1 and in the hand-crafted privilege pair's rationale. The next author will have the same thought, so it is written down twice rather than once.
+3. **The blinded reviewer shares a model family with the author's tooling.** Correlated blind spots are possible and cannot be measured from inside. A supervisor review of a sample would bound it; that is available later and does not block S2.
+4. **Scanning the authored root introduces a second fixture set.** Two fixture directories mean two things that can drift. Bounded by never touching v0's, and by the authored fixtures being regenerable from committed files.
+5. **`iam-authentication-controls` looks like privilege material and is not.** Only half of this is testable: the generator emits no `aws_rds_cluster` candidate because all nine instances share an identical class set, and that is pinned as a regression test. The judgement — that the class is authentication configuration rather than privilege scope — cannot be tested and lives in §1 and in the hand-crafted privilege pair's rationale. The next author will have the same thought, so it is written down twice rather than once.

@@ -1,0 +1,1211 @@
+{
+  "schema_version": 1,
+  "description": "Corpus v1 - contrastive pairs and scenarios. Authored in S2 before any scoring engine existed; see the design spec section 0.",
+  "cases": [
+    {
+      "case_id": "sg-default-low-exposure",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_security_group.default": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group.default",
+            "issue_class": "networking-config-hygiene"
+          }
+        ],
+        "notes": "aws_security_group.default is declared in db-app.tf:117-134, not ec2.tf - verified against real adapter output over tests/harvest/fixtures/*-terraform.json (checkov CKV_AWS_23, trivy AWS-0099, tfsec AVD-AWS-0099, all mapping to networking-config-hygiene; no ingress/egress class). Serves as the low side of the exposure pair against sg-web-node-high-exposure: the group carries no rule of its own, only a naming-hygiene finding."
+      }
+    },
+    {
+      "case_id": "sg-web-node-high-exposure",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/ec2.tf"
+      },
+      "declared_context": {
+        "aws_security_group.web-node": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group.web-node",
+            "issue_class": "networking-config-hygiene"
+          },
+          {
+            "resource_identity": "aws_security_group.web-node",
+            "issue_class": "networking-egress-exposure"
+          },
+          {
+            "resource_identity": "aws_security_group.web-node",
+            "issue_class": "networking-ingress-exposure"
+          }
+        ],
+        "notes": "aws_security_group.web-node is declared in ec2.tf:77-115, with three literal 0.0.0.0/0 cidr_blocks (ingress 22, ingress 80, egress) - measured over real adapter output: checkov CKV_AWS_23/382/24/260, trivy AWS-0104/0107/0124, tfsec AVD-AWS-0104/0107/0124 (AWS-0099/AVD-AWS-0099 fire only on aws_security_group.default, not on this resource). Serves as the high side of the exposure pair against sg-default-low-exposure."
+      }
+    },
+    {
+      "case_id": "sgr-ingress-vpc-interpolated",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_security_group_rule.ingress": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group_rule.ingress",
+            "issue_class": "networking-config-hygiene",
+            "unresolved_factors": [
+              "exposure"
+            ],
+            "excluded_from_quality_claims": true
+          }
+        ],
+        "notes": "aws_security_group_rule.ingress is declared in db-app.tf:136-143. Its cidr_blocks value at db-app.tf:141 is `cidr_blocks = [\"${aws_vpc.web_vpc.cidr_block}\"]` - a reference to another resource's attribute, not a literal CIDR. The bounded extractor's closed list of exposure patterns is literals-only (design spec section 3 / CLAUDE.md's context-extraction layer), so Public Exposure cannot be resolved for this finding from the IaC alone; it is recorded unresolved rather than defaulted to low, and the rubric scores an unresolved exposure conservatively at 3 - above a confirmed-absent exposure and below the >=4 floor a literal 0.0.0.0/0 ingress forces. That is why this case sits in its own tier in the networking scenario, above the tied bottom tier (sgr-egress-unrestricted, sg-default-low-exposure) and below sg-web-node-high-exposure. Measured over real adapter output: checkov CKV_AWS_23, trivy AWS-0124, tfsec AVD-AWS-0124, all mapping to networking-config-hygiene - no ingress-exposure class is emitted for this resource by any of the three scanners, so the unresolved state is carried purely as context, not asserted as a scanner finding this case does not have."
+      }
+    },
+    {
+      "case_id": "sgr-egress-unrestricted",
+      "platform": "terraform",
+      "domain": "networking",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_security_group_rule.egress": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_security_group_rule.egress",
+            "issue_class": "networking-config-hygiene"
+          },
+          {
+            "resource_identity": "aws_security_group_rule.egress",
+            "issue_class": "networking-egress-exposure"
+          }
+        ],
+        "notes": "aws_security_group_rule.egress is declared in db-app.tf:145-152, with a literal cidr_blocks = [\"0.0.0.0/0\"] at line 150. Measured over real adapter output: checkov CKV_AWS_23/382, trivy AWS-0104/0124, tfsec AVD-AWS-0104/0124. The rule's unrestricted 0.0.0.0/0 egress is a real data-exfiltration risk, but the rubric's Public Exposure factor is inbound-only - its closed supported-pattern list names SG/NSG ingress and is silent on egress, and the taxonomy defines networking-egress-exposure itself as 'a distinct property from inbound exposure' - so this finding carries no supported exposure signal at all. That is why this case sits in the networking scenario's bottom tier, tied with sg-default-low-exposure rather than above sgr-ingress-vpc-interpolated: the retired exposure-security-group-rule pair once rested a claim on this class (design spec section 1.1); this case does not repeat it, and is not the high side of any surviving pair."
+      }
+    },
+    {
+      "case_id": "s3-logs-encryption-ok",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.logs": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.logs",
+            "issue_class": "storage-logging-audit"
+          }
+        ],
+        "notes": "aws_s3_bucket.logs is declared in s3.tf:113-141. Measured over real adapter output, this bucket draws no storage-key-management-cmk and no storage-encryption-at-rest finding from any of the three scanners - unlike aws_s3_bucket.data/financials/operations/data_science, none of which is SSE-KMS-configured. It is the low side of both encryption pairs (s3-data-encryption-gap, s3-financials-encryption-gap); reused rather than duplicated per the task dispatch's own instruction."
+      }
+    },
+    {
+      "case_id": "s3-data-encryption-gap",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.data is declared in s3.tf:1-21. storage-encryption-at-rest is tfsec-only on the S3 buckets in corpus v0 (AVD-AWS-0088; neither checkov nor trivy maps a rule to that class on this fixture) - not tfsec-only in corpus v0 overall: checkov (CKV2_AWS_2, CKV_AWS_3, CKV_AWS_8) and trivy (AWS-0026, AWS-0131) both map to the same class on the compute cases in this corpus (ec2-db-app-compute, ec2-web-host-compute, ebs-web-host-storage-compute). High side of the encryption pair against s3-logs-encryption-ok."
+      }
+    },
+    {
+      "case_id": "s3-financials-encryption-gap",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.financials": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.financials is declared in s3.tf:42-63, same issue-class shape as aws_s3_bucket.data. High side of the second encryption pair against s3-logs-encryption-ok."
+      }
+    },
+    {
+      "case_id": "s3-financials-sensitivity-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.financials": {
+          "sensitivity": 5,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-financials-encryption-gap - differs only in declared sensitivity (5 here, 1 in s3-financials-sensitivity-low), criticality held equal at 3. The cleanest isolation of Resource Sensitivity available: everything else about the case is identical."
+      }
+    },
+    {
+      "case_id": "s3-financials-sensitivity-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.financials": {
+          "sensitivity": 1,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.financials",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-financials-sensitivity-high - differs only in declared sensitivity (1 here, 5 there), criticality held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-operations-sensitivity-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.operations": {
+          "sensitivity": 4,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.operations is declared in s3.tf:65-87. Same resource, same code, same findings as s3-operations-sensitivity-low - differs only in declared sensitivity (4 here, 1 there), criticality held equal at 3. Second sensitivity pair, independent of the financials resource."
+      }
+    },
+    {
+      "case_id": "s3-operations-sensitivity-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.operations": {
+          "sensitivity": 1,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.operations",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-operations-sensitivity-high - differs only in declared sensitivity (1 here, 4 there), criticality held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-data-criticality-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": {
+          "sensitivity": 3,
+          "criticality": 5
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-data-encryption-gap and s3-data-criticality-low - differs from the latter only in declared criticality (5 here, 1 there), sensitivity held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-data-criticality-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data": {
+          "sensitivity": 3,
+          "criticality": 1
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-data-criticality-high - differs only in declared criticality (1 here, 5 there), sensitivity held equal at 3."
+      }
+    },
+    {
+      "case_id": "s3-data-science-criticality-high",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data_science": {
+          "sensitivity": 3,
+          "criticality": 4
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_s3_bucket.data_science is declared in s3.tf:89-111. Measured over real adapter output, this bucket draws no storage-logging-audit finding (unlike data/financials/operations) - neither checkov's CKV_AWS_18 nor trivy's AWS-0089 fires on it. Same resource, same code, same findings as s3-data-science-criticality-low - differs only in declared criticality (4 here, 1 there), sensitivity held equal at 3. Second criticality pair, independent of the data resource."
+      }
+    },
+    {
+      "case_id": "s3-data-science-criticality-low",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/s3.tf"
+      },
+      "declared_context": {
+        "aws_s3_bucket.data_science": {
+          "sensitivity": 3,
+          "criticality": 1
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-public-accessibility"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.data_science",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "Same resource, same code, same findings as s3-data-science-criticality-high - differs only in declared criticality (1 here, 4 there), sensitivity held equal at 3."
+      }
+    },
+    {
+      "case_id": "iam-s3-bucket-scope",
+      "platform": "terraform",
+      "domain": "iam",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_iam_policy.s3_bucket_scope": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_iam_policy.s3_bucket_scope",
+            "issue_class": "iam-overpermissive-policy"
+          }
+        ],
+        "notes": "corpus/authored/iam_privilege.tf:1-11. Narrowest of the three nested privilege policies - s3:* scoped to one bucket ARN prefix. Measured over real adapter output on tests/harvest/fixtures/authored/*-terraform.json: tfsec AVD-AWS-0057 and trivy AWS-0345, both mapping to iam-overpermissive-policy; checkov flags nothing on this resource. 2 findings total, matching tools/corpus.lock.json's authored-iam-privilege note."
+      }
+    },
+    {
+      "case_id": "iam-s3-account-scope",
+      "platform": "terraform",
+      "domain": "iam",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_iam_policy.s3_account_scope": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_iam_policy.s3_account_scope",
+            "issue_class": "iam-overpermissive-policy"
+          },
+          {
+            "resource_identity": "aws_iam_policy.s3_account_scope",
+            "issue_class": "iam-privilege-escalation-sensitive-perms"
+          }
+        ],
+        "notes": "corpus/authored/iam_privilege.tf:13-23. Middle of the three nested privilege policies - s3:* on all buckets (Resource = \"*\"), one action family, breadth-only escalation from s3-bucket-scope. Measured over real adapter output: checkov CKV_AWS_288/289/355/290, tfsec AVD-AWS-0057 (x2), trivy AWS-0345 - 7 findings total, matching the corpus lockfile note. Its issue-class set {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms} is a proper superset of s3-bucket-scope's {iam-overpermissive-policy} and a proper subset of unrestricted-scope's - the nesting property tests/test_authored_corpus.py pins as a regression. Serves as the shared middle case for both privilege pairs (s3_bucket_scope < s3_account_scope < unrestricted_scope)."
+      }
+    },
+    {
+      "case_id": "iam-unrestricted-scope",
+      "platform": "terraform",
+      "domain": "iam",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_iam_policy.unrestricted_scope": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "unmapped:checkov:CKV_AWS_62"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "iam-privilege-escalation-sensitive-perms"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "iam-overpermissive-policy"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "unmapped:checkov:CKV_AWS_63"
+          },
+          {
+            "resource_identity": "aws_iam_policy.unrestricted_scope",
+            "issue_class": "unmapped:checkov:CKV2_AWS_40"
+          }
+        ],
+        "notes": "corpus/authored/iam_privilege.tf:25-35. Broadest of the three - Action = \"*\" on Resource = \"*\", the ceiling of the same action family. Measured over real adapter output: checkov CKV_AWS_62/287/288/289/286/63/355/290 and CKV2_AWS_40, tfsec AVD-AWS-0057 (x2) - 11 findings total, matching the corpus lockfile note. Three of checkov's rule ids (CKV_AWS_62, CKV_AWS_63, CKV2_AWS_40) take the explicit unmapped:checkov:<rule_id> class per taxonomy.json's fallback rather than a guessed class - carried here exactly as the taxonomy resolves them, not collapsed into iam-overpermissive-policy."
+      }
+    },
+    {
+      "case_id": "ec2-db-app-compute",
+      "platform": "terraform",
+      "domain": "compute",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/db-app.tf"
+      },
+      "declared_context": {
+        "aws_instance.db_app": {
+          "sensitivity": 3,
+          "criticality": 4
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_instance.db_app",
+            "issue_class": "compute-reliability-observability"
+          },
+          {
+            "resource_identity": "aws_instance.db_app",
+            "issue_class": "compute-instance-metadata-hardening"
+          },
+          {
+            "resource_identity": "aws_instance.db_app",
+            "issue_class": "storage-encryption-at-rest"
+          }
+        ],
+        "notes": "aws_instance.db_app is declared in db-app.tf:243-413. Measured over real adapter output: checkov CKV_AWS_126/135/79/8, trivy AWS-0028/0131, tfsec AVD-AWS-0131/0028."
+      }
+    },
+    {
+      "case_id": "ec2-web-host-compute",
+      "platform": "terraform",
+      "domain": "compute",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/ec2.tf"
+      },
+      "declared_context": {
+        "aws_instance.web_host": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "iam-hardcoded-secrets"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "compute-reliability-observability"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "compute-instance-metadata-hardening"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "storage-encryption-at-rest"
+          },
+          {
+            "resource_identity": "aws_instance.web_host",
+            "issue_class": "iam-authentication-controls"
+          }
+        ],
+        "notes": "aws_instance.web_host is declared in ec2.tf:1-32; its user_data block hardcodes an AWS access key pair at ec2.tf:9-19 (fake AKIAIOSFODNN7EXAMAAA credential, flagged CRITICAL by trivy AWS-0029 and tfsec AVD-AWS-0029). Measured over real adapter output: checkov CKV_AWS_46/126/135/79/8, CKV2_AWS_41, trivy AWS-0028/0029/0131, tfsec AVD-AWS-0131/0028/0029. Orderable against ec2-db-app-compute and ebs-web-host-storage-compute by both finding count (5 distinct classes) and the one CRITICAL-severity row."
+      }
+    },
+    {
+      "case_id": "ebs-web-host-storage-compute",
+      "platform": "terraform",
+      "domain": "compute",
+      "source": {
+        "repo": "https://github.com/bridgecrewio/terragoat",
+        "commit": "729f8da6",
+        "path": "terraform/aws/ec2.tf"
+      },
+      "declared_context": {
+        "aws_ebs_volume.web_host_storage": {
+          "sensitivity": null,
+          "criticality": 2
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_ebs_volume.web_host_storage",
+            "issue_class": "storage-encryption-at-rest",
+            "defaulted_factors": [
+              "sensitivity"
+            ],
+            "excluded_from_quality_claims": true
+          },
+          {
+            "resource_identity": "aws_ebs_volume.web_host_storage",
+            "issue_class": "storage-key-management-cmk",
+            "defaulted_factors": [
+              "sensitivity"
+            ],
+            "excluded_from_quality_claims": true
+          }
+        ],
+        "notes": "aws_ebs_volume.web_host_storage is declared in ec2.tf:34-51, the unencrypted companion volume to aws_instance.web_host. Measured over real adapter output: checkov CKV_AWS_3/189, CKV2_AWS_2, trivy AWS-0026/0027, tfsec AVD-AWS-0026/0027 - 2 distinct classes. declared_context.sensitivity is deliberately null here (PLAN Q4's missing-declared-value): this exercises the default-fallback path, so both findings are held out of prioritization-quality claims. The smallest of the three compute cases by class count, orderable below ec2-db-app-compute and ec2-web-host-compute."
+      }
+    },
+    {
+      "case_id": "k8s-goat-home-workload",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "https://github.com/madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/kubernetes-goat-home/deployment.yaml"
+      },
+      "declared_context": {
+        "apps/v1/Deployment/default/kubernetes-goat-home-deployment": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-host-isolation-breakout"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-image-supply-chain"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-linux-capabilities"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-privileged-execution"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-securitycontext-hardening"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "containers-workload-reliability"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/kubernetes-goat-home-deployment",
+            "issue_class": "networking-isolation-segmentation"
+          }
+        ],
+        "notes": "The Kubernetes-Goat home page Deployment, scenarios/kubernetes-goat-home/deployment.yaml. Measured over real adapter output (checkov + trivy pooled over the kubernetes scan root, index-resolved via ResourceIndex.by_address): the full 7-class workload-level set. Measured across all 14 top-level Deployment/DaemonSet/Job identities in this corpus, 12 carry this same 7-class set; kube-bench-node and kube-bench-master carry 6 (missing networking-isolation-segmentation - see k8s-kube-bench-node-workload's own notes). Richest of the three containers cases by class count; the public-facing entry point of the scenario set."
+      }
+    },
+    {
+      "case_id": "k8s-kube-bench-node-workload",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "https://github.com/madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/kube-bench-security/node-job.yaml"
+      },
+      "declared_context": {
+        "batch/v1/Job/default/kube-bench-node": {
+          "sensitivity": 2,
+          "criticality": 2
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-host-isolation-breakout"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-image-supply-chain"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-linux-capabilities"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-privileged-execution"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-securitycontext-hardening"
+          },
+          {
+            "resource_identity": "batch/v1/Job/default/kube-bench-node",
+            "issue_class": "containers-workload-reliability"
+          }
+        ],
+        "notes": "The kube-bench node-check Job, scenarios/kube-bench-security/node-job.yaml. Measured over real adapter output: 6 distinct classes - the same workload-level set as k8s-goat-home-workload minus networking-isolation-segmentation, which does not fire on this Job. A batch security-tooling job rather than a user-facing service; orderable below k8s-goat-home-workload by class count and above k8s-internal-proxy-api-container."
+      }
+    },
+    {
+      "case_id": "k8s-internal-proxy-api-container",
+      "platform": "kubernetes",
+      "domain": "containers",
+      "source": {
+        "repo": "https://github.com/madhuakula/kubernetes-goat",
+        "commit": "723a0db4",
+        "path": "scenarios/internal-proxy/deployment.yaml"
+      },
+      "declared_context": {
+        "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-image-supply-chain"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-linux-capabilities"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-privileged-execution"
+          },
+          {
+            "resource_identity": "apps/v1/Deployment/default/internal-proxy-deployment [container=internal-api]",
+            "issue_class": "containers-securitycontext-hardening"
+          }
+        ],
+        "notes": "The internal-api container within the internal-proxy Deployment, scenarios/internal-proxy/deployment.yaml, resolved via ResourceIndex.by_address(container=\"internal-api\"). Measured over real adapter output: 4 distinct classes - container-scoped findings only, missing containers-workload-reliability, networking-isolation-segmentation and containers-host-isolation-breakout - three classes, all of which attach to the workload as a whole (namespace sharing, hostPath mounts and SA-token automount are pod-level properties) rather than to this one container. Narrowest of the three containers cases by class count, and an internal (non-public) service rather than the goat-home entry point."
+      }
+    },
+    {
+      "case_id": "s3-private-baseline-not-public",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_s3_bucket.private_baseline": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.private_baseline",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.private_baseline",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.private_baseline",
+            "issue_class": "storage-encryption-at-rest"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.private_baseline",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.private_baseline",
+            "issue_class": "storage-logging-audit"
+          }
+        ],
+        "notes": "Hand-crafted low side of the exposure pair. Identical to its public twin except that its aws_s3_bucket_public_access_block sets all four block flags true and no bucket policy grants Principal \"*\". Draws the same five baseline storage classes and no exposure class. The absence is genuine rather than an attribution artefact: its own public-access-block sibling, aws_s3_bucket_public_access_block.private_baseline, draws no findings from any of the three scanners, so there is no exposure signal anywhere on this side of the pair to have been attributed elsewhere."
+      }
+    },
+    {
+      "case_id": "s3-public-exposed",
+      "platform": "terraform",
+      "domain": "storage",
+      "source": "hand-crafted",
+      "declared_context": {
+        "aws_s3_bucket.public_exposed": {
+          "sensitivity": 3,
+          "criticality": 3
+        }
+      },
+      "expected": {
+        "findings": [
+          {
+            "resource_identity": "aws_s3_bucket.public_exposed",
+            "issue_class": "storage-data-lifecycle-hygiene"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.public_exposed",
+            "issue_class": "storage-data-recoverability"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.public_exposed",
+            "issue_class": "storage-encryption-at-rest"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.public_exposed",
+            "issue_class": "storage-key-management-cmk"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.public_exposed",
+            "issue_class": "storage-logging-audit"
+          },
+          {
+            "resource_identity": "aws_s3_bucket.public_exposed",
+            "issue_class": "storage-public-accessibility"
+          }
+        ],
+        "notes": "Hand-crafted high side of the exposure pair. Identical to its private twin except that its public-access-block sets all four flags false and a bucket policy grants s3:GetObject to Principal \"*\" - exactly the rubric's Public Exposure level 5 shape. Evidentiary scope, stated because it is narrower than it looks: on THIS resource identity the storage-public-accessibility class comes from checkov CKV2_AWS_6 alone - a graph check that resolves the bucket-to-public-access-block relationship, and therefore the semantically correct attribution, since the bucket is the exposed asset. tfsec (AVD-AWS-0086/0087/0091/0093) and trivy (AWS-0086/0087/0091/0093) map the same class but attribute all eight findings to the sibling identity aws_s3_bucket_public_access_block.public_exposed, which is not a case in this corpus. checkov CKV_AWS_70 on aws_s3_bucket_policy.public_exposed is unmapped and also outside any case. So the pair's bucket-level exposure evidence is single-sourced: right evidence, one scanner. Were CKV2_AWS_6 to disappear, this identity would carry no exposure class and the pair would collapse."
+      }
+    }
+  ],
+  "contrastive_pairs": [
+    {
+      "pair_id": "exposure-security-group",
+      "factor_under_test": "exposure",
+      "case_high": "sg-web-node-high-exposure",
+      "case_low": "sg-default-low-exposure",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: sg-web-node-high-exposure ranks above sg-default-low-exposure. Both are aws_security_group resources sharing networking-config-hygiene. web-node additionally carries networking-ingress-exposure and networking-egress-exposure (three literal 0.0.0.0/0 cidr_blocks at ec2.tf:77-115); default carries neither (db-app.tf:117-134, no rule of its own). The class difference is exactly {networking-ingress-exposure, networking-egress-exposure}, recorded in artifacts/pair-candidates.json. The ingress class alone carries the claim: the Public Exposure factor's closed supported-pattern list names SG/NSG ingress open to 0.0.0.0/0, and its level 4 describes exactly that. networking-egress-exposure does NOT bear on Public Exposure - the taxonomy defines it as \"a distinct property from inbound exposure\" and it appears in no level of the factor, so it contributes nothing here and is not offered as evidence (design spec section 1.1). It is present in the difference because web-node happens to open egress too; the pair would stand on the ingress class without it. Nothing else differs between the two groups and declared context is held equal at sensitivity 3 / criticality 3, so the pair isolates exposure. Purity is an authored judgement, not a machine-proven property (design spec section 3)."
+    },
+    {
+      "pair_id": "encryption-s3-data",
+      "factor_under_test": "encryption",
+      "case_high": "s3-data-encryption-gap",
+      "case_low": "s3-logs-encryption-ok",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-data-encryption-gap ranks above s3-logs-encryption-ok. Both are aws_s3_bucket resources sharing storage-public-accessibility, storage-data-lifecycle-hygiene, storage-data-recoverability and storage-logging-audit; aws_s3_bucket.data additionally carries storage-key-management-cmk and storage-encryption-at-rest, which aws_s3_bucket.logs does not draw from any of the three scanners. The class difference is exactly {storage-key-management-cmk, storage-encryption-at-rest} - both encryption classes. Declared context is held equal at sensitivity 3, criticality 3 on both sides, so nothing else differs and the pair isolates encryption risk."
+    },
+    {
+      "pair_id": "encryption-s3-financials",
+      "factor_under_test": "encryption",
+      "case_high": "s3-financials-encryption-gap",
+      "case_low": "s3-logs-encryption-ok",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-financials-encryption-gap ranks above s3-logs-encryption-ok. Same shared base of four classes as encryption-s3-data, with aws_s3_bucket.financials additionally carrying storage-key-management-cmk and storage-encryption-at-rest. The class difference is the same {storage-key-management-cmk, storage-encryption-at-rest} as the first encryption pair, which is consistent rather than a conflict since both pairs test the same factor. Declared context is held equal at sensitivity 3, criticality 3 on both sides (aws_s3_bucket.financials and aws_s3_bucket.logs alike), so the pair isolates encryption risk rather than mixing in a context delta; s3-logs-encryption-ok is deliberately reused as the low side of both pairs per the task dispatch rather than authoring a near-duplicate low case."
+    },
+    {
+      "pair_id": "sensitivity-s3-financials",
+      "factor_under_test": "sensitivity",
+      "case_high": "s3-financials-sensitivity-high",
+      "case_low": "s3-financials-sensitivity-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-financials-sensitivity-high ranks above s3-financials-sensitivity-low. Same resource (aws_s3_bucket.financials), same code, identical expected findings in both cases - there is no class difference at all. The two cases differ in exactly one declared value: sensitivity 5 versus 1, with criticality held equal at 3 in both. This is the cleanest isolation available in the corpus: not a class-difference argument but a controlled declared-context variation on an otherwise-identical case."
+    },
+    {
+      "pair_id": "sensitivity-s3-operations",
+      "factor_under_test": "sensitivity",
+      "case_high": "s3-operations-sensitivity-high",
+      "case_low": "s3-operations-sensitivity-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-operations-sensitivity-high ranks above s3-operations-sensitivity-low. Same resource (aws_s3_bucket.operations), same code, identical expected findings in both cases - again no class difference. The two cases differ in exactly one declared value: sensitivity 4 versus 1, criticality held equal at 3 in both. A second, independent sensitivity pair on a different resource than sensitivity-s3-financials, so the sensitivity claim does not rest on one bucket alone."
+    },
+    {
+      "pair_id": "criticality-s3-data",
+      "factor_under_test": "criticality",
+      "case_high": "s3-data-criticality-high",
+      "case_low": "s3-data-criticality-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-data-criticality-high ranks above s3-data-criticality-low. Same resource (aws_s3_bucket.data), same code, identical expected findings in both cases - no class difference. The two cases differ in exactly one declared value: criticality 5 versus 1, with sensitivity held equal at 3 in both. As with the sensitivity pairs, this is a controlled declared-context variation on an otherwise-identical case, not a class-difference argument."
+    },
+    {
+      "pair_id": "criticality-s3-data-science",
+      "factor_under_test": "criticality",
+      "case_high": "s3-data-science-criticality-high",
+      "case_low": "s3-data-science-criticality-low",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-data-science-criticality-high ranks above s3-data-science-criticality-low. Same resource (aws_s3_bucket.data_science), same code, identical expected findings in both cases - no class difference. The two cases differ in exactly one declared value: criticality 4 versus 1, sensitivity held equal at 3 in both. A second, independent criticality pair on a different resource than criticality-s3-data."
+    },
+    {
+      "pair_id": "privilege-iam-bucket-to-account",
+      "factor_under_test": "privilege",
+      "case_high": "iam-s3-account-scope",
+      "case_low": "iam-s3-bucket-scope",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: iam-s3-account-scope ranks above iam-s3-bucket-scope. Both are hand-crafted aws_iam_policy resources in the same s3 action family (corpus/authored/iam_privilege.tf), scoped s3:* to one bucket ARN prefix (bucket-scope, lines 1-11) versus s3:* on all buckets, Resource = \"*\" (account-scope, lines 13-23). bucket-scope's class set is {iam-overpermissive-policy}; account-scope's is {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms}. The class difference is exactly {iam-privilege-escalation-sensitive-perms} - a real taxonomy class that plainly bears on privilege scope, so the pair argues from it directly. This is the stronger-evidence half of the two privilege pairs (R10)."
+    },
+    {
+      "pair_id": "privilege-iam-account-to-unrestricted",
+      "factor_under_test": "privilege",
+      "case_high": "iam-unrestricted-scope",
+      "case_low": "iam-s3-account-scope",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: iam-unrestricted-scope ranks above iam-s3-account-scope. Both are hand-crafted aws_iam_policy resources in the same action family (corpus/authored/iam_privilege.tf): account-scope grants s3:* on Resource = \"*\" (lines 13-23), unrestricted-scope grants Action = \"*\" on Resource = \"*\" (lines 25-35) - the ceiling of the same family. account-scope's class set is {iam-overpermissive-policy, iam-privilege-escalation-sensitive-perms}; unrestricted-scope's adds three unmapped:checkov:* classes (CKV_AWS_62, CKV_AWS_63, CKV2_AWS_40) on top of the same two shared classes. The class difference is exactly {unmapped:checkov:CKV_AWS_62, unmapped:checkov:CKV_AWS_63, unmapped:checkov:CKV2_AWS_40} - entirely unmapped classes, which by definition the taxonomy does not classify, so nothing in that difference establishes that it bears on privilege. Per R10 this rationale does not rest on those classes as privilege evidence; it rests on the policy text, both sides hand-written in the same action family so breadth is known to be the only variable: s3:* on * (account-scope) versus * on * (unrestricted-scope) is strictly broader by inspection of the policy JSON itself. Spec section 4 permits a hand-crafted pair to rest on policy text; this is that case, and it is the weaker-evidence half of the two privilege pairs (R10) precisely because its measured class difference cannot be cited as the reason."
+    },
+    {
+      "pair_id": "exposure-s3-public-access",
+      "factor_under_test": "exposure",
+      "case_high": "s3-public-exposed",
+      "case_low": "s3-private-baseline-not-public",
+      "expected_rank_order": "high_above_low",
+      "expected_score_delta_sign": "positive",
+      "rationale": "Direction: s3-public-exposed ranks above s3-private-baseline-not-public. Both are hand-crafted aws_s3_bucket resources in corpus/authored/storage_public_exposure.tf, identical in every respect except public exposure, so breadth of exposure is the only variable by construction. Measured class difference is exactly {storage-public-accessibility}: the public bucket carries it, the private one does not, and no class is present only on the private side. That class is one the Public Exposure factor's closed supported-pattern list names directly - \"public storage (public-access-block disabled or public ACL/policy)\" - and the factor's level 5 describes this exact shape, a bucket with public-access-block disabled plus a public policy serving anonymous internet users. Declared context is held equal at sensitivity 3 / criticality 3 on both sides, so no declared factor contributes to the delta. One disclosure, because it is narrower than the class difference suggests: on this resource identity the class is carried by checkov CKV2_AWS_6 alone, while tfsec's and trivy's eight equivalent findings attribute it to the sibling aws_s3_bucket_public_access_block.public_exposed, which is not a case here. That is the semantically right attribution - the bucket is the exposed asset - but it is single-sourced, so this pair is less redundantly evidenced than the ingress pair it sits beside. This pair replaces the retired exposure-security-group-rule, which rested on networking-egress-exposure - a class the taxonomy defines as \"a distinct property from inbound exposure\" and which appears in no level of this factor (design spec section 1.1)."
+    }
+  ],
+  "scenarios": [
+    {
+      "scenario_id": "networking-exposure-precedence-over-declared-context",
+      "domain": "networking",
+      "expected_ordering": [
+        [
+          "sg-web-node-high-exposure"
+        ],
+        [
+          "sgr-ingress-vpc-interpolated"
+        ],
+        [
+          "sgr-egress-unrestricted",
+          "sg-default-low-exposure"
+        ]
+      ],
+      "rationale": "REVISED 2026-09-26 — see the note below; the original ordering rested on a fact that turned out to be false. All four cases declare identical context on the affected resource (sensitivity=3, criticality=3), so neither Resource Sensitivity nor Environment Criticality can separate them: Public Exposure is the only rubric factor with room to move. sg-web-node-high-exposure carries literal 0.0.0.0/0 cidr_blocks on its ingress rules (ec2.tf:77-115), which the factor's precedence rule forces to >=4, so it takes the top tier alone. sgr-ingress-vpc-interpolated's cidr_blocks is not a literal at all — it is ${aws_vpc.web_vpc.cidr_block} (db-app.tf:141) — so under the closed literals-only pattern list its exposure is unresolved, not resolved-low, and the rubric scores that state conservatively at 3: deliberately below the forced >=4 floor and deliberately above a confirmed-absent exposure. It therefore sits second, alone. The bottom tier is a genuine tie between sgr-egress-unrestricted and sg-default-low-exposure, and the reason is the correction: networking-egress-exposure does NOT bear on the Public Exposure factor. The factor's closed supported-pattern list names SG/NSG *ingress* open to 0.0.0.0/0 and is silent on egress, and the taxonomy defines networking-egress-exposure as 'a distinct property from inbound exposure'. So the egress case carries no supported exposure signal, exactly like sg-default-low-exposure, and nothing in the rubric separates them. Noting the cost of that honestly: an unrestricted egress rule is a real data-exfiltration path, and a practitioner would not call it equal in risk to a security group with no rule of its own. The rubric has no factor that represents it — egress maps to none of the six — so this tie is the model's gap surfacing in the oracle rather than a judgement that the two are equally dangerous. That gap is recorded for S4 in the design spec's section 1.1.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "agree"
+      }
+    },
+    {
+      "scenario_id": "storage-declared-context-symmetry-and-encryption-floor",
+      "domain": "storage",
+      "expected_ordering": [
+        [
+          "s3-financials-sensitivity-high",
+          "s3-data-criticality-high"
+        ],
+        [
+          "s3-operations-sensitivity-high",
+          "s3-data-science-criticality-high"
+        ],
+        [
+          "s3-logs-encryption-ok"
+        ]
+      ],
+      "rationale": "s3-financials-sensitivity-high (sensitivity=5, criticality=3, corpus-v1.json:258-260) and s3-data-criticality-high (sensitivity=3, criticality=5, corpus-v1.json:438-440) are the same shape of case pointed in opposite directions -- one factor pinned at the ceiling, the other held at the shared baseline of 3 -- and both carry the identical six-class finding set (storage-public-accessibility, storage-data-lifecycle-hygiene, storage-data-recoverability, storage-logging-audit, storage-key-management-cmk, storage-encryption-at-rest). Under the rubric's own model structure -- 'equal_weighted: true' over an additive formula (rubric.json:8-9) -- a factor pair of (5,3) and (3,5) contributes identically to the sum regardless of which named factor carries which value, so nothing in the rubric separates them; they share the top tier. s3-operations-sensitivity-high (sensitivity=4, criticality=3, corpus-v1.json:349-350) and s3-data-science-criticality-high (sensitivity=3, criticality=4, corpus-v1.json:529-530) are the same pattern one step down -- a combined declared-context total of 7 rather than 8, again split symmetrically -- so the same equal-weighting argument ties them to each other; they rank below the first tier because their combined total is strictly lower, and the finding-class sets are close enough (six for operations, five for data_science -- data_science draws no storage-logging-audit finding, corpus-v1.json:556) that neither dominates the other on breadth. s3-logs-encryption-ok is the floor, and its declared context plays no part in that: as of corpus-v1.json commit 919c488 (which equalized both encryption pairs' declared context to remove a confound Task 4's review found) its declared context is (sensitivity=3, criticality=3, corpus-v1.json:132-133) -- equal to every top-tier case above it, so nothing in this ordering rests on an authored value happening to be lower. The floor comes from the code instead: aws_s3_bucket.logs is the only one of the five buckets with a real server_side_encryption_configuration block, KMS-keyed, at corpus/vendor/terragoat/terraform/aws/s3.tf:119-126 (within the resource declared at s3.tf:113-141), while aws_s3_bucket.data, .financials, .operations and .data_science are each explicitly commented '# bucket is not encrypted' in that same file (s3.tf:3, 43, 66, 90) and, measured over real adapter output, draw a storage-key-management-cmk and a storage-encryption-at-rest finding that aws_s3_bucket.logs does not (corpus-v1.json:155). Encryption Risk is genuinely zero for this case because the control is actually present in the code, not because an authored context value happens to be lower.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "agree"
+      }
+    },
+    {
+      "scenario_id": "iam-privilege-breadth-nesting",
+      "domain": "iam",
+      "expected_ordering": [
+        [
+          "iam-unrestricted-scope"
+        ],
+        [
+          "iam-s3-account-scope"
+        ],
+        [
+          "iam-s3-bucket-scope"
+        ]
+      ],
+      "rationale": "All three cases share identical declared context (sensitivity=3, criticality=3 on the single governed policy resource -- corpus-v1.json:606-609, 627-630, 651-654), so IAM Privilege Scope is the only factor with room to move. The case notes record a literal nesting property rather than a judgement asserted fresh here: iam-s3-account-scope's issue-class set is stated as 'a proper superset of s3-bucket-scope's {iam-overpermissive-policy} and a proper subset of unrestricted-scope's' (corpus-v1.json:643), and checking the class lists directly confirms it -- iam-s3-bucket-scope draws {iam-overpermissive-policy} only (corpus-v1.json:611-617); iam-s3-account-scope draws that same class plus iam-privilege-escalation-sensitive-perms (corpus-v1.json:632-642); iam-unrestricted-scope draws both of those plus three further checkov-only classes taken via the taxonomy's explicit unmapped:checkov:<rule_id> fallback (corpus-v1.json:657-679). Each case's finding set is a strict superset of the one below it, and all three describe the same action family (s3:*) widening from one bucket ARN to the whole account to an unrestricted Resource=\"*\"/Action=\"*\" grant -- the textbook shape of the rubric's Privilege ladder (rubric.json:136-182), moving from 'moderate, service-scoped' toward 'full administrative / unbounded authority'. Three strict tiers, not ties, because the superset relation gives a clean, checkable basis for a strict order at every step.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "agree"
+      }
+    },
+    {
+      "scenario_id": "compute-severity-and-finding-breadth-over-single-point-criticality",
+      "domain": "compute",
+      "expected_ordering": [
+        [
+          "ec2-web-host-compute"
+        ],
+        [
+          "ec2-db-app-compute"
+        ],
+        [
+          "ebs-web-host-storage-compute"
+        ]
+      ],
+      "rationale": "CONTESTED (see this scenario's oracle.disagreement_note below) -- the top-tier ordering between ec2-web-host-compute and ec2-db-app-compute is the author's resolution of a genuine reviewer disagreement, not an uncontested reading of the rubric. None of the three cases share identical declared context, so Environment Criticality, Privilege and finding-set shape all carry weight. ec2-web-host-compute (sensitivity=3, criticality=3, corpus-v1.json:726-728) draws five classes -- iam-hardcoded-secrets, compute-reliability-observability, compute-instance-metadata-hardening, storage-encryption-at-rest, iam-authentication-controls (corpus-v1.json:734-752) -- a proper superset of ec2-db-app-compute's three (compute-reliability-observability, compute-instance-metadata-hardening, storage-encryption-at-rest, corpus-v1.json:701-711). Its notes further record that the hardcoded credential is 'flagged CRITICAL by trivy AWS-0029 and tfsec AVD-AWS-0029' (corpus-v1.json:754) -- the top of the rubric's Scanner Severity ladder (rubric.json:72-76). ec2-db-app-compute's declared criticality is one point higher (4 vs 3, corpus-v1.json:695), and its Privilege exposure is higher too: aws_instance.db_app carries iam_instance_profile = aws_iam_instance_profile.ec2profile (db-app.tf:247), whose aws_iam_role_policy.ec2policy grants s3:*, ec2:*, rds:* on Resource \"*\" (db-app.tf:206-225), while aws_instance.web_host carries no instance profile at all (ec2.tf:1) -- level 4 against level 0 on the rubric's Privilege ladder. That gap is what the blinded reviewer weighed as decisive (disagreement_note). The author's ordering nonetheless holds that neither the one-point criticality gap nor the Privilege gap offsets an additional CRITICAL-severity finding plus two extra finding classes present in neither other case -- severity is a rubric factor free to drive ranking even without a contrastive pair. Top tier: ec2-web-host-compute, under the pre-registered resolution rule (design spec section 5) rather than as the better-grounded reading of the two -- the reviewer's is (disagreement_note). ec2-db-app-compute sits above ebs-web-host-storage-compute on two independent grounds: its declared criticality is confirmed at 4 versus ebs's confirmed 2 (corpus-v1.json:695, 769) -- a full two-point gap -- and its declared sensitivity is a resolved value (3) where ebs's is null and explicitly defaulted (corpus-v1.json:768), which ebs's own notes flag by marking both of its findings excluded_from_quality_claims (corpus-v1.json:780, 788). ebs's notes independently state it is 'the smallest of the three compute cases by class count, orderable below ec2-db-app-compute and ec2-web-host-compute' (corpus-v1.json:791) -- checkable directly against the class lists (2 for ebs vs 3 for db-app) and a claim this ordering agrees with rather than merely repeats.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "partial",
+        "disagreement_note": "Blinded reviewer ordered ec2-db-app-compute above ec2-web-host-compute; the author ordered them the other way. One tier move, so partial. The reviewer read the Privilege factor from source: aws_instance.db_app carries iam_instance_profile = aws_iam_instance_profile.ec2profile (db-app.tf:247), whose role's aws_iam_role_policy.ec2policy grants s3:*, ec2:*, rds:* on Resource \"*\" (db-app.tf:206-225), while aws_instance.web_host has no instance profile at all (ec2.tf:1). The controller verified both. The author's ordering rested instead on a proper-superset finding set plus a CRITICAL hardcoded-secret severity. Recorded plainly: the reviewer's reading is the better grounded of the two, because Privilege is one of the six rubric factors and finding breadth is not a factor at all. The author's ordering nonetheless stands as ground truth under the resolution rule pre-registered in design section 5, which exists so that disagreements are not resolved after the fact toward whichever answer suits the outcome. This scenario should be treated as contested, and re-authoring it would require a fresh blinded review rather than a patch."
+      }
+    },
+    {
+      "scenario_id": "containers-workload-dominance-and-a-genuine-tie",
+      "domain": "containers",
+      "expected_ordering": [
+        [
+          "k8s-goat-home-workload"
+        ],
+        [
+          "k8s-kube-bench-node-workload",
+          "k8s-internal-proxy-api-container"
+        ]
+      ],
+      "rationale": "k8s-goat-home-workload strictly dominates both other cases and needs no tie: its declared context (sensitivity=3, criticality=3, corpus-v1.json:805-806) is at or above both siblings' on every axis, and its seven-class finding set (corpus-v1.json:812-838) is a superset of both k8s-kube-bench-node-workload's six classes (the identical set minus networking-isolation-segmentation, corpus-v1.json:859-883) and k8s-internal-proxy-api-container's four (corpus-v1.json:905-920, all of which also appear in goat-home's set). Top tier, alone. k8s-kube-bench-node-workload and k8s-internal-proxy-api-container do not admit a clean order, and this deliberately does not follow the ordering the case notes themselves suggest ('orderable below k8s-goat-home-workload by class count and above k8s-internal-proxy-api-container', corpus-v1.json:885), because that comparison looks only at class count and the two cases pull in opposite directions once declared context is considered. On class breadth, kube-bench-node-workload dominates: its six classes are a strict superset of internal-proxy-api-container's four (every one of internal-proxy's classes -- containers-image-supply-chain, containers-linux-capabilities, containers-privileged-execution, containers-securitycontext-hardening -- appears in kube-bench's set, which adds containers-host-isolation-breakout and containers-workload-reliability). But on declared context, internal-proxy-api-container dominates: sensitivity=3/criticality=3 (corpus-v1.json:899-900) against kube-bench's sensitivity=2/criticality=2 (corpus-v1.json:854-855) -- lower on both factors, not one. Neither finding breadth nor declared context is privileged over the other in the rubric's additive, equal-weighted model, so with each case dominating on a different axis this scenario does not assert a strict order between them, and they share the second tier.",
+      "oracle": {
+        "author": "Jayathissa E.A.T.N. (258243J)",
+        "reviewer": "blinded-reviewer:claude-sonnet-5 (design section 5)",
+        "registered_at": "2026-09-26",
+        "reviewer_verdict": "partial",
+        "disagreement_note": "Blinded reviewer placed k8s-internal-proxy-api-container in the top tier alongside k8s-goat-home-workload, leaving k8s-kube-bench-node-workload alone below; the author tied internal-proxy with kube-bench below goat-home. One tier move, so partial. The substance is a factor-mapping question both sides flagged independently: kube-bench-node's hostPID and sensitive hostPath mounts are a real host-isolation-breakout finding, and whether that credits toward the Privilege factor is genuinely unsettled - the reviewer read Privilege's security-context language narrowly (the Kubernetes securityContext object) and declined to credit pod-spec elevation, saying so explicitly. The containers-host-isolation-breakout class maps cleanly onto none of the six factors as literally worded, which is the same class of gap recorded for networking-egress-exposure in design section 1.1. Author's ordering stands per the pre-registered rule."
+      }
+    }
+  ]
+}
