@@ -51,6 +51,14 @@ acceptance gates. §13 records the six decisions taken here and by whom.
   facts here carry their source.
 - **Windows-native host.** Always `uv run python`. Path handling is explicit character
   work.
+- **Terraform is read with `python-hcl2`, added as a project dependency** (decision 8).
+  Two quirks of it, both measured on this corpus and both silent if missed: block keys
+  and string values **retain their surrounding quotes** (`'"aws_security_group"'`,
+  `'"0.0.0.0/0"'`), so every read strips them or matches nothing; and interpolations
+  arrive as literal `${...}` strings, which is exactly what literals-only needs — an
+  unresolved value is a `${` substring check, not an inference. Checkov remains an
+  isolated `uv tool` and must never become a project dependency; `python-hcl2` is
+  unrelated to it.
 - **Corpus v0 is a corpus observation, not a scanner contract.**
 
 ---
@@ -294,6 +302,42 @@ failure mode PLAN Q9 forbids.
 
 ---
 
+**5.4 Privilege level is action breadth AND resource breadth, jointly — and one
+contrastive pair depends on it.** The rubric's L2 reads "Modify/create on a **bounded
+resource set** within a single service" while L3 reads "Full control of one service
+(e.g. `s3:*`)". An `s3:*` action on one bucket ARN satisfies L3's action example and
+L2's resource clause at the same time, so the level is ambiguous **unless the extractor
+reads action and resource together**. It must, and this is the mapping:
+
+| Action breadth | Resource | Level | Rubric clause |
+|---|---|---|---|
+| single service wildcard (`s3:*`) | bounded ARN | **2** | "bounded resource set within a single service" |
+| single service wildcard (`s3:*`) | `*` | **3** | "full control of one service" |
+| wildcards across >1 service | `*` | **4** | "wildcard actions across multiple services" |
+| `*` | `*` | **5** | "Action=\"*\" Resource=\"*\"" |
+
+Verified against every IAM case the corpus contains: `iam-s3-bucket-scope` → 2,
+`iam-s3-account-scope` → 3, `iam-unrestricted-scope` → 5, and TerraGoat's
+`aws_iam_role_policy.ec2policy` (`["s3:*","ec2:*","rds:*"]` on `"*"`) → 4. All four land
+on distinct levels.
+
+**Why this is a correctness requirement and not a preference.** Read action breadth
+alone and `iam-s3-bucket-scope` and `iam-s3-account-scope` both resolve to 3 — whereupon
+the contrastive pair `privilege-iam-bucket-to-account` **no longer isolates the privilege
+factor at all**. It would still pass on rank, because account-scope carries one extra
+issue class and therefore one extra scored finding, but it would pass for a reason the
+pair does not claim and `severity_context_fencing` forbids: the class difference cannot
+move a factor. That pair is the stronger-evidence half of the only two privilege pairs
+in the corpus (S2 spec R10), so losing it would leave the privilege factor with one
+mechanism test. Gate 7 (§10) asserts the four levels above directly.
+
+This is also the S2 handoff's warning arriving in practice: a class named for a factor is
+not evidence of that factor. `iam-privilege-escalation-sensitive-perms` is named for
+privilege and is still not evidence that the privilege *factor* differs between two
+resources.
+
+---
+
 ## 6. Deliverable 5 — the Encryption extractor
 
 Encryption spans 0–3 with `unresolved_default = 2`. The extractor reads the resource's
@@ -387,6 +431,7 @@ emits no line beginning with `FAILED`.
 4. **The exposure precedence rule holds as data.** For every finding whose evidence records a `0.0.0.0/0` or `::/0` opening, `exposure.level >= 4`. The rule text is read from `rubric.json`, so the gate cannot drift from the artifact.
 5. **Fencing, by mutation.** Substituting a finding's `issue_class` for another class in the same category changes no resolved factor level. Run over the whole corpus; any change is a fencing violation.
 6. **The resolution-rate distribution is measured and reported** over 0–5 defaulted-or-unresolved factors, with the low-confidence population at the frozen threshold of 3, and per-class factor-coverage counts for all 28 classes.
+7. **The privilege mapping of §5.4 holds on every corpus IAM case**: `iam-s3-bucket-scope` → 2, `iam-s3-account-scope` → 3, `iam-unrestricted-scope` → 5, `aws_iam_role_policy.ec2policy` → 4. Asserted as four explicit expectations, because the pair `privilege-iam-bucket-to-account` stops isolating its factor if the first two collapse to one level.
 
 ---
 
@@ -429,6 +474,8 @@ what it costs if wrong, so a later reader can reopen any of them on evidence.
 | 4 | **NodePort → exposure 2**, firewall assumption documented | This spec | NodePort in front of no firewall is under-scored by up to two levels |
 | 5 | **Narrow public CIDR** is structural (non-zero prefix → 2), no invented threshold | This spec | A `/1` ingress scores 2 despite being nearly `/0`; no such CIDR exists in the corpus |
 | 6 | **IAM policy JSON is parsed**; managed-policy ARNs → `unresolved` | This spec | An `AdministratorAccess` attachment scores 4 rather than 5, under-scoring the worst case by one level |
+| 7 | Privilege level reads **action breadth AND resource breadth jointly** (§5.4) | This spec, from measurement | Action-breadth-only collapses `iam-s3-bucket-scope` and `iam-s3-account-scope` to one level, and the privilege factor loses one of its two mechanism pairs without any test failing |
+| 8 | **`python-hcl2`** becomes a project dependency for Terraform reads | This spec, from a spike | A hand-rolled attribute scanner misparses silently and yields a confident wrong factor value, which is the false-reassurance failure mode the framework exists to prevent |
 
 Decisions 4, 5 and 6 each trade a known, bounded, documented error for a resolved value,
 in preference to an `unresolved` state that would route to a default and feed §1.1's
