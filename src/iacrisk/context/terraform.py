@@ -62,7 +62,11 @@ def build_index(files: Iterable[Path], scan_root: Path) -> dict[str, TerraformRe
         try:
             with path.open(encoding="utf-8") as handle:
                 document = hcl2.load(handle)
-        except Exception:  # noqa: BLE001 - any parse failure is the same outcome here
+        except Exception:
+            # Any parse failure is the same outcome here: skip the file. Catching
+            # broadly is deliberate - hcl2 raises lark's UnexpectedToken and friends,
+            # and enumerating a third-party grammar's exception types would couple this
+            # module to lark's internals for no gain.
             continue
         try:
             relative = path.relative_to(scan_root).as_posix()
@@ -94,5 +98,9 @@ def attribute(resource: TerraformResource, name: str) -> object | None:
     a scalar or check `is_literal` first, because those are different questions.
     """
     if name in resource.body:
-        return resource.body[name]
+        # Annotated rather than returned directly: `body` is dict[str, Any], so a bare
+        # return leaks Any across this boundary and strict mypy rejects it. Widening to
+        # `object` here is the point of the accessor - callers must narrow deliberately.
+        value: object = resource.body[name]
+        return value
     return None
