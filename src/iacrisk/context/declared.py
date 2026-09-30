@@ -13,7 +13,13 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 
-from iacrisk.context.terraform import TerraformResource, attribute, is_literal, unquote
+from iacrisk.context.terraform import (
+    TerraformResource,
+    attribute,
+    is_literal,
+    resource_reference,
+    unquote,
+)
 from iacrisk.context.value import FactorValue
 
 __all__ = ["governed_target", "join", "load_declared"]
@@ -47,7 +53,15 @@ def governed_target(resource: TerraformResource) -> str | None:
         return None
     attr_name, target_type = entry
     raw = attribute(resource, attr_name)
-    if raw is None or not is_literal(raw):
+    if raw is None:
+        return None
+    if not is_literal(raw):
+        # A resource-address reference still resolves: `bucket = aws_s3_bucket.b.id`
+        # names its target literally even though `.id` is computed. Anything else
+        # interpolated (a var, a data source, an expression) does not.
+        referenced = resource_reference(raw)
+        if referenced is not None and referenced.startswith(f"{target_type}."):
+            return referenced
         return None
     if isinstance(raw, list):
         # python-hcl2 wraps some scalars in a one-element list. A longer list names

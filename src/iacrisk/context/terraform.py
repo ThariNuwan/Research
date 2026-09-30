@@ -12,6 +12,7 @@ Two measured properties of python-hcl2 8.1.4 on this corpus drive this module:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,9 +20,59 @@ from typing import Any
 
 import hcl2
 
-__all__ = ["TerraformResource", "attribute", "build_index", "is_literal", "unquote"]
+from iacrisk.identity import terraform_identity
+
+__all__ = [
+    "TerraformResource",
+    "attribute",
+    "build_index",
+    "is_literal",
+    "resource_reference",
+    "unquote",
+]
 
 INTERPOLATION = "${"
+
+# A reference whose FIRST segment is one of these names a variable, a data source, a
+# local, a module output or a meta-argument - none of which is a resource address, and
+# none of which a literals-only read can resolve.
+_NON_RESOURCE_ROOTS = frozenset(
+    {"var", "data", "local", "locals", "module", "each", "count", "path", "terraform", "self"}
+)
+
+_REFERENCE = re.compile(
+    r"^\$\{\s*([a-z][a-z0-9_]*)\.([A-Za-z0-9_\-]+)((?:\.[A-Za-z0-9_\-]+)*)\s*\}$"
+)
+
+
+def resource_reference(value: object) -> str | None:
+    """The resource address a `${type.name.attr}` reference points at, or None.
+
+    Resolving an address is **structural**, not value evaluation, and the distinction is
+    what makes PLAN Q9's bounded cross-resource lookups implementable at all. In
+    `bucket = aws_s3_bucket.b.id` the address `aws_s3_bucket.b` is written literally in
+    the source; only the runtime value of `.id` is unknown. Refusing to read it would
+    make every cross-resource pattern in the closed list unresolvable - measured on
+    `corpus/authored/storage_public_exposure.tf`, where both buckets link their
+    public-access-block this way, which is one of the two exposure contrastive pairs.
+
+    Returns None for a variable, data source, local, module output or meta-argument, and
+    for anything that is not a single bare reference - an expression, a function call or
+    a concatenation stays unresolved.
+    """
+    if isinstance(value, list):
+        if len(value) != 1:
+            return None
+        value = value[0]
+    if not isinstance(value, str):
+        return None
+    match = _REFERENCE.match(unquote(value))
+    if match is None:
+        return None
+    root, name, _rest = match.groups()
+    if root in _NON_RESOURCE_ROOTS:
+        return None
+    return terraform_identity(root, name)
 
 
 def unquote(value: str) -> str:
@@ -81,8 +132,12 @@ def build_index(files: Iterable[Path], scan_root: Path) -> dict[str, TerraformRe
                     continue
                 for raw_name, body in bodies.items():
                     rname = unquote(str(raw_name))
-                    index[f"{rtype}.{rname}"] = TerraformResource(
-                        identity=f"{rtype}.{rname}",
+                    # The canonical function, not an f-string: a hand-rolled duplicate
+                    # of identity.terraform_identity would drift from it silently, and
+                    # the declared-context join matches on exactly its output.
+                    resource_identity = terraform_identity(rtype, rname)
+                    index[resource_identity] = TerraformResource(
+                        identity=resource_identity,
                         type=rtype,
                         name=rname,
                         body=body if isinstance(body, dict) else {},
