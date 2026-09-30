@@ -15,8 +15,18 @@
 | **NIST SP 800-30 Rev.1** | 32 | **all verified supported** |
 | OWASP (Top 10 2021, Risk Rating Methodology, IaC Security) | 12 | **not yet verified** |
 | NSA-CISA Kubernetes Hardening Guidance | 11 | **not yet verified** |
-| CIS Benchmarks | 10 | **not yet verified** |
-| FIPS 199 | 2 (`criticality` L0, L1) | **not yet verified** |
+| FIPS 199 | 4 (`criticality` L0, L1, L4, L5) | **not yet verified** |
+
+### Erratum, 2026-09-30 — two false claims in the first version of this table
+
+The first version of this document listed a fifth outstanding standard, **"CIS Benchmarks | 10 levels"**, and gave FIPS 199 as **2** levels. Both are wrong, and they were wrong in the audit record whose entire purpose is catching claims a cited artifact does not support.
+
+- **`rubric.json` cites CIS Benchmarks zero times.** The count came from a script matching the substring `CIS`, which matches inside **`NSA-CISA`** — all 11 hits were the Kubernetes Hardening Guidance. There is no CIS Benchmark citation anywhere in the file, so the paragraph the first version wrote about CIS's registration barrier described a problem this rubric does not have.
+- **FIPS 199 is cited on four levels**, not two: `criticality` L0, L1, L4 and L5.
+
+Measured directly: `CIS Benchmark` → 0 occurrences; `CIS` not preceded by `NSA-` → 0; `NSA-CISA` → 11. Levels per standard: CVSS 26, NIST 32, OWASP 12, NSA 11, FIPS 4.
+
+**Consequence of the error, had it stood:** the audit would have reported a standard as unverifiable that is not cited, inflating the apparent outstanding work and — worse — leaving a reader to believe the rubric leans on a paywalled source. **Three** standards remain, not four, and none of them is paywalled.
 
 **The flag stays `false`.** Every level carries claims against more than one standard, so no level is fully audited until its OWASP / NSA-CISA / CIS / FIPS components are checked too. A flag flipped now would assert an audit that covered two of six standards.
 
