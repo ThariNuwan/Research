@@ -278,7 +278,21 @@ Note that two of the six land on `exposure` L5, the top of the exposure ladder. 
 
 The six rewordings are committed, so **one condition remains**: NSA-CISA's 11 claims verified against the primary source. Until then `citations_audited` stays **`false`**, and no dissertation text quotes a `source` string that rests on NSA-CISA. The rubric's `citations_note` was updated in the same commit to say exactly this, so the artifact no longer claims that no re-verification has happened — which had itself become a claim the record did not support.
 
-What has been established is worth stating precisely, because "verified" and "clean" are not the same claim. **Four cited documents came back with every claim supported and nothing to correct**: CVSS v3.1 (26 claims), NIST SP 800-30 Rev.1 (32), the OWASP Risk Rating Methodology (2) and OWASP A02:2021 (2) — **62 of the 86 citation claims** the rubric makes across its 33 levels. **Three yielded at least one defective clause**: OWASP A05:2021 (3 partial), OWASP A01:2021 (1 partial) and FIPS 199 (1 partial), plus the "OWASP IaC Security" clause that names nothing. That is 13 defective claims. **One could not be read at all** — NSA-CISA's 11. That is a real result on 62 claims, and it is still not the audit the flag asserts.
+What has been established is worth stating precisely, because "verified" and "clean" are not the same claim. Over the **86 citation claims** the rubric makes across its 33 levels:
+
+| Outcome | Claims | Where |
+|---|---|---|
+| **Supported** | **69** | 62 from four documents that came back entirely clean (CVSS v3.1 26, NIST SP 800-30 Rev.1 32, OWASP Risk Rating Methodology 2, OWASP A02:2021 2), plus 7 supported claims sitting alongside defects in A05 (1), A01 (3) and FIPS 199 (3) |
+| **Defective** | **6** | A05 3 partial, A01 1 partial, FIPS 199 1 partial, "OWASP IaC Security" 1 unsupported — the six clauses §4.2 reworded |
+| **Unverified** | **11** | every NSA-CISA claim, source unreachable (§3D) |
+
+69 + 6 + 11 = 86. **Four documents needed no correction at all**; three needed one clause each except A05, which needed three; one document could not be read.
+
+### Erratum 3, 2026-09-30 — a fourth shortcut number, in this very section
+
+This paragraph previously read "**62 of the 86** … That is **13 defective claims**". Both figures are wrong in the same way. **62** is not the count of supported claims — it is the count of claims belonging to documents that happened to be *100% clean*, which silently discards the 7 supported claims that share a document with a defect. And **13** is not the count of defective claims — it is 4+4+4+1, every claim belonging to a document with *any* defect, which counts 7 supported claims as defective. The true split is **69 / 6 / 11**.
+
+That is the fourth false number found in this audit's own record, after Erratum 1's two and Erratum 2's one, and it has the identical shape: a figure produced by grouping at the document level when the claim was about individual claims. The pattern is now established well enough to state as a rule for whoever continues this work: **in this audit, count the thing the sentence names, at the granularity the sentence names it, and show the sum.** Every count in the table above is followed by its addition for exactly that reason. The figure reached commit `0afbc33`'s message and `dddde15`'s, which cannot now be edited; both are superseded by this table.
 
 ---
 

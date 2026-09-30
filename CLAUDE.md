@@ -99,12 +99,47 @@ acceptance gates and the freeze.
 `structure_frozen: true` and `citations_audited: false`, and they are separate
 claims on purpose. The structure — six factors, their ranges, the 1–28 bounds,
 the bands — was fixed before any scoring output existed, computed rather than
-asserted, and is pinned by tests. The per-level `source` strings are **not**
-audited: the verification pass behind them ran at design time, and its
-corrections sat in spec prose for a month before reaching the artifact. **Do not
-quote a `source` string in the dissertation until an audit of all 33 levels
-against the primary sources is committed.** A green suite is not that audit —
-the anchor test only checks that a standard's *name* appears in the string.
+asserted, and is pinned by tests. The per-level `source` strings are a
+**partially audited** artifact, and the flag stays `false` for one reason only.
+
+The citation audit ran on 2026-09-30 and is committed at
+`docs/superpowers/specs/2026-09-30-rubric-citation-audit.md`. Measured over the
+**86 citation claims** these 33 levels make:
+
+- **69 verified supported.** 62 of those come from four documents that came back
+  entirely clean — CVSS v3.1 (26 claims), NIST SP 800-30 Rev.1 (32), the OWASP
+  Risk Rating Methodology (2), OWASP A02:2021 (2) — and 7 more sit alongside
+  defects in A05, A01 and FIPS 199. Do not conflate the two figures: 62 counts
+  *clean documents*, 69 counts *supported claims*.
+- **6 found defective**, reworded in commit
+  `dddde15`: three A05 mis-locations (the dev/QA/prod parity statement is a *How
+  to Prevent* recommendation, not a finding), A01 cited for object storage it
+  never mentions, FIPS 199's `criticality` L0 gloss contradicted by its own
+  footnote 4 (`NOT APPLICABLE` is confidentiality-only), and **`"OWASP IaC
+  Security"`, which names no OWASP resource at all** — deleted, not reworded.
+  69 + 6 + 11 = 86; the audit's Erratum 3 records why an earlier 62/13/11 split
+  was wrong.
+- **11 unverified** — every NSA-CISA Kubernetes Hardening Guidance claim. The
+  primary source is unreachable from this host: `media.defense.gov` returns 403
+  on both path forms via WebFetch *and* curl with a browser UA, and `cisa.gov`
+  404s. A MITRE summary mirror exists and was **deliberately not substituted**;
+  auditing against someone else's summary establishes nothing about the
+  standard's words while reporting itself as verification.
+
+So the rule is now narrower than it was, and worth stating exactly: **a `source`
+string may be quoted in the dissertation unless it rests on NSA-CISA, in which
+case it may not.** Closing those 11 needs a copy of the guidance downloaded
+manually and placed on disk — nothing in the framework blocks it, and it
+blocks neither S3b nor S4. Flip `citations_audited` only then. A green suite is
+still not that audit — the anchor test only checks that a standard's *name*
+appears in the string.
+
+One caution for whoever next edits a citation string in `rubric.json`. The
+freeze permits citation edits and forbids touching a level's score, `meaning` or
+`justification`. Enforce that by **proof, not care**: snapshot the document with
+every `source` blanked, hash it, edit, re-hash, and refuse to write if the hashes
+differ. That is how commit `dddde15` was made, and it is stronger evidence than a
+reviewer reading the diff.
 
 Two sub-projects draw on this. **S2** (complete — see below) authored the
 evaluation corpus and its ground truth against `eval/ground_truth.schema.json`.
