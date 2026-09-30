@@ -69,8 +69,9 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0, S1, S3a and S2 complete. S3b and S4 are next: S3b takes layer 3 (context
-extraction), S4 the scoring engine and reporting. S0 pinned the toolchain and
+S0, S1, S2, S3a and S3b complete. **S4 is next** (the scoring engine and
+reporting); **S3c** (convention-based auto-inference of the two declared factors)
+was split out of S3b and can run before or after S4. S0 pinned the toolchain and
 harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
 the five specification artifacts the runtime and the harness are built
 against:
@@ -256,6 +257,46 @@ future session will get wrong without stating them explicitly:
 `docs/superpowers/specs/2026-09-25-s2-handoff.md` records these and more
 residual risks in full, with what each one costs if ignored. Read it before
 starting S4.
+
+**S3b** built layer 3: `src/iacrisk/context/` with one module per factor, the Q4
+declared-context join, a Terraform reader on `python-hcl2`, a Kubernetes body reader,
+the orchestrator and the coverage report. Seven acceptance gates in
+`tests/test_s3b_gates.py`; 748 tests in the suite. Twelve decisions are recorded in the
+design spec's §13 with cost-if-wrong, seven of them forced by implementation rather than
+anticipated. Four figures a future session will get wrong without being told:
+
+- **There are two resolution-rate numbers and they differ fourfold.** On the primary
+  declared-context path (the 209 findings whose resource `corpus-v1` declares),
+  **20.1% are low-confidence, so 79.9% are usable for prioritization-quality claims**.
+  Across all 1055 corpus-v0 findings it is **78.3%** — because v0 is the measurement
+  corpus and `corpus-v1` declares only 20 identities. Reporting the second as the
+  framework's resolution rate mislabels it exactly as reporting Tier-2's 91
+  same-scanner candidates as cross-scanner overlap would.
+- **Exposure is unresolved on 959 of 1025 eligible findings (93.6%), by design.** PLAN
+  Q9's closed pattern list means anything that is not a security group or rule, a
+  public-flagged resource, a bucket with an attached public-access-block, or a K8s
+  `Service`/`Ingress` is unresolved, never low. On those findings exposure contributes a
+  constant 3 and does **no ranking work**. It resolves correctly on the cases the oracle
+  turns on — the networking scenario's three tiers reproduce from code — so the honest
+  framing is that it discriminates *within* the supported patterns.
+- **Body coverage is asymmetric: Terraform 99.1%, Kubernetes 46.3%.** The Terraform
+  misses are 4 findings on a `data` block. The Kubernetes gap is roughly half *parsing*
+  rather than scope: 4 of 22 manifests are Helm templates carrying Go templating and do
+  not parse as YAML. Attributing the whole Kubernetes rate to the pattern list is wrong.
+- **`exposure` is inbound reachability only.** An egress `0.0.0.0/0` does **not** trigger
+  the precedence rule; egress risk maps to `networking-egress-exposure`, one of the three
+  classes with no rubric factor. Reading egress as inbound inverts the networking
+  scenario's expected ordering.
+
+**One process lesson from S3b, worth more than any single figure.** A defect that left
+**0 of 217** container-scoped Kubernetes identities matching the body index was invisible
+to seven gates, 746 tests, `ruff` and `mypy` — because every Kubernetes test built its
+own index keyed the way the code expected. **A test that builds its own fixture cannot
+discover that the real key shape differs.** What found it was a measurement over the real
+corpus. Before S4 reports any figure, check the real *match rate*, not just a green suite.
+
+`docs/superpowers/specs/2026-09-30-s3b-handoff.md` records these and six more residual
+risks in full, with what each costs if ignored. Read it before starting S4 or S3c.
 
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
