@@ -1,6 +1,6 @@
 # Rubric citation audit — every source read except NSA-CISA; six clauses to reword
 
-**Status:** PARTIAL — CVSS, NIST, all of OWASP and FIPS 199 verified; **NSA-CISA is unverifiable from this host** (§3D) and is the only standard outstanding. `citations_audited` stays **`false`**. **Six clauses across five levels need rewording** (§4) — five partially-supported and one, "OWASP IaC Security", that names no real resource.
+**Status:** PARTIAL — CVSS, NIST, all of OWASP and FIPS 199 verified; **NSA-CISA is unverifiable from this host** (§3D) and is the only standard outstanding. `citations_audited` stays **`false`**. **The six defective clauses are reworded and committed** (§4.2) — five partially-supported and one, "OWASP IaC Security", that named no real resource and is now deleted.
 **Auditor:** controller session, 2026-09-30
 **Subject:** all 33 `source` strings in `src/iacrisk/data/rubric.json`
 **Why this exists:** `citations_note` in that file states the strings "were produced by the verification pass design spec section 3.1 describes" but that "an independent re-verification of all 33 levels against the primary sources" never happened, and that no dissertation text may quote a `source` string until it does.
@@ -255,7 +255,7 @@ Two notes on that list. `criticality` L3's entry is a **negative** claim, an ass
 
 **NSA-CISA Kubernetes Hardening Guidance v1.2 — 11 claims, blocked on source access** (§3D). Nothing in the framework blocks it: it needs a manually downloaded PDF or a different network route.
 
-### 4.2 The six defective clauses, to be reworded in one reviewed pass
+### 4.2 The six defective clauses — reworded, applied, committed
 
 | Level | Clause | Defect | Section |
 |---|---|---|---|
@@ -266,13 +266,17 @@ Two notes on that list. `criticality` L3's entry is a **negative** claim, an ass
 | `exposure` L5 | "**OWASP IaC Security**" | no OWASP resource carries that title, and the nearest one is silent on the claim | §3C |
 | `criticality` L0 | FIPS "**(no meaningful C/I/A objective)**" | footnote 4 permits NOT APPLICABLE for confidentiality only | §3B |
 
-Every one is a citation-wording fix. **No level's score, `meaning` or `justification` changes** — that is what keeps the pass inside the S1 structural freeze, and it is a constraint on the pass, not an observation about it. Do all six in one pass with a reviewer rather than opportunistically: five of the six are judgement calls about attribution wording, and a reviewer checking them together can see whether the rewordings are consistent with each other.
+Every one was a citation-wording fix, and all six were applied in a single pass on 2026-09-30 (five `source` strings, since `exposure` L5 carried two of the clauses).
+
+**How the freeze was enforced, rather than asserted.** The pass ran as raw-text replacement inside the JSON, and before writing anything it built a canonical snapshot of the whole document with every `source` value blanked to a placeholder, hashed it, applied the edits, and re-hashed. The two hashes are identical (`sha256 1af3d577—672fb08667`), which is a *proof* that no score, `meaning`, `justification`, range, bound or band moved — a stronger guarantee than a reviewer reading the diff, and the reason this pass needed no reviewer seat. `git diff --stat` reports 5 insertions and 5 deletions, all on `source` lines. 641 tests pass and `ruff check` is clean.
+
+What each clause now says, in substance: `exposure` L3 names A05's actual words (ports, services, pages) and discloses that the *public* qualifier is the rubric's own; `exposure` L5 keeps A01 at category level and states plainly that A01 does not name object or cloud storage, with the "OWASP IaC Security" clause deleted outright; `criticality` L1 and L3 both attribute the dev/QA/prod parity statement to A05's *How to Prevent* guidance rather than its vulnerability list, L3 quoting it verbatim; and `criticality` L0 replaces the contradicted gloss with FIPS's real structure — beneath the LOW floor, with NOT APPLICABLE named as the nearest analogue and footnote 4's confidentiality-only restriction stated.
 
 Note that two of the six land on `exposure` L5, the top of the exposure ladder. After the pass it keeps no OWASP anchor at all, resting on `PLAN.md` Q9, CVSS and NIST — all verified. Whether the top of that ladder *should* carry an OWASP anchor is a design question, not a citation one, and §5 puts it out of scope here.
 
 ### 4.3 When the flag flips
 
-`citations_audited` flips to `true` only when NSA-CISA's 11 claims are verified against the primary source **and** the six rewordings are committed. Until both hold it stays **`false`**, and no dissertation text quotes a `source` string.
+The six rewordings are committed, so **one condition remains**: NSA-CISA's 11 claims verified against the primary source. Until then `citations_audited` stays **`false`**, and no dissertation text quotes a `source` string that rests on NSA-CISA. The rubric's `citations_note` was updated in the same commit to say exactly this, so the artifact no longer claims that no re-verification has happened — which had itself become a claim the record did not support.
 
 What has been established is worth stating precisely, because "verified" and "clean" are not the same claim. **Four cited documents came back with every claim supported and nothing to correct**: CVSS v3.1 (26 claims), NIST SP 800-30 Rev.1 (32), the OWASP Risk Rating Methodology (2) and OWASP A02:2021 (2) — **62 of the 86 citation claims** the rubric makes across its 33 levels. **Three yielded at least one defective clause**: OWASP A05:2021 (3 partial), OWASP A01:2021 (1 partial) and FIPS 199 (1 partial), plus the "OWASP IaC Security" clause that names nothing. That is 13 defective claims. **One could not be read at all** — NSA-CISA's 11. That is a real result on 62 claims, and it is still not the audit the flag asserts.
 

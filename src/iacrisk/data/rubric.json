@@ -3,7 +3,7 @@
   "structure_frozen": true,
   "freeze_note": "The STRUCTURE is frozen: the six factors, their ranges, the 1-28 bounds and the band boundaries, fixed at the end of S1 before any scoring output exists. Later movement is reported as sensitivity analysis (PLAN Q10), never tuned to fit test data. This flag does not cover the per-level citation text - see citations_audited.",
   "citations_audited": false,
-  "citations_note": "The per-level source strings are NOT independently audited as shipped. They were produced by the verification pass design spec section 3.1 describes, but that pass's corrections (section 3.4) were written into the spec prose and did not reach this artifact until commit bf72673 - a gap that survived six task reviews because every check asserted this file was byte-identical to its design input, and the input carried the same uncorrected text. The 14 corrections section 3.4 enumerates are now applied. What has not happened is an independent re-verification of all 33 levels against the primary sources, so the structural freeze above must not be read as a warrant for the citations. Any dissertation text quoting a source string needs that audit first; flip this flag when its output is committed.",
+  "citations_note": "The per-level source strings are PARTIALLY audited and this flag stays false. They were produced by the verification pass design spec section 3.1 describes, but that pass's corrections (section 3.4) were written into the spec prose and did not reach this artifact until commit bf72673 — a gap that survived six task reviews because every check asserted this file was byte-identical to its design input, and the input carried the same uncorrected text. The 14 corrections section 3.4 enumerates are applied. An independent re-verification against the primary sources ran on 2026-09-30 and is recorded in docs/superpowers/specs/2026-09-30-rubric-citation-audit.md: of the 86 citation claims across these 33 levels, 62 were verified supported against CVSS v3.1, NIST SP 800-30 Rev.1, the OWASP Risk Rating Methodology and OWASP A02:2021 with nothing to correct; 13 were found defective and the six affected clauses reworded in that audit's section 4.2; and 11 — every NSA-CISA Kubernetes Hardening Guidance claim — remain unverified because the primary source is unreachable from this host (403 from media.defense.gov, 404 from cisa.gov), and a third-party summary was deliberately not substituted for it. So the structural freeze above must not be read as a warrant for the citations, and no dissertation text may quote a source string resting on NSA-CISA. Flip this flag only when those 11 claims are verified against the document itself.",
   "model": {
     "formula": "Severity + Exposure + Privilege + Sensitivity + Criticality + EncryptionRisk",
     "equal_weighted": true,
@@ -108,7 +108,7 @@
           "score": 3,
           "meaning": "Directly internet-exposed managed endpoint via a public flag, with access still gated by identity/authentication (e.g. publicly_accessible=true database, public-endpoint flag, K8s Service type LoadBalancer).",
           "justification": "A public endpoint/IP is present (OWASP A05 misconfiguration; NSA-CISA external LoadBalancer) making the surface internet-facing, but a remaining authn/authz layer (CVSS PR:not-None) keeps initiation likelihood Moderate rather than High.",
-          "source": "OWASP Top 10 A05:2021 Security Misconfiguration (unnecessary public endpoints enabled); NSA-CISA Kubernetes Hardening Guidance: type LoadBalancer publishes the service externally; CVSS v3.1 AV:N with Privileges Required present; NIST SP 800-30 App. G likelihood = Moderate."
+          "source": "OWASP Top 10 A05:2021 Security Misconfiguration (unnecessary ports, services and pages enabled; A05 draws no public/internal distinction, so the public qualifier is this rubric's own); NSA-CISA Kubernetes Hardening Guidance: type LoadBalancer publishes the service externally; CVSS v3.1 AV:N with Privileges Required present; NIST SP 800-30 App. G likelihood = Moderate."
         },
         {
           "score": 4,
@@ -120,7 +120,7 @@
           "score": 5,
           "meaning": "Public asset exposure fully realized: the resource content itself is world-readable/writable with no authentication (e.g. storage bucket with public-access-block disabled plus a public ACL or public policy statement, serving anonymous internet users).",
           "justification": "Anonymous internet users can access the data with zero authentication (OWASP A01 broken access control; CVSS AV:N/PR:None/S:C), the reasonable worst case, so it takes the ladder ceiling and NIST Very High likelihood.",
-          "source": "OWASP Top 10 A01:2021 Broken Access Control and OWASP IaC Security (public object storage); PLAN.md Q9 enumerated public-bucket combination; CVSS v3.1 AV:N + Privileges Required: None + Scope: Changed; NIST SP 800-30 App. G likelihood = Very High."
+          "source": "OWASP Top 10 A01:2021 Broken Access Control, at category level only (a world-readable bucket is broken access control, but A01 addresses application-level access control and does not name object or cloud storage); PLAN.md Q9 enumerated public-bucket combination; CVSS v3.1 AV:N + Privileges Required: None + Scope: Changed; NIST SP 800-30 App. G likelihood = Very High."
         }
       ],
       "unresolved_default": 3,
@@ -238,13 +238,13 @@
           "score": 0,
           "meaning": "No production relevance: ephemeral/throwaway sandbox, scratch, or decommissioned resource that never holds real data and serves no users. Not part of the deployment promotion ladder.",
           "justification": "Anchors the score floor to 800-30's lowest defined impact tier: a compromise here has negligible mission/business consequence, so it should contribute nothing to environment-driven priority.",
-          "source": "NIST SP 800-30 Rev 1, Appendix H, Table H-3 — impact tier 'Very Low' (negligible adverse effect on operations/assets/individuals); FIPS 199 — below the 'Low' security-categorization floor (no meaningful confidentiality/integrity/availability objective)."
+          "source": "NIST SP 800-30 Rev 1, Appendix H, Table H-3 — impact tier 'Very Low' (negligible adverse effect on operations/assets/individuals); FIPS 199 — beneath the 'Low' potential-impact floor, LOW being the lowest of its three levels; its NOT APPLICABLE value is the nearest analogue, and footnote 4 restricts that value to the confidentiality objective alone."
         },
         {
           "score": 1,
           "meaning": "Development / local-dev environment: individual developer work, synthetic or seeded data, no external users, no path to live traffic.",
           "justification": "Dev is the lowest real environment on the promotion ladder; 800-30 'Low' impact matches a breach that is contained to developer-controlled, non-authoritative data.",
-          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Low' (limited adverse effect); FIPS 199 'Low' potential impact; OWASP A05:2021 Security Misconfiguration — dev sits at the base of the dev/QA/prod environment ladder whose non-uniform hardening it names as a root cause."
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Low' (limited adverse effect); FIPS 199 'Low' potential impact; OWASP A05:2021 Security Misconfiguration — dev sits at the base of the dev/QA/prod environment ladder whose uniform configuration its How to Prevent guidance recommends (a prevention recommendation, not an entry in A05's vulnerability list)."
         },
         {
           "score": 2,
@@ -256,7 +256,7 @@
           "score": 3,
           "meaning": "Staging / pre-production / UAT: production-like, may carry copies of production data or gate the production release; a compromise is a credible stepping-stone into production.",
           "justification": "800-30 'Moderate' captures 'serious' but not severe impact; CVSS Environmental CR/IR/AR=Medium encodes that the asset supports the mission indirectly, matching staging's role as a gate to prod.",
-          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Moderate' (serious adverse effect); CVSS v3.1/v4.0 Environmental Security Requirements (CR/IR/AR) = Medium; OWASP Top 10 A05:2021 Security Misconfiguration, whose environment-parity finding (non-uniform hardening across the dev/QA/prod ladder) is what carries the elevation of pre-production that touches production data. NSA-CISA is silent on environment ladders and is deliberately not cited at this level."
+          "source": "NIST SP 800-30 Rev 1, Table H-3 — impact tier 'Moderate' (serious adverse effect); CVSS v3.1/v4.0 Environmental Security Requirements (CR/IR/AR) = Medium; OWASP Top 10 A05:2021 Security Misconfiguration, whose environment-parity recommendation (\"Development, QA, and production environments should all be configured identically\", from its How to Prevent guidance rather than its vulnerability list) is what carries the elevation of pre-production that touches production data. NSA-CISA is silent on environment ladders and is deliberately not cited at this level."
         },
         {
           "score": 4,
