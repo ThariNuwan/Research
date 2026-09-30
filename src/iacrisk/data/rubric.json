@@ -336,7 +336,7 @@
       "checkov": {
         "vocabulary": [],
         "observed_in_corpus_v0": [],
-        "note": "Severity reaches checkov's JSON only through the API-key policyMetadata path; the public path fills guideline and id and leaves severity null. 489 of 489 rows null in corpus v0."
+        "note": "Severity reaches checkov's JSON only through the API-key policyMetadata path. The public path fills check_id and leaves BOTH severity and guideline null - measured on the committed fixtures, check_id is present on 489 of 489 failed_checks while guideline is null on 489 of 489, so the public path does not fill guideline either. 489 of 489 rows carry null severity in corpus v0 (221 terraform, 268 kubernetes). Corrected 2026-09-30: this note previously claimed the public path 'fills guideline and id', which CLAUDE.md corrected on 2026-09-25 without the correction reaching this artifact."
       },
       "trivy": {
         "vocabulary": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"],

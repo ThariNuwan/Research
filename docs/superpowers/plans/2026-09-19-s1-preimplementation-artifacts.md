@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Erratum, 2026-09-30.** Task 3's severity-normalization JSON block originally stated that checkov's public path "fills guideline and id". Measured on the committed fixtures, `guideline` is null on 489 of 489 `failed_checks` — the public path fills `check_id` only. The claim was corrected in `CLAUDE.md` on 2026-09-25, but the correction reached neither this plan nor `src/iacrisk/data/rubric.json` until 2026-09-30. It is corrected in both here. This plan's block is amended rather than left as history because S1 committed no generator for `rubric.json` (S1 handoff item 8), which makes this block the artifact's effective source — leaving it wrong would reintroduce the claim on any future regeneration.
+
 **Goal:** Author the five version-controlled S1 specification artifacts — issue-class taxonomy + scanner-rule-ID mapping, six-factor scoring rubric, scanner severity-normalization table, evaluation ground-truth schema + validator, and the canonical-identity module — each with a loader thin enough to test and an acceptance gate copied from the spec.
 
 **Architecture:** Every artifact is **data, not code** (mirroring how S0 treats the platform matrix in `scanners.lock.json`). Two JSON data files live inside the runtime package at `src/iacrisk/data/`, each fronted by a thin typed loader in `src/iacrisk/`. The evaluation schema and its validator live under `eval/` so the harness never shares code with what it grades. The canonical-identity module is pure string formatting with an explicit `<unresolved>` sentinel — no I/O, no scanner coupling. The two bulk data files are produced once by throwaway generator scripts in `scratch/` that read the frozen S1 design output; the **committed JSON is the source of truth**, and the test suites pin its invariants against the committed `artifacts/rule-inventory.json` rather than against the generator.
@@ -1304,7 +1306,7 @@ Append a `severity_normalization` key to `src/iacrisk/data/rubric.json`, as a si
       "checkov": {
         "vocabulary": [],
         "observed_in_corpus_v0": [],
-        "note": "Severity reaches checkov's JSON only through the API-key policyMetadata path; the public path fills guideline and id and leaves severity null. 489 of 489 rows null in corpus v0."
+        "note": "Severity reaches checkov's JSON only through the API-key policyMetadata path. The public path fills check_id and leaves BOTH severity and guideline null - measured on the committed fixtures, check_id is present on 489 of 489 failed_checks while guideline is null on 489 of 489, so the public path does not fill guideline either. 489 of 489 rows carry null severity in corpus v0 (221 terraform, 268 kubernetes). Corrected 2026-09-30: this note previously claimed the public path 'fills guideline and id', which CLAUDE.md corrected on 2026-09-25 without the correction reaching this artifact."
       },
       "trivy": {
         "vocabulary": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"],

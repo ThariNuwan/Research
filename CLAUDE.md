@@ -257,6 +257,31 @@ future session will get wrong without stating them explicitly:
 residual risks in full, with what each one costs if ignored. Read it before
 starting S4.
 
+**The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
+Measured from `rubric.json`: the five context factors' `unresolved_default` values
+are exposure 3, privilege 4, sensitivity 3, criticality 4, encryption 2 — **sum
+16**. Severity spans 1–5, so an **all-defaulted finding scores 17–21, which is
+*always* High**, at both ends of the range. Worse, `unknown_resolves_to` is 4 and all
+489 checkov rows in corpus v0 carry null severity, so a checkov finding with no
+resolved context at all lands on exactly **20 — High**. If layer 3 resolves little,
+the ranking degenerates to one band and the prioritization claim evaporates.
+
+The rubric already carries the mitigation as data, in the `unresolved_default_reporting`
+coherence rule: report band distribution **split by count-of-defaulted-factors**, flag
+findings above a defaulted-factor threshold as low-confidence and **exclude them from
+prioritization-quality claims**, and carry the stacked-default total into the Q10
+sensitivity analysis. **That threshold is not specified anywhere** — choosing it is
+S3b's or S4's decision, and it must be chosen before scoring output exists or it is a
+tuned parameter rather than a frozen one.
+
+**Draft dissertation chapters live in `docs/writeup/`**: `03-framework-design.md` and
+`04-research-methodology.md`, plus a `README.md` carrying the provisional chapter
+numbering and two standing rules — every number traces to a committed artifact, and
+no rubric `source` string resting on NSA-CISA may be quoted. Results and evaluation
+chapters need S4 and S5; there is no scoring output to write about yet. The chapters
+are written from the measured record, so a figure that changes in an artifact must be
+changed there too.
+
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four
 interpreter facts about this host, because they are easy to state backwards:
