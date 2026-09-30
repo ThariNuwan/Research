@@ -25,6 +25,7 @@ from typing import Any
 
 import hcl2
 
+from iacrisk.context.kubernetes import lookup as k8s_lookup
 from iacrisk.context.terraform import TerraformResource, attribute, unquote
 from iacrisk.context.value import FactorValue
 from iacrisk.finding import NormalizedFinding
@@ -255,8 +256,10 @@ def extract(
 ) -> FactorValue:
     """Resolve the privilege factor for one finding, or mark it unresolved."""
     identity = finding.resource_identity
-    if k8s_index is not None and identity in k8s_index:
-        return _kubernetes(identity, k8s_index[identity])
+    if k8s_index is not None:
+        body = k8s_lookup(k8s_index, identity)
+        if body is not None:
+            return _kubernetes(identity, body)
 
     resource = tf_index.get(identity)
     if resource is None:

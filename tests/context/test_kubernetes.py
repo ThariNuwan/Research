@@ -1,6 +1,31 @@
 from pathlib import Path
 
-from iacrisk.context.kubernetes import build_body_index
+from iacrisk.context.kubernetes import build_body_index, lookup
+
+
+def test_lookup_falls_back_from_a_container_identity_to_its_workload() -> None:
+    """identity.kubernetes_identity renders a container-scoped finding as
+    `apps/v1/Deployment/default/web [container=c]`, while this index is keyed on the
+    workload alone. Measured over corpus v0 before this fallback existed: 0 of 217
+    container-scoped identities matched, so every one resolved all three parsed factors
+    as unresolved. A container's exposure, privilege and encryption are properties of its
+    enclosing workload's spec, so reading the workload's body is correct rather than
+    convenient.
+    """
+    index = {"apps/v1/Deployment/default/web": {"kind": "Deployment", "spec": {}}}
+    assert lookup(index, "apps/v1/Deployment/default/web") is not None
+    assert lookup(index, "apps/v1/Deployment/default/web [container=app]") is not None
+    assert lookup(index, "apps/v1/Deployment/default/other [container=app]") is None
+    assert lookup(index, "apps/v1/Deployment/default/other") is None
+
+
+def test_lookup_prefers_an_exact_match_over_the_fallback() -> None:
+    index = {
+        "apps/v1/Deployment/default/web": {"kind": "Deployment", "marker": "workload"},
+        "apps/v1/Deployment/default/web [container=app]": {"kind": "Pod", "marker": "exact"},
+    }
+    found = lookup(index, "apps/v1/Deployment/default/web [container=app]")
+    assert found is not None and found["marker"] == "exact"
 
 
 def test_the_index_is_keyed_on_canonical_kubernetes_identity(tmp_path: Path) -> None:
