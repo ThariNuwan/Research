@@ -1,6 +1,6 @@
 # Rubric citation audit — CVSS v3.1 and NIST SP 800-30 Rev.1 complete
 
-**Status:** PARTIAL. `citations_audited` stays **`false`**.
+**Status:** PARTIAL — CVSS, NIST and most of OWASP done; NSA-CISA, FIPS 199, OWASP A02 and "OWASP IaC Security" outstanding. `citations_audited` stays **`false`**, and **four levels now carry partially-supported citations that need rewording** (§3A).
 **Auditor:** controller session, 2026-09-30
 **Subject:** all 33 `source` strings in `src/iacrisk/data/rubric.json`
 **Why this exists:** `citations_note` in that file states the strings "were produced by the verification pass design spec section 3.1 describes" but that "an independent re-verification of all 33 levels against the primary sources" never happened, and that no dissertation text may quote a `source` string until it does.
@@ -13,7 +13,10 @@
 |---|---|---|
 | **CVSS v3.1** | 26 | **all verified supported** |
 | **NIST SP 800-30 Rev.1** | 32 | **all verified supported** |
-| OWASP (Top 10 2021, Risk Rating Methodology, IaC Security) | 12 | **not yet verified** |
+| OWASP Risk Rating Methodology | 2 | **verified — both exact** |
+| OWASP Top 10 A05:2021 | 4 | **verified — 1 supported, 3 partially supported** (§3A) |
+| OWASP Top 10 A01:2021 | 4 | **verified — 3 supported, 1 partially supported** (§3A) |
+| OWASP A02:2021 + "OWASP IaC Security" | 3 | **not yet verified** |
 | NSA-CISA Kubernetes Hardening Guidance | 11 | **not yet verified** |
 | FIPS 199 | 4 (`criticality` L0, L1, L4, L5) | **not yet verified** |
 
@@ -113,11 +116,52 @@ Same shape, same honesty, as `exposure` L2.
 
 ---
 
+## 3A. OWASP — 12 levels, 9 supported and 4 partially supported
+
+Sources fetched and read: the **Risk Rating Methodology** (<https://community.owasp.org/OWASP_Risk_Rating_Methodology>), **A05:2021** and **A01:2021** (<https://top10.owasp.org/2021/…>). `A02:2021` and "OWASP IaC Security" remain unread.
+
+### Risk Rating Methodology — both claims exact
+
+| Level | Claim | Verdict |
+|---|---|---|
+| `sensitivity` L4 | loss-of-confidentiality "extensive critical data disclosed, **value 7**" | **supported, verbatim** — the scale reads "extensive critical data disclosed (7)" |
+| `severity` L1 | "OWASP Risk Rating Methodology **'Note'** finding" | **supported** — "Note" is a real cell in the overall severity matrix, at the low-likelihood / low-impact intersection, which coheres with this level sitting at CVSS's None band |
+
+**I predicted `sensitivity` L4 was the claim most likely to be wrong**, because it quotes an ordinal from a less canonical scale. It is exactly right. The prediction was wrong and the citation was not.
+
+### A05:2021 Security Misconfiguration — a real mis-location, three levels affected
+
+A05 has two distinct lists. "The application might be vulnerable if the application is:" contains eight bullets, of which the relevant one is *"Unnecessary features are enabled or installed (e.g., unnecessary ports, services, pages, accounts, or privileges)."* **"How to Prevent"** contains six, of which the first is *"A repeatable hardening process… Development, QA, and production environments should all be configured identically, with different credentials used in each environment."*
+
+| Level | Claim | Verdict |
+|---|---|---|
+| `exposure` L3 | A05 "(unnecessary **public endpoints** enabled)" | **partially supported** — A05 names unnecessary *ports, services, pages*; it does not qualify them as public, and draws no public/internal distinction. "Public" is the rubric's word |
+| `exposure` L4 | bare "OWASP A05:2021 Security Misconfiguration" | **supported** — unspecific, and an any-source ingress is squarely misconfiguration |
+| `criticality` L1 | A05 "whose non-uniform hardening it **names as a root cause**" | **partially supported — mis-located.** The dev/QA/prod parity statement is in **How to Prevent**, a recommendation. A05's vulnerability list says "Missing appropriate security hardening across any part of the application stack", which is general, not about environment non-uniformity |
+| `criticality` L3 | A05's "**environment-parity finding**" | **partially supported — same mis-location.** "Finding" is looser than "root cause" but still locates a prevention recommendation in the findings |
+
+**Why this is worth fixing rather than waving through.** The claim is not false about the *document* — A05 does address the dev/QA/prod ladder — but it is false about *where*, and the difference matters to an examiner: a prevention recommendation is weaker evidence for an ordinal placement than a named root cause would be. The fix is a citation rewording ("A05's hardening-parity recommendation"), which the freeze permits; the level does not move.
+
+### A01:2021 Broken Access Control — three supported, one reaching
+
+A01 opens *"Moving up from the fifth position, 94% of applications were tested for some form of broken access control"* and its failure list includes *"Elevation of privilege. Acting as a user without being logged in or acting as an admin when logged in as a user"*.
+
+| Level | Claim | Verdict |
+|---|---|---|
+| `privilege` L5 | "A01:2021 (**top-ranked risk**)" | **supported** — A01 is first in the 2021 list, having moved up from fifth |
+| `privilege` L3 | "A01:2021 **privilege-escalation**" | **supported, verbatim** — "Elevation of privilege" is a named failure type |
+| `privilege` L2 | A01 "authorization confined to the function's intended scope" | **supported** — A01's least-privilege violation bullet carries it |
+| `exposure` L5 | "A01:2021 Broken Access Control **and OWASP IaC Security (public object storage)**" | **partially supported.** A01 **does not mention public object or cloud storage at all** — it is application-level access control. A world-readable bucket is conceptually broken access control, so A01 supports the *category*; it does not support the parenthetical. The "OWASP IaC Security" half may carry it and is not yet read |
+
+`exposure` L5 is the **top of the exposure ladder**, so its anchor matters more than most. The honest reading: the category anchor holds, the specific artefact claim does not, and whether the level keeps an OWASP anchor at all depends on what "OWASP IaC Security" turns out to be.
+
+---
+
 ## 4. What remains, and what it would take
 
 Three standards are unverified, covering claims on every one of the 33 levels:
 
-1. **OWASP** — Top 10 2021 entries A01, A02, A05; the Risk Rating Methodology's loss-of-confidentiality scale (`sensitivity` L4 cites "extensive critical data disclosed, value 7"); OWASP IaC Security. Publicly fetchable. The numeric claim in `sensitivity` L4 is the one most likely to be wrong, because it quotes a specific ordinal value from a scale that is less canonical than CVSS's.
+1. **OWASP A02:2021 Cryptographic Failures** (`sensitivity` L5, `encryption` L2 — the latter also claims A02 was "formerly A03:2017 Sensitive Data Exposure", a renaming claim worth checking) **and "OWASP IaC Security"** (`exposure` L5 — establish first whether this names a real OWASP resource; if it is the IaC Security Cheat Sheet, say so, and if no such resource exists the citation is unsupported).
 2. **NSA-CISA Kubernetes Hardening Guidance (v1.2)** — cited for NodePort and LoadBalancer exposure semantics, least-privilege RBAC, named escalation paths (create/bind RBAC, secrets access, pods/exec), the cluster-admin / wildcard-RBAC prohibition, and Secrets management. Publicly fetchable as PDF.
 3. **FIPS 199** — four levels: `criticality` L0 ("below the 'Low' security-categorization floor"), L1 ("'Low' potential impact"), L4 ("'Moderate'→'High' categorization") and L5 ("'High' potential impact"). Short document, publicly fetchable.
 
