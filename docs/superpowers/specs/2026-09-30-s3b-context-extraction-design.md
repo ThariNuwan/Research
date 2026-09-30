@@ -46,6 +46,11 @@ acceptance gates. §13 records the six decisions taken here and by whom.
 - **`context_eligible = False` means skip extraction entirely.** Do not default its
   factors; do not mark them unresolved. Those findings are already excluded from
   prioritization-quality claims by S3a's contract.
+- **Kubernetes bodies are read by layer 3, not taken from S3a.** S3a's `ResourceEntry`
+  carries `api_version`, `kind`, `namespace`, `name`, `container` and line spans and no
+  spec, so it resolves identity and cannot supply a `Service`'s `spec.type`. Layer 3
+  adds its own body reader keyed on the same `identity.kubernetes_identity`, leaving
+  S3a untouched; the two agree by construction rather than by coincidence.
 - **§G3 defect class.** A claim in the record its cited artifact does not support is a
   defect — docstrings, comments, test names, commit messages, and this spec. Measured
   facts here carry their source.
@@ -219,12 +224,22 @@ name). Resolvable:
 Explicitly **unsupported → `unresolved`, never low**: multi-hop route-table, subnet and
 gateway reachability; VPC peering and transit-gateway paths; DNS-based exposure.
 
-**4.2 The precedence rule is absolute and is data, not an `if`.** The rubric states: a
+**4.2 The precedence rule is absolute, and it is about INGRESS.** The rubric states: a
 `0.0.0.0/0` or `::/0` network-layer opening **forces exposure ≥ 4**, and identity-gating
 modulates only *within* a network-openness tier, never across it — an authentication
 layer can move a finding between levels inside a tier but can never pull an any-source
-opening below 4. The extractor reads this from `rubric.json`'s `precedence_rule` and
-asserts it after resolution, so a future level change cannot silently break it.
+opening below 4. The extractor asserts this after resolution, so a future level change
+cannot silently break it.
+
+**Amended 2026-09-30 after implementation (decision 9).** The rule applies to an
+**inbound** opening only. Exposure is inbound reachability: the factor's level 4 text
+reads "open network path **to** the resource", and egress risk belongs to the taxonomy
+class `networking-egress-exposure`, which §1.4 already records as mapping to no rubric
+factor. Measured: TerraGoat's `aws_security_group_rule.egress` carries a literal
+`0.0.0.0/0` with `type = "egress"`, and corpus-v1's networking scenario places that case
+in its **bottom** tier. Treating an egress opening as inbound would force it to 4 and
+invert the scenario's expected ordering. An `aws_security_group_rule` is therefore read
+for its `type`, and an egress rule resolves to 0 with that reasoning in its evidence.
 
 **4.3 The attribution rule — target, not rule.** A scanner may report an open-ingress
 finding against the **rule resource** (`aws_security_group_rule`) rather than the
@@ -260,6 +275,41 @@ a frozen parameter with no source behind it — the rule is structural: **any pu
 precedence. An RFC1918-only ingress is L1 (private/adjacent trust boundary). Cost if
 wrong: a `/1` ingress scores 2 where it is nearly as open as `/0`; no such CIDR exists
 in the corpus, and the alternative was an unsourced cut point.
+
+---
+
+**4.6 Resolved-negative is not unresolved (decision 10).** These are different states
+and the distinction decides an ordering. A resource the pattern list **covers**, read
+from literals, with no opening found, **resolves** to a low level — the extractor looked
+and found nothing, which is evidence. `unresolved` is for two other situations: a
+covered pattern whose value is interpolated, or a reachability mechanism outside the
+closed list entirely.
+
+Collapsing them is not a cosmetic error. TerraGoat's `aws_security_group.default`
+declares no ingress block at all (measured: its body carries only `name`, `tags` and
+`vpc_id`), so under a collapse it would be `unresolved` and score the default **3** — the
+same value as the interpolated case the networking scenario places **above** it. The
+scenario's bottom tier pairs it with the egress rule at 0, which only a resolved
+negative produces. So §4.1's "anything outside the list is unresolved, never low" means
+*outside the list*, not *inside the list and negative*.
+
+**4.7 Resource-address references resolve structurally (decision 11).** A value of the
+form `type.name.attr` resolves **as an address** to `type.name`. This is structural
+resolution, not value evaluation: the address is written literally in the source, and
+only the runtime value of the attribute is unknown.
+
+**Without it, no cross-resource pattern in PLAN Q9's closed list is implementable.**
+Measured on `corpus/authored/storage_public_exposure.tf`: both buckets link their
+`aws_s3_bucket_public_access_block` with `bucket = aws_s3_bucket.NAME.id`, which the
+literals-only check correctly classifies as interpolated. Refusing to read it leaves
+bucket publicness unresolvable and makes one of the two **exposure contrastive pairs**
+unreproducible.
+
+The resolution is deliberately narrow. It refuses `var`, `data`, `local`, `module`,
+`each`, `count`, `path`, `terraform` and `self` — none of which is a resource address —
+and refuses anything that is not a single bare reference, so an expression, a function
+call, a concatenation or a multi-element list stays unresolved. The same function backs
+§3.1's IAM-governed inheritance, which has the identical need for the same reason.
 
 ---
 
@@ -476,6 +526,9 @@ what it costs if wrong, so a later reader can reopen any of them on evidence.
 | 6 | **IAM policy JSON is parsed**; managed-policy ARNs → `unresolved` | This spec | An `AdministratorAccess` attachment scores 4 rather than 5, under-scoring the worst case by one level |
 | 7 | Privilege level reads **action breadth AND resource breadth jointly** (§5.4) | This spec, from measurement | Action-breadth-only collapses `iam-s3-bucket-scope` and `iam-s3-account-scope` to one level, and the privilege factor loses one of its two mechanism pairs without any test failing |
 | 8 | **`python-hcl2`** becomes a project dependency for Terraform reads | This spec, from a spike | A hand-rolled attribute scanner misparses silently and yields a confident wrong factor value, which is the false-reassurance failure mode the framework exists to prevent |
+| 9 | The precedence rule applies to **ingress** openings only (§4.2) | Implementation, from corpus-v1 | Reading egress as inbound forces `sgr-egress-unrestricted` to 4 and inverts the networking scenario's expected ordering |
+| 10 | **Resolved-negative is distinct from unresolved** (§4.6) | Implementation, from corpus-v1 | Collapsing them scores a rule-less security group 3 instead of 0, placing it level with the interpolated case the scenario ranks above it |
+| 11 | **Resource-address references resolve structurally** (§4.7) | Implementation, from the authored corpus | Without it bucket publicness is unresolvable and one of the two exposure contrastive pairs cannot be reproduced |
 
 Decisions 4, 5 and 6 each trade a known, bounded, documented error for a resolved value,
 in preference to an `unresolved` state that would route to a default and feed §1.1's

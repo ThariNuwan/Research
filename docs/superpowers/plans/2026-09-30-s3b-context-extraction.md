@@ -712,6 +712,15 @@ git commit -m "feat(s3b): declared-context join with IAM-governed inheritance"
 - **CIDR (§4.5):** any public non-RFC1918 CIDR with a non-zero prefix → 2; `0.0.0.0/0` or `::/0` → 4; RFC1918-only ingress → 1.
 - **Bucket publicness (§4.4):** level 5 requires public-access-block disabled **plus** a public ACL or public policy statement. A partial or cross-resource combination outside the enumeration → `unresolved`, not private.
 
+> **Corrected 2026-09-30 during implementation.** The test below originally asserted
+> that `aws_security_group_rule.egress` forces exposure >= 4, and that was wrong: that
+> rule's `type` is `"egress"`, exposure is inbound reachability, and corpus-v1's
+> networking scenario places the case in its bottom tier. Two further states the original
+> did not distinguish are now spec **decisions 10 and 11** (resolved-negative versus
+> unresolved, and structural resolution of resource-address references). Read spec
+> **section 4.2, 4.6 and 4.7** before implementing this task; the committed
+> `tests/context/test_exposure.py` is the corrected form.
+
 - [ ] **Step 1: Write the failing test**
 
 ```python
