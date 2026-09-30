@@ -43,8 +43,13 @@ class FactorValue:
     def scored_level(self) -> int:
         """What S4 does arithmetic on: the read level, or the rubric's documented default.
 
-        Never raises and never returns None, so an unguarded `+` at a scoring call site
-        is impossible by construction rather than by discipline.
+        Never raises and never returns None or a string, so arithmetic on THIS accessor is
+        always safe - which is what closes the `normalize_severity` trap S1 handoff item 5
+        and S3a handoff item 2 both describe.
+
+        The guard is total for `scored_level` and not for the dataclass: `level` stays a
+        public `int | None`, so `a.level + b.level` is writable and is caught by mypy rather
+        than by construction. Scoring call sites read `scored_level`.
         """
         if self.level is not None:
             return self.level

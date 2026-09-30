@@ -183,10 +183,21 @@ def test_an_unevaluated_condition_never_reduces_the_level() -> None:
         '${jsonencode({Version = "2012-10-17", Statement = [{Effect = "Allow", '
         'Action = ["*"], Resource = "*", Condition = {StringEquals = {"aws:x" = "y"}}}]})}'
     )
-    document = parse_policy_document(with_condition)
-    assert document is not None
-    statement = document["Statement"][0]
-    assert privilege_level(statement["Action"], [statement["Resource"]]) == 5
+    # Exercise extract(), not privilege_level() directly. An earlier version stripped the
+    # Condition at the call site, so privilege_level could not see it under any
+    # implementation and the assertion was true by construction - adding a
+    # condition-reduces-level rule to _statement_levels left the test green.
+    index = {
+        "aws_iam_policy.conditioned": TerraformResource(
+            identity="aws_iam_policy.conditioned",
+            type="aws_iam_policy",
+            name="conditioned",
+            body={"policy": with_condition},
+            file_path="x.tf",
+        )
+    }
+    value = extract(_finding("aws_iam_policy.conditioned"), index)
+    assert (value.state, value.level) == (FactorState.RESOLVED, 5)
 
 
 def test_a_deny_statement_does_not_contribute_a_level() -> None:

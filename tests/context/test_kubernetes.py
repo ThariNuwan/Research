@@ -94,10 +94,33 @@ def test_documents_without_the_required_metadata_are_skipped(tmp_path: Path) -> 
 
 
 def test_a_real_corpus_manifest_directory_yields_bodies_with_specs() -> None:
+    """The one test positioned to check real-shape coverage, so it checks a real property.
+
+    Two earlier weaknesses: it returned silently when the vendored corpus was absent, making
+    a missing corpus indistinguishable from a passing check; and it asserted only that each
+    body carries a `kind`, which says nothing about the `spec` that is the entire reason
+    layer 3 reads bodies rather than reusing S3a's index (spec section 0.1).
+
+    The branch's own lesson from the container-identity defect is that a real-corpus check is
+    what finds shape mismatches a hand-built fixture cannot.
+    """
     root = Path(__file__).resolve().parent.parent.parent / "corpus" / "vendor" / "kubernetes-goat"
-    if not root.exists():
-        return
-    files = sorted(root.rglob("*.yaml"))
+    assert root.exists(), (
+        f"vendored corpus missing at {root} - re-run tools/vendor_corpus.ps1 rather than "
+        f"letting this check pass silently"
+    )
+    files = sorted(root.rglob("*.yaml")) + sorted(root.rglob("*.yml"))
     index = build_body_index(files)
     assert index, "expected at least one indexable manifest in the vendored corpus"
     assert all("kind" in body for body in index.values())
+
+    # A spec is what layer 3 came here for. Not every kind has one (a Namespace does not),
+    # so assert that the workload and service kinds that do carry it actually do.
+    spec_bearing = {
+        identity: body
+        for identity, body in index.items()
+        if body.get("kind") in {"Deployment", "Service", "Job", "Pod", "StatefulSet", "DaemonSet"}
+    }
+    assert spec_bearing, "expected at least one workload or service in the vendored corpus"
+    missing = [i for i, b in spec_bearing.items() if not isinstance(b.get("spec"), dict)]
+    assert not missing, f"spec-bearing kinds indexed without a readable spec: {missing}"

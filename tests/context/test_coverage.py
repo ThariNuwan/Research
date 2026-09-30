@@ -89,9 +89,13 @@ def test_a_fully_resolved_finding_lands_in_the_zero_bucket() -> None:
     declared = {"aws_db_instance.default": {"sensitivity": 4, "criticality": 4}}
     results = contextualize([_finding("aws_db_instance.default")], declared, _terragoat())
     coverage = build(results)
-    missing = len(results[0].defaulted_factors) + len(results[0].unresolved_factors)
-    assert coverage.resolution_distribution[missing] == 1
-    assert coverage.fully_resolved == coverage.resolution_distribution[0]
+    # Assert zero explicitly. An earlier version computed `missing` from the result under
+    # test and asserted the distribution at that index, which stays green under any
+    # regression while the test's name becomes false.
+    assert results[0].defaulted_factors == ()
+    assert results[0].unresolved_factors == ()
+    assert coverage.resolution_distribution[0] == 1
+    assert coverage.fully_resolved == 1
 
 
 def test_the_low_confidence_count_uses_the_frozen_threshold() -> None:

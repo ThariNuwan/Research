@@ -200,9 +200,14 @@ def _bucket_publicness(
     blocking: list[bool] = []
     for block in pab:
         for flag in _PAB_BLOCKING_FLAGS:
-            value = _truthy(attribute(block, flag))
+            raw_flag = attribute(block, flag)
+            value = _truthy(raw_flag)
             if value is None:
-                return None, f"public-access-block {flag} is not a readable literal"
+                # Absent and unreadable are different facts and the evidence string must not
+                # conflate them: `evidence` exists to make the resolution auditable, and an
+                # omitted attribute reported as "unreadable" misstates what happened.
+                reason = "is absent" if raw_flag is None else "is not a readable literal"
+                return None, f"public-access-block {flag} {reason}"
             blocking.append(value)
     if all(blocking):
         return 0, "public-access-block fully enabled and no public ACL or policy"
@@ -235,11 +240,16 @@ def _bucket_target(resource: TerraformResource) -> str | None:
 
 
 def _has_public_principal(policy_resource: TerraformResource) -> bool:
-    """A `Principal = "*"` with `Effect = "Allow"` anywhere in the policy text.
+    """True when the policy text contains `"*"`, `Principal` and `Allow` anywhere.
 
-    Read off the raw source rather than a parsed document: the policy arrives as a
-    `${jsonencode({...})}` expression, and a public principal is a textual property of
-    it that does not need the full parse Task 5 performs for privilege.
+    That is a **substring test, not a parse**, and it is deliberately weaker than its name
+    suggests. A policy carrying `Principal = {AWS = "arn:aws:iam::123:root"}` together with
+    `Action = "*"` satisfies all three substrings and returns True, so a bucket with its
+    public-access-block disabled would resolve exposure 5 - "content is world-readable" - on
+    a policy that is not public. No such policy exists in this corpus, so the check is
+    correct on every case here, and `privilege.parse_policy_document` would give an exact
+    answer if this needs tightening. Recorded rather than hidden, because the call site
+    claiming precision the check does not have is the defect.
     """
     raw = attribute(policy_resource, "policy")
     if raw is None:

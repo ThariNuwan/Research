@@ -706,7 +706,7 @@ git commit -m "feat(s3b): declared-context join with IAM-governed inheritance"
 **Requirements** (spec §4). Read §4.1–§4.5 before starting; the rulings there are not re-derivable from the rubric alone.
 
 - The closed pattern list is exactly four patterns. Anything outside → `unresolved`, never low.
-- **Precedence (§4.2):** a `0.0.0.0/0` or `::/0` opening forces level ≥ 4, asserted after resolution against `rubric.coherence_rules`/the exposure factor's `precedence_rule` so the rule cannot drift from the artifact.
+- **Precedence (§4.2):** a `0.0.0.0/0` or `::/0` **ingress** opening forces level ≥ 4, asserted after resolution inside the extractor. **Correction:** an earlier version of this line said the extractor reads the rule from `rubric.json` "so the rule cannot drift from the artifact". It does not — `exposure.py` imports no rubric, and the threshold is a module literal. Only gate 4 reads `precedence_rule`, and spec §4.2 was amended during implementation to drop the same claim. Treat drift between the artifact and the extractor's literal as a real risk that nothing currently catches.
 - **Attribution (§4.3):** exposure is attributed to the target, not the rule resource. **Attribution changes the factor, never the identity** — do not rewrite `resource_identity`, or S3a's dedupe separation of rule-level from target-level findings is undone.
 - **NodePort → 2** (§4.5), firewall assumption in the evidence string.
 - **CIDR (§4.5):** any public non-RFC1918 CIDR with a non-zero prefix → 2; `0.0.0.0/0` or `::/0` → 4; RFC1918-only ingress → 1.

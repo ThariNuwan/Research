@@ -25,7 +25,7 @@ list and the attribution rule, S1's rubric fixed all six factors' levels, preced
 rules, unresolved policies, unresolved defaults and the exposure sensitivity sweep,
 and S3a fixed the record shape and `context_eligible`. This document's job is to state
 those constraints in one place, resolve the handful that remained open, and define the
-acceptance gates. §13 records the six decisions taken here and by whom.
+acceptance gates. §13 records the thirteen decisions taken on this sub-project and by whom.
 
 ### 0.1 Global constraints (bind every part of S3b)
 
@@ -539,7 +539,9 @@ uninterpretable.
 
 ## 13. Decisions taken in this document
 
-Six decisions were open when this spec was written. Recording who took each one, and
+Six decisions were open when this spec was first written, and seven more were taken
+afterwards — one by the project author and six forced by implementation or by review — for
+thirteen in all. Recording who took each one, and
 what it costs if wrong, so a later reader can reopen any of them on evidence.
 
 | # | Decision | Taken by | Cost if wrong |

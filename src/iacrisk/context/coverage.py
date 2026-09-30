@@ -80,9 +80,24 @@ def build(results: Sequence[ContextualizedFinding]) -> ContextCoverage:
         eligible += 1
 
         for value in result.factors:
-            if value.state is FactorState.DEFAULTED and value.key in per_factor_defaulted:
+            if value.state is FactorState.DEFAULTED:
+                if value.key not in per_factor_defaulted:
+                    # A defaulted exposure, privilege or encryption is a state error, not a
+                    # datum: it would be counted in `resolution_distribution` while missing
+                    # from every per-factor report, so the two would disagree with nothing
+                    # raised. This module's own contract is that it never silently loses a
+                    # finding, so it raises instead of dropping.
+                    raise ValueError(
+                        f"factor {value.key!r} reported DEFAULTED, which only the two "
+                        f"declared factors may be"
+                    )
                 per_factor_defaulted[value.key] += 1
-            elif value.state is FactorState.UNRESOLVED and value.key in per_factor_unresolved:
+            elif value.state is FactorState.UNRESOLVED:
+                if value.key not in per_factor_unresolved:
+                    raise ValueError(
+                        f"factor {value.key!r} reported UNRESOLVED, which only the three "
+                        f"parsed factors may be"
+                    )
                 per_factor_unresolved[value.key] += 1
 
         missing = len(result.defaulted_factors) + len(result.unresolved_factors)

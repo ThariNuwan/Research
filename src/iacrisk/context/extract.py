@@ -127,9 +127,12 @@ def defaulted_and_unresolved_are_disjoint(results: Sequence[ContextualizedFindin
     """True when no finding reports a factor as both defaulted and unresolved.
 
     Disjointness holds by construction - sensitivity and criticality can only be
-    defaulted, and the three parsed factors can only be unresolved - but gate 3 asserts
-    it over the whole corpus rather than trusting the construction, because a future
-    extractor returning the wrong state would otherwise corrupt two separately reported
-    rates silently.
+    defaulted, and the three parsed factors can only be unresolved - and gate 3 asserts it
+    corpus-wide, because a future extractor returning the wrong state would otherwise
+    corrupt two separately reported rates silently.
+
+    This helper is **test-only** and is deliberately absent from `__all__`. Gate 3 asserts
+    disjointness directly rather than calling it; an earlier version of this docstring
+    credited gate 3 as the caller, which it is not.
     """
     return all(not (set(r.defaulted_factors) & set(r.unresolved_factors)) for r in results)

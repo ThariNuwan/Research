@@ -11,6 +11,7 @@ one returns 0 on a red suite.
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,49 @@ def _k8s_index() -> dict[str, dict[str, Any]]:
 
 def _contextualized() -> list[ContextualizedFinding]:
     return contextualize(_all_real_findings(), {}, _tf_index(), _k8s_index())
+
+
+def _probe(identity: str, issue_class: str = "networking-ingress-exposure") -> NormalizedFinding:
+    """A minimal finding standing in for whatever real finding sits on `identity`.
+
+    Used only by gates that reason from the *source* rather than from the finding set, where
+    the question is what the extractor resolves for a resource, not what any particular
+    scanner said about it.
+    """
+    return NormalizedFinding(
+        scanner="checkov",
+        rule_id="R1",
+        canonical_rule_id="R1",
+        issue_class=issue_class,
+        title="t",
+        remediation=None,
+        native_severity=None,
+        severity_level=3,
+        platform="terraform",
+        resource_identity=identity,
+        identity_kind="terraform",
+        file_path="x.tf",
+        line_range=None,
+        fingerprint=None,
+        context_eligible=True,
+    )
+
+
+def _any_other_class(class_id: str) -> str:
+    """A different taxonomy class in a DIFFERENT category, for the cross-category mutation.
+
+    Gate 5's same-category mutation cannot see a violation keyed on the category rather than
+    the class - `if class_id.startswith("storage-"): encryption = 2`, the exact shape spec
+    §2.3 warns about. Mutating across categories closes that axis.
+    """
+    classes = taxonomy.classes()
+    entry = classes.get(class_id)
+    own_category = entry.category if entry is not None else None
+    others = sorted(
+        other for other, e in classes.items() if e.category != own_category and other != class_id
+    )
+    assert others, f"no class outside category {own_category!r}; mutation would be vacuous"
+    return others[0]
 
 
 def _other_class_in_same_category(class_id: str) -> str:
@@ -129,15 +173,36 @@ def test_gate_3_defaulted_and_unresolved_are_disjoint_over_the_whole_corpus() ->
 
 
 def test_gate_4_the_exposure_precedence_rule_holds_as_data() -> None:
-    """For every finding whose evidence records an any-source opening, exposure >= 4.
+    """For every finding whose evidence records an any-source opening, exposure >= the
+    threshold the rubric's own `precedence_rule` states.
 
-    The rule text is read from `rubric.json` so the gate cannot drift from the artifact,
-    and the assertion is over the corpus rather than a constructed example.
+    **The threshold is parsed out of the rule text, not hard-coded.** An earlier version
+    asserted `>= 4` as a literal while claiming the rule was "read from rubric.json so the
+    gate cannot drift from the artifact" - which was a name check, not a rule check: had the
+    rubric been amended to force >= 3 or >= 5 the gate would have kept asserting 4 and still
+    passed. That is the same shape as the S1 anchor test CLAUDE.md warns about.
+
+    Known limitation, recorded rather than papered over: the selection predicate is a
+    producer-side evidence substring, so it can only see openings the extractor already
+    attributed. It cannot detect an opening that was missed entirely - which is exactly how
+    this gate stayed green while 25 findings on resources behind an open security group
+    resolved unresolved. `test_gate_4b` below closes that specific hole.
     """
     from iacrisk import rubric
 
     precedence = rubric.factors()["exposure"].precedence_rule
     assert precedence is not None and "0.0.0.0/0" in precedence
+
+    threshold_match = re.search(r">=\s*(\d+)", precedence)
+    assert threshold_match is not None, (
+        f"precedence_rule must state its threshold numerically so this gate can read it; got: "
+        f"{precedence!r}"
+    )
+    threshold = int(threshold_match.group(1))
+    assert threshold == 4, (
+        f"the rubric's precedence threshold moved to {threshold}; the structural freeze makes "
+        f"that a sensitivity-analysis change, not a silent edit"
+    )
 
     checked = 0
     for result in _contextualized():
@@ -145,8 +210,53 @@ def test_gate_4_the_exposure_precedence_rule_holds_as_data() -> None:
         if value is None or "any-source ingress opening" not in value.evidence:
             continue
         checked += 1
-        assert value.level is not None and value.level >= 4, value.evidence
+        assert value.level is not None and value.level >= threshold, value.evidence
     assert checked > 0, "expected at least one any-source ingress opening in the corpus"
+
+
+def test_gate_4b_an_open_group_is_attributed_to_every_resource_behind_it() -> None:
+    """The hole gate 4 cannot cover: an opening that was never attributed at all.
+
+    Gate 4 selects on the extractor's own evidence string, so it only inspects findings the
+    extractor already scored >= 4. Measured before the fix in `f44f600`: 25 findings across
+    three resources that literally reference `aws_security_group.web-node` - a group
+    resolving 4 - came back unresolved with the evidence "matches no supported exposure
+    pattern", and gate 4 passed throughout.
+
+    This gate works the other way round: it starts from the *source*, finds every resource
+    referencing a group that resolves >= the threshold, and asserts the resource does too.
+    """
+    from iacrisk.context.exposure import extract as extract_exposure
+    from iacrisk.context.terraform import attribute, resource_reference
+
+    tf_index = _tf_index()
+    open_groups = {
+        identity
+        for identity, resource in tf_index.items()
+        if resource.type == "aws_security_group"
+        and (value := extract_exposure(_probe(identity), tf_index)).level is not None
+        and value.level >= 4
+    }
+    assert open_groups, "expected at least one any-source security group in the corpus"
+
+    checked = 0
+    for identity, resource in tf_index.items():
+        if resource.type in {"aws_security_group", "aws_security_group_rule"}:
+            continue
+        for attr in ("vpc_security_group_ids", "security_groups", "security_group_id"):
+            raw = attribute(resource, attr)
+            if raw is None:
+                continue
+            items = raw if isinstance(raw, list) else [raw]
+            if not any(resource_reference(i) in open_groups for i in items):
+                continue
+            checked += 1
+            value = extract_exposure(_probe(identity), tf_index)
+            assert value.level is not None and value.level >= 4, (
+                f"{identity} sits behind an any-source security group but resolved "
+                f"{value.state}/{value.level}: {value.evidence}"
+            )
+    assert checked > 0, "expected at least one resource behind an any-source group"
 
 
 def test_gate_5_no_resolved_factor_level_depends_on_the_issue_class() -> None:
@@ -170,19 +280,27 @@ def test_gate_5_no_resolved_factor_level_depends_on_the_issue_class() -> None:
     ), "every finding's class must actually change or this gate is vacuous"
 
     mutated = contextualize(mutated_findings, {}, tf_index, k8s_index)
-    assert len(baseline) == len(mutated)
 
-    for before, after in zip(baseline, mutated, strict=True):
-        for key in CONTEXT_FACTOR_KEYS:
-            b = getattr(before, key)
-            a = getattr(after, key)
-            if b is None or a is None:
-                assert b is None and a is None
-                continue
-            assert b.level == a.level, (
-                f"{before.finding.resource_identity} {key}: {b.level} -> {a.level} after "
-                f"class mutation - the extractor read the class, not the resource"
-            )
+    # A second pass across CATEGORIES. The same-category mutation above cannot see a
+    # violation keyed on the category rather than the class, which is the shape spec 2.3
+    # warns about one level up. Both axes are checked.
+    cross_findings = [replace(f, issue_class=_any_other_class(f.issue_class)) for f in findings]
+    cross = contextualize(cross_findings, {}, tf_index, k8s_index)
+
+    assert len(baseline) == len(mutated) == len(cross)
+
+    for label, variant in (("same-category", mutated), ("cross-category", cross)):
+        for before, after in zip(baseline, variant, strict=True):
+            for key in CONTEXT_FACTOR_KEYS:
+                b = getattr(before, key)
+                a = getattr(after, key)
+                if b is None or a is None:
+                    assert b is None and a is None
+                    continue
+                assert b.level == a.level, (
+                    f"{before.finding.resource_identity} {key}: {b.level} -> {a.level} after "
+                    f"{label} class mutation - the extractor read the class, not the resource"
+                )
 
 
 def test_gate_6_the_resolution_rate_distribution_is_measured_and_reported() -> None:
