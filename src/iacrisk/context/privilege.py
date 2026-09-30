@@ -146,7 +146,14 @@ def _as_list(value: object) -> list[str]:
 
 
 def _is_trust_statement(statement: Mapping[str, Any]) -> bool:
-    """True for a trust or resource policy statement rather than a permission grant.
+    """True for a statement carrying a `Principal` and no `Resource`.
+
+    That shape is a trust policy. It is NOT a test for resource policies in general: a
+    bucket policy carries both a `Principal` and a `Resource`, so it is scored on the
+    permission ladder like any other grant - which is defensible, since the rubric's
+    privilege factor names "policy" among the things whose granted breadth it measures.
+    An earlier version of this docstring said "trust or resource policy", which claimed an
+    exclusion the function does not perform.
 
     Decision 12. Measured on TerraGoat's `aws_iam_role.ec2role`: its `assume_role_policy`
     carries `Action = "sts:AssumeRole"`, a `Principal`, and **no Resource**. Such a

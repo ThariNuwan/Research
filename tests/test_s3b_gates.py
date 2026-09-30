@@ -99,7 +99,10 @@ def test_gate_2_context_ineligible_findings_carry_no_context_block_at_all() -> N
     """
     results = _contextualized()
     ineligible = [r for r in results if not r.finding.context_eligible]
-    assert ineligible, "corpus v0 carries 8 non-resource checkov findings; expected some here"
+    assert ineligible, (
+        "corpus v0 carries 30 context-ineligible findings (9 checkov non-resource, "
+        "21 trivy); expected some here"
+    )
 
     for result in ineligible:
         assert result.exposure is None

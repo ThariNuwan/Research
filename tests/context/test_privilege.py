@@ -190,12 +190,26 @@ def test_an_unevaluated_condition_never_reduces_the_level() -> None:
 
 
 def test_a_deny_statement_does_not_contribute_a_level() -> None:
-    document = parse_policy_document(
-        '${jsonencode({Version = "2012-10-17", Statement = '
-        '[{Effect = "Deny", Action = ["*"], Resource = "*"}]})}'
-    )
-    assert document is not None
-    assert document["Statement"][0]["Effect"] == "Deny"
+    """An earlier version of this test asserted only that Effect parsed as "Deny", which
+    would have stayed green with the Deny guard deleted. It now asserts the outcome: a
+    policy whose only statement is a Deny of everything yields no permission level at all,
+    so the resource resolves unresolved rather than 5.
+    """
+    index = {
+        "aws_iam_policy.deny_all": TerraformResource(
+            identity="aws_iam_policy.deny_all",
+            type="aws_iam_policy",
+            name="deny_all",
+            body={
+                "policy": '${jsonencode({Version = "2012-10-17", Statement = '
+                '[{Effect = "Deny", Action = ["*"], Resource = "*"}]})}'
+            },
+            file_path="x.tf",
+        )
+    }
+    value = extract(_finding("aws_iam_policy.deny_all"), index)
+    assert value.state is FactorState.UNRESOLVED
+    assert value.level is None
 
 
 def test_the_level_does_not_depend_on_the_issue_class() -> None:

@@ -86,8 +86,10 @@ resolution rate is therefore not a quality metric to report afterwards; it is th
 condition under which the framework works at all. §8 makes it a gate.
 
 **1.2 Two mitigations already exist, on different axes, and neither covers the middle.**
-S3a's `context_eligible = False` covers *no resource to contextualize* (8 of 489
-Checkov findings, 1.6%). The `unmapped:` contract covers *no issue class*. Neither
+S3a's `context_eligible = False` covers *no resource to contextualize* (**9** of 489
+Checkov findings, 1.8% — S3a's own spec §2.1 corrected this from 8, and an earlier draft
+of this document reintroduced the superseded figure; measured on the committed fixtures
+the ineligible population is 30 in total, 9 checkov and 21 trivy). The `unmapped:` contract covers *no issue class*. Neither
 covers **a resource that exists and a class that maps, whose factors simply do not
 resolve** — which is the washout's actual population. §8's low-confidence rule is what
 covers it.
@@ -313,6 +315,16 @@ call, a concatenation or a multi-element list stays unresolved. The same functio
 
 ---
 
+**4.8 Target attribution, and why a group is not scored on its attached rules (decision 13).** §4.1 pattern 1 says "attached to the target" and §4.3 says exposure is attributed to the target rather than the rule resource. **Implementing that requires a security-group-to-target lookup, which the first implementation of this spec omitted entirely.** Measured before the omission was fixed: 25 findings across `aws_instance.web_host`, `aws_instance.db_app` and `aws_elb.weblb` — all three of which literally reference `aws_security_group.web-node`, a group that itself resolves 4 — came back `unresolved` with the evidence string "matches no supported exposure pattern". The precedence rule therefore never fired on the resources whose reachability it exists to describe.
+
+A **target** now aggregates the referenced group's inline blocks **and** the standalone `aws_security_group_rule` resources attached to that group, because everything governing the target's reachability bears on the target.
+
+A **group evaluated as a finding subject in its own right does not** aggregate standalone rules. Two reasons, and the second is a constraint rather than an argument. First, those rules are separately finding-bearing resources whose exposure is computed directly, so aggregating would double-count them. Second, and decisive: `aws_security_group_rule.ingress` attaches an interpolated ingress to `aws_security_group.default`, so aggregating would move that group from a resolved 0 to `unresolved`/3 — tying it with `sgr-ingress-vpc-interpolated` and collapsing tiers 2 and 3 of corpus-v1's networking scenario, whose ordering is pre-registered and stands under the S2 resolution rule.
+
+**This is a tension, not a clean result, and §4.6 previously omitted it.** §4.6 justifies decision 10 by saying `aws_security_group.default` "declares no ingress block", which is true of its inline blocks and silent about the standalone rule pointing at it. The honest statement is that the group's resolved 0 describes *what the group declares*, not *what reaches anything through it* — and that a target behind that group correctly resolves `unresolved` via the interpolated rule. Re-authoring the scenario to aggregate would need a fresh blinded review, not a patch.
+
+---
+
 ## 5. Deliverable 4 — the Privilege extractor
 
 The rubric's privilege levels name exact constructs, which fixes what the extractor must
@@ -394,6 +406,20 @@ Encryption spans 0–3 with `unresolved_default = 2`. The extractor reads the re
 encryption attributes directly: at-rest encryption flags and KMS key references for
 storage and volumes, in-transit settings where declared, and the Kubernetes controls the
 rubric's L3 names.
+
+**6.0 A type in neither table is `unresolved`, not 0 (added after review).** The first
+implementation resolved **0** for any resource type absent from its hand-written
+data-bearing table, on the reasoning that such a type "holds no data at rest". Measured,
+that was false reassurance on **159 findings**, 29 of which carried an encryption class of
+their own — including `aws_elasticsearch_domain`, which is plainly data-bearing, and
+`aws_instance`, whose block devices carry encryption settings. The table was also
+internally inconsistent: `aws_ebs_snapshot` was listed and `aws_neptune_cluster_snapshot`
+was not.
+
+There are now **two** explicit tables — data-bearing types with their attributes, and
+types affirmatively established to hold no data at rest — and a type in **neither**
+resolves `unresolved`. A hand-written table's silence is not evidence that a resource
+holds no data, which is what §6.2 already required and the implementation did not do.
 
 **6.1 L3 requires positively-established mandate evidence.** The rubric reserves L3 for
 a standard-mandated hardening control — etcd Secret encryption at rest, TLS across a
@@ -529,6 +555,8 @@ what it costs if wrong, so a later reader can reopen any of them on evidence.
 | 9 | The precedence rule applies to **ingress** openings only (§4.2) | Implementation, from corpus-v1 | Reading egress as inbound forces `sgr-egress-unrestricted` to 4 and inverts the networking scenario's expected ordering |
 | 10 | **Resolved-negative is distinct from unresolved** (§4.6) | Implementation, from corpus-v1 | Collapsing them scores a rule-less security group 3 instead of 0, placing it level with the interpolated case the scenario ranks above it |
 | 11 | **Resource-address references resolve structurally** (§4.7) | Implementation, from the authored corpus | Without it bucket publicness is unresolvable and one of the two exposure contrastive pairs cannot be reproduced |
+| 12 | A statement with a **`Principal` and no `Resource`** is a trust policy, never a permission grant; a role with only a trust policy is `unresolved` (§5.3) | Implementation, from TerraGoat | Scoring a trust policy on the permission ladder reads the grant backwards — `sts:AssumeRole` lands at 4 as an escalation enabler when it is the role's own trust boundary |
+| 13 | A **security group is scored on what it declares**; standalone rules attached to it are aggregated only when scoring a **target** behind it (§4.8) | Implementation, to preserve a pre-registered ordering | Aggregating rules into the group itself moves `sg-default-low-exposure` from 0 to unresolved/3, tying it with `sgr-ingress-vpc-interpolated` and collapsing two tiers of the networking scenario |
 
 Decisions 4, 5 and 6 each trade a known, bounded, documented error for a resolved value,
 in preference to an `unresolved` state that would route to a default and feed §1.1's

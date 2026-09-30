@@ -49,7 +49,72 @@ _AT_REST: dict[str, tuple[str, ...]] = {
     "aws_efs_file_system": ("encrypted", "kms_key_id"),
     "aws_elasticache_replication_group": ("at_rest_encryption_enabled",),
     "aws_redshift_cluster": ("encrypted", "kms_key_id"),
+    "aws_elasticsearch_domain": ("encrypt_at_rest", "node_to_node_encryption"),
+    "aws_opensearch_domain": ("encrypt_at_rest", "node_to_node_encryption"),
+    "aws_neptune_cluster_snapshot": ("storage_encrypted", "kms_key_id"),
+    "aws_rds_cluster_snapshot": ("storage_encrypted", "kms_key_id"),
+    "aws_db_snapshot": ("encrypted", "kms_key_id"),
+    "aws_ecr_repository": ("encryption_configuration",),
+    "aws_eks_cluster": ("encryption_config",),
+    "aws_lambda_function": ("kms_key_arn",),
+    "aws_kms_key": ("enable_key_rotation",),
+    "aws_s3_bucket_object": ("kms_key_id", "server_side_encryption"),
+    "aws_instance": ("root_block_device", "ebs_block_device"),
+    "aws_cloudwatch_log_group": ("kms_key_id",),
+    "aws_neptune_cluster_instance": ("storage_encrypted",),
 }
+
+# Types affirmatively established to hold no data at rest within this framework's scope.
+# Explicit rather than implied: a type in NEITHER table resolves `unresolved`, because a
+# hand-written table's silence is not evidence that a resource holds no data.
+#
+# Measured before this list existed: 159 findings resolved encryption=0 purely because
+# their type was absent from `_AT_REST`, 29 of them carrying an encryption class of their
+# own - including `aws_elasticsearch_domain`, which is plainly data-bearing. Resolving 0
+# there is the false-reassurance failure mode PLAN Q9 forbids, and spec section 6.2
+# requires `unresolved` where the state is not established.
+_NO_DATA_AT_REST = frozenset(
+    {
+        # Network topology and access control carry no stored data.
+        "aws_security_group",
+        "aws_security_group_rule",
+        "aws_subnet",
+        "aws_vpc",
+        "aws_route",
+        "aws_route_table",
+        "aws_route_table_association",
+        "aws_internet_gateway",
+        "aws_network_interface",
+        "aws_db_subnet_group",
+        "aws_flow_log",
+        # Identity objects hold permissions, not data at rest.
+        "aws_iam_role",
+        "aws_iam_role_policy",
+        "aws_iam_role_policy_attachment",
+        "aws_iam_user",
+        "aws_iam_user_policy",
+        "aws_iam_policy",
+        "aws_iam_group_policy",
+        "aws_iam_instance_profile",
+        "aws_iam_access_key",
+        "aws_elasticsearch_domain_policy",
+        "aws_s3_bucket_policy",
+        "aws_s3_bucket_acl",
+        "aws_s3_bucket_public_access_block",
+        # Configuration containers and attachments.
+        "aws_db_option_group",
+        "aws_db_parameter_group",
+        "aws_volume_attachment",
+        "aws_kms_alias",
+        "null_resource",
+        # Transport-layer resources: their encryption dimension is in transit, which this
+        # factor's at-rest reads do not cover, and which no level of the factor asks for
+        # separately.
+        "aws_elb",
+        "aws_lb",
+        "aws_alb",
+    }
+)
 
 # Kubernetes kinds the rubric's level 3 names directly (etcd Secret encryption at rest).
 _KUBERNETES_SECRET_KINDS = frozenset({"Secret"})
@@ -103,10 +168,19 @@ def extract(
 
     attrs = _AT_REST.get(resource.type)
     if attrs is None:
-        return FactorValue.resolved(
+        if resource.type in _NO_DATA_AT_REST:
+            return FactorValue.resolved(
+                "encryption",
+                0,
+                f"{resource.type} holds no data at rest within this framework's scope",
+            )
+        # Neither table lists this type, so nothing has been established about it. Spec
+        # section 6.2: resolving 0 here would let a hand-written table's silence read as
+        # evidence of safety.
+        return FactorValue.unresolved(
             "encryption",
-            0,
-            f"{resource.type} holds no data-at-rest requiring protection in this framework's scope",
+            f"{resource.type} is in neither the data-bearing nor the no-data table, so its "
+            f"encryption dimension is unclassified rather than absent",
         )
 
     seen_any = False

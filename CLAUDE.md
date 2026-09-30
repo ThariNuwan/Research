@@ -261,18 +261,19 @@ starting S4.
 **S3b** built layer 3: `src/iacrisk/context/` with one module per factor, the Q4
 declared-context join, a Terraform reader on `python-hcl2`, a Kubernetes body reader,
 the orchestrator and the coverage report. Seven acceptance gates in
-`tests/test_s3b_gates.py`; 748 tests in the suite. Twelve decisions are recorded in the
-design spec's §13 with cost-if-wrong, seven of them forced by implementation rather than
-anticipated. Four figures a future session will get wrong without being told:
+`tests/test_s3b_gates.py`; 748 tests in the suite. **Thirteen** decisions are recorded in
+the design spec's §13 with cost-if-wrong — two taken by the project author, six by the
+spec, and **five forced by implementation**. Four figures a future session will get wrong
+without being told:
 
 - **There are two resolution-rate numbers and they differ fourfold.** On the primary
   declared-context path (the 209 findings whose resource `corpus-v1` declares),
-  **20.1% are low-confidence, so 79.9% are usable for prioritization-quality claims**.
-  Across all 1055 corpus-v0 findings it is **78.3%** — because v0 is the measurement
+  **13.9% are low-confidence, so 86.1% are usable for prioritization-quality claims**.
+  Across all 1055 corpus-v0 findings it is **77.9%** — because v0 is the measurement
   corpus and `corpus-v1` declares only 20 identities. Reporting the second as the
   framework's resolution rate mislabels it exactly as reporting Tier-2's 91
   same-scanner candidates as cross-scanner overlap would.
-- **Exposure is unresolved on 959 of 1025 eligible findings (93.6%), by design.** PLAN
+- **Exposure is unresolved on 934 of 1025 eligible findings (91.1%), by design.** PLAN
   Q9's closed pattern list means anything that is not a security group or rule, a
   public-flagged resource, a bucket with an attached public-access-block, or a K8s
   `Service`/`Ingress` is unresolved, never low. On those findings exposure contributes a

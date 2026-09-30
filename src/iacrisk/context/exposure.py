@@ -273,6 +273,92 @@ def _kubernetes(identity: str, body: Mapping[str, Any]) -> FactorValue:
     return FactorValue.resolved("exposure", level, f"{identity}: {evidence}")
 
 
+_SG_REFERENCE_ATTRS = ("vpc_security_group_ids", "security_groups", "security_group_id")
+
+
+def _referenced_security_groups(
+    resource: TerraformResource,
+) -> tuple[list[str], list[str]]:
+    """(resolved security-group identities, reasons a reference could not be resolved)."""
+    found: list[str] = []
+    blocked: list[str] = []
+    for attr in _SG_REFERENCE_ATTRS:
+        raw = attribute(resource, attr)
+        if raw is None:
+            continue
+        items = raw if isinstance(raw, list) else [raw]
+        for item in items:
+            referenced = resource_reference(item)
+            if referenced is not None and referenced.startswith("aws_security_group."):
+                found.append(referenced)
+            else:
+                blocked.append(f"{attr} entry is not a resolvable security-group address")
+    return found, blocked
+
+
+def _rules_attached_to(
+    group_identity: str, tf_index: Mapping[str, TerraformResource]
+) -> list[TerraformResource]:
+    """Standalone `aws_security_group_rule` resources naming this group."""
+    attached: list[TerraformResource] = []
+    for other in tf_index.values():
+        if other.type != "aws_security_group_rule":
+            continue
+        if resource_reference(attribute(other, "security_group_id")) == group_identity:
+            attached.append(other)
+    return attached
+
+
+def _from_attached_security_groups(
+    resource: TerraformResource, tf_index: Mapping[str, TerraformResource]
+) -> tuple[int | None, str] | None:
+    """Spec section 4.1 pattern 1 and section 4.3: attribute a group's opening to its target.
+
+    Without this, a compute or load-balancer resource sitting behind a security group whose
+    ingress is open to 0.0.0.0/0 resolves `unresolved` and the precedence rule never fires -
+    measured on corpus v0, 25 findings across `aws_instance.web_host`, `aws_instance.db_app`
+    and `aws_elb.weblb`, all three of which literally reference
+    `aws_security_group.web-node`, which itself resolves 4.
+
+    A target aggregates the group's **inline** blocks and the **standalone rules** attached
+    to it, because everything governing the target's reachability bears on the target. A
+    group evaluated as a finding subject in its own right does not aggregate standalone
+    rules (see `_security_group`), since those rules are separately finding-bearing
+    resources whose exposure is computed directly and aggregating would double-count them.
+    """
+    groups, blocked = _referenced_security_groups(resource)
+    if not groups and not blocked:
+        return None
+
+    candidates: list[tuple[int, str]] = []
+    blockers: list[str] = list(blocked)
+
+    for group_identity in groups:
+        group = tf_index.get(group_identity)
+        if group is None:
+            blockers.append(f"{group_identity} is referenced but not indexed")
+            continue
+        level, evidence = _security_group(group)
+        if level is None:
+            blockers.append(f"via {group_identity}: {evidence}")
+        else:
+            candidates.append((level, f"via {group_identity}: {evidence}"))
+        for rule in _rules_attached_to(group_identity, tf_index):
+            rule_level, rule_evidence = _security_group_rule(rule)
+            if rule_level is None:
+                blockers.append(f"via {group_identity} rule {rule.identity}: {rule_evidence}")
+            else:
+                candidates.append(
+                    (rule_level, f"via {group_identity} rule {rule.identity}: {rule_evidence}")
+                )
+
+    if candidates:
+        # An any-source opening anywhere among the attached groups dominates: the
+        # precedence rule forbids a lower-scoring sibling from pulling it down.
+        return max(candidates, key=lambda pair: pair[0])
+    return None, "; ".join(blockers)
+
+
 def extract(
     finding: NormalizedFinding,
     tf_index: Mapping[str, TerraformResource],
@@ -283,7 +369,8 @@ def extract(
     Never rewrites the finding's identity. Spec section 4.3 attributes exposure to the
     target rather than the rule resource, and that attribution changes the *factor* -
     rewriting `resource_identity` would undo S3a's dedupe separation of rule-level from
-    target-level findings.
+    target-level findings. `_from_attached_security_groups` is where that attribution
+    happens.
     """
     identity = finding.resource_identity
     if k8s_index is not None:
@@ -303,6 +390,12 @@ def extract(
         _security_group(resource) if resource.type == "aws_security_group" else None,
         _public_flag(resource),
         _bucket_publicness(resource, tf_index) if resource.type == "aws_s3_bucket" else None,
+        # Target attribution. Excluded for the two security-group types themselves: a rule's
+        # `security_group_id` names its parent rather than a target, and a group is scored on
+        # what it declares.
+        _from_attached_security_groups(resource, tf_index)
+        if resource.type not in {"aws_security_group", "aws_security_group_rule"}
+        else None,
     ):
         if outcome is None:
             continue
