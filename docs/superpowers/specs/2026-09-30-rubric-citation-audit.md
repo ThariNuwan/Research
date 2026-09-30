@@ -115,14 +115,13 @@ Same shape, same honesty, as `exposure` L2.
 
 ## 4. What remains, and what it would take
 
-Four standards are unverified, covering claims on every one of the 33 levels:
+Three standards are unverified, covering claims on every one of the 33 levels:
 
 1. **OWASP** — Top 10 2021 entries A01, A02, A05; the Risk Rating Methodology's loss-of-confidentiality scale (`sensitivity` L4 cites "extensive critical data disclosed, value 7"); OWASP IaC Security. Publicly fetchable. The numeric claim in `sensitivity` L4 is the one most likely to be wrong, because it quotes a specific ordinal value from a scale that is less canonical than CVSS's.
 2. **NSA-CISA Kubernetes Hardening Guidance (v1.2)** — cited for NodePort and LoadBalancer exposure semantics, least-privilege RBAC, named escalation paths (create/bind RBAC, secrets access, pods/exec), the cluster-admin / wildcard-RBAC prohibition, and Secrets management. Publicly fetchable as PDF.
-3. **CIS Benchmarks** — 10 levels. **Expect to be unable to verify from a public source**: CIS Benchmarks require registration to download. If that holds, the honest verdict for those components is "cannot verify from a public source", and the dissertation should either avoid quoting them or cite a version obtained through institutional access, recorded here.
-4. **FIPS 199** — `criticality` L0 ("below the 'Low' security-categorization floor") and L1 ("'Low' potential impact"). Short document, publicly fetchable.
+3. **FIPS 199** — four levels: `criticality` L0 ("below the 'Low' security-categorization floor"), L1 ("'Low' potential impact"), L4 ("'Moderate'→'High' categorization") and L5 ("'High' potential impact"). Short document, publicly fetchable.
 
-**The flag flips only when all four are done and every level lands at supported.** If any component ends unsupported or unverifiable, the flag stays `false` and the affected `source` strings must be corrected or the dissertation must not quote them.
+**The flag flips only when all three are done and every level lands at supported.** If any component ends unsupported or unverifiable, the flag stays `false` and the affected `source` strings must be corrected or the dissertation must not quote them.
 
 ---
 
