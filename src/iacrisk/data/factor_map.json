@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "rule": "A factor bears on a class when the risk dimension the class names is one that factor measures. severity, sensitivity and criticality bear on every class, because they describe the rule baseline, the asset and the environment rather than the risk mechanism. exposure bears only where the named risk is inbound network reachability; privilege only where it is the breadth of granted IAM/RBAC permission or workload security context; encryption only where it is a missing data-protection control. factor_gap is therefore decided by those three alone, since the other three can never distinguish a gap. Every cell was decided against the class definition, not its id -- a class named for a factor is not evidence of that factor (S2 handoff).",
+  "gap_candidate_factors": ["exposure", "privilege", "encryption"],
+  "provenance": "Authored in S4 from the systematic 28-class x 6-factor sweep design spec section 1.4 records. CLAUDE.md named five candidate gap classes and stated the set was not established as complete; the sweep found 14.",
+  "classes": {
+    "compute-instance-metadata-hardening": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "IMDSv1 exposes instance-role credentials to SSRF-style theft. Not inbound reachability. Not granted breadth either -- privilege measures how much a principal is granted, while this is a path to stealing credentials already granted. No data-protection control. GAP."
+    },
+    "compute-managed-cluster-hardening": {
+      "bears": ["severity", "sensitivity", "criticality", "encryption"],
+      "rationale": "The definition names cluster-level secrets encryption being off, which is a missing data-protection control, so encryption bears. Control-plane logging is an observability property no factor measures, but one bearing factor is enough to clear the gap test."
+    },
+    "compute-reliability-observability": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Detailed monitoring, EBS optimization, Lambda DLQ, concurrency limits and X-Ray tracing are operational hardening. None is reachability, granted permission or data protection. GAP -- and the definition itself opens 'Lower-severity', so severity is doing the correct work here."
+    },
+    "compute-workload-integrity-patching": {
+      "bears": ["severity", "sensitivity", "criticality", "encryption"],
+      "rationale": "The definition names environment secrets left unencrypted, a missing data-protection control, so encryption bears. Code-signing and deprecated runtimes are provenance and patching properties no factor measures."
+    },
+    "containers-host-isolation-breakout": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Shared host PID/IPC/network namespaces, Docker socket and hostPath mounts, and service-account token automount are paths toward container escape. Privilege measures granted IAM/RBAC breadth and workload security context in the capability sense; sharing a kernel namespace is neither a permission grant nor a capability set. GAP, and the most consequential one -- an escape path ordered without a representing factor."
+    },
+    "containers-image-supply-chain": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Mutable or latest tags, absent digests and untrusted registries weaken image provenance. Provenance is not reachability, granted permission or data protection. GAP."
+    },
+    "containers-image-vulnerability-scanning": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Registry-side CVE scanning disabled is a detection capability, distinct from provenance and from all three parsed factors. GAP."
+    },
+    "containers-linux-capabilities": {
+      "bears": ["severity", "sensitivity", "criticality", "privilege"],
+      "rationale": "Added Linux capabilities and a default capability set left undropped are exactly the workload security context the privilege factor's own description names alongside principals, policies and RBAC bindings. Privilege bears."
+    },
+    "containers-privileged-execution": {
+      "bears": ["severity", "sensitivity", "criticality", "privilege"],
+      "rationale": "Privileged containers, allowPrivilegeEscalation, running as root and binding privileged ports are workload security context, which the privilege factor names directly. Privilege bears."
+    },
+    "containers-securitycontext-hardening": {
+      "bears": ["severity", "sensitivity", "criticality", "privilege"],
+      "rationale": "A missing read-only root filesystem, seccomp profile or explicit securityContext are workload security context properties the privilege factor names. Encryption deliberately does NOT bear: file-based secret mounting is a delivery mechanism, not an encryption control, and the encryption factor's levels are specific to at-rest and in-transit protection."
+    },
+    "containers-workload-reliability": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Unset CPU/memory requests and limits, missing probes, the default namespace and no HEALTHCHECK are workload hygiene. GAP -- and the definition opens 'Lower-severity workload hygiene', so there is no further risk dimension for a factor to capture."
+    },
+    "iam-authentication-controls": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Direct user policies instead of SSO or groups, no instance-profile attachment, and database IAM authentication disabled describe HOW identity is managed, not how much it grants. Privilege measures granted breadth, so it does not bear. GAP -- and this class is the S2 handoff's named trap: it reads as privilege evidence and is not."
+    },
+    "iam-hardcoded-secrets": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Embedded access keys and high-entropy strings in provider config, user data, Lambda env or manifests are credential exposure. Not reachability. Not granted breadth -- the credential's permissions are a separate question from its being in source. Not an encryption control. GAP."
+    },
+    "iam-overpermissive-policy": {
+      "bears": ["severity", "sensitivity", "criticality", "privilege"],
+      "rationale": "Wildcard actions and resources, unconstrained write and permission management, and broad principals are precisely the granted breadth the privilege factor measures. Privilege bears."
+    },
+    "iam-privilege-escalation-sensitive-perms": {
+      "bears": ["severity", "sensitivity", "criticality", "privilege"],
+      "rationale": "Escalation paths, cluster-admin and reading all secrets are named explicitly in the privilege factor's levels 4 and 5. Privilege bears."
+    },
+    "networking-config-hygiene": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Missing security-group descriptions. The definition itself says 'a documentation/maintainability check with no direct exposure impact', which rules out exposure in the class's own words. GAP, with no risk dimension for a factor to capture."
+    },
+    "networking-egress-exposure": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Unrestricted egress creates a data-exfiltration path. The exposure factor measures INBOUND reachability -- its level 4 reads 'open network path to the resource' -- and the taxonomy definition itself calls egress 'a distinct property from inbound exposure'. GAP."
+    },
+    "networking-flow-logging": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "VPC flow logging and load-balancer access logging disabled reduce network-level visibility. Observability is not reachability, permission or data protection. GAP."
+    },
+    "networking-ingress-exposure": {
+      "bears": ["severity", "sensitivity", "criticality", "exposure"],
+      "rationale": "Inbound traffic accepted from 0.0.0.0/0 or an open CIDR is the exposure factor's central case and the subject of its precedence rule. Exposure bears."
+    },
+    "networking-isolation-segmentation": {
+      "bears": ["severity", "sensitivity", "criticality", "exposure"],
+      "rationale": "Subnets auto-assigning public IPs, resources outside a VPC, an unlocked default security group and pods without a NetworkPolicy all bear on inbound reachability. Exposure bears."
+    },
+    "networking-transport-encryption": {
+      "bears": ["severity", "sensitivity", "criticality", "encryption"],
+      "rationale": "A front-end terminating or forwarding traffic without TLS is a missing in-transit data-protection control, which the encryption factor's levels name directly. Encryption bears."
+    },
+    "storage-data-lifecycle-hygiene": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Lifecycle configuration, copy-tags-to-snapshots, event notifications and automatic minor-version upgrades are operational hygiene. GAP -- and the definition opens 'Lower-severity data-store operational hygiene'."
+    },
+    "storage-data-recoverability": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Backup, retention, versioning, replication, deletion protection, Multi-AZ and backtracking protect recoverability. Encryption deliberately does NOT bear: although the factor is named 'required encryption / data-protection missing', every one of its levels is specific to encryption of data at rest or in transit, and recoverability is an availability property no level describes. GAP, and the largest substantive one by finding count."
+    },
+    "storage-encryption-at-rest": {
+      "bears": ["severity", "sensitivity", "criticality", "encryption"],
+      "rationale": "Stored data not encrypted at rest is the encryption factor's central case. Encryption bears."
+    },
+    "storage-key-management-cmk": {
+      "bears": ["severity", "sensitivity", "criticality", "encryption"],
+      "rationale": "Encryption present but not using a customer-managed key, or a key without rotation, is a key-management property of the same data-protection control. The encryption factor's level 3 names customer-managed-key requirements explicitly. Encryption bears."
+    },
+    "storage-logging-audit": {
+      "bears": ["severity", "sensitivity", "criticality"],
+      "rationale": "Access, audit and enhanced monitoring disabled reduce forensic and audit visibility. Observability is a detective control, not reachability, permission or data protection. GAP."
+    },
+    "storage-public-accessibility": {
+      "bears": ["severity", "sensitivity", "criticality", "exposure"],
+      "rationale": "A missing or disabled S3 public-access-block, a public ACL or policy, and a publicly_accessible database flag are three of the four patterns in the exposure factor's closed supported list. Exposure bears."
+    },
+    "storage-transit-encryption": {
+      "bears": ["severity", "sensitivity", "criticality", "encryption"],
+      "rationale": "Plaintext client connections and outdated TLS policies are missing in-transit data-protection controls. Encryption bears."
+    }
+  }
+}
