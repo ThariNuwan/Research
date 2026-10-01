@@ -397,13 +397,23 @@ Because this chapter describes a design that is partly realised, the boundary is
 stated explicitly rather than left for a reader to infer from the evaluation
 chapter.
 
-**Implemented and under test** (3,097 lines of implementation, 641 passing tests):
+> **Status note, 2026-10-01.** This section first described layers 3 and 4 as specified and
+> unimplemented, citing 3,097 lines and 641 tests. S3b and S4 have since been built, so the
+> boundary below has moved and the figures are updated. The chapter is written from the
+> measured record, so a figure that changes in an artifact changes here too.
+
+**Implemented and under test** (4,824 lines of implementation, 820 passing tests):
 layer 1 file discovery and the Kubernetes resource index; layer 2's three scanner
 adapters, lockfile-driven invocation and the normalized finding record; canonical
 identity for both platforms with path normalization; the taxonomy and rubric as
 loaded artifacts; two-tier deduplication; and the retention-coverage report.
 
-**Specified and frozen, not yet implemented:** layer 3's bounded context extractor
+**Also implemented since this chapter was first drafted:** layer 3's bounded context
+extractor (S3b, `src/iacrisk/context/`), and layer 4's scoring engine with layer 5's reporting
+(S4, `src/iacrisk/scoring/`). What remains specified and unimplemented is the auto-inference
+mode (S3c) and the independent evaluation harness (S5).
+
+**Superseded text, retained so the revision is visible:** layer 3's bounded context extractor
 and the auto-inference mode; layer 4's scoring engine, including enforcement of the
 rubric's structural coherence rules and the exposure attribution precedence rule;
 and layer 5's full reporting.
@@ -411,17 +421,44 @@ and layer 5's full reporting.
 **Specified, awaiting the layers above:** the independent evaluation harness and the
 sensitivity analysis.
 
-One coverage gap in the factor set is known and unresolved, and it belongs in this
-chapter rather than in the limitations of a later one, because it is a property of
-the design. **Three taxonomy classes map to no rubric factor**: egress exposure,
-which is data exfiltration and a distinct property from inbound reachability;
-container host-isolation breakout; and hard-coded secrets. Findings in those
-classes would score on severity plus declared context alone, with no factor
-capturing the risk the class names. Two further classes read as candidates of the
-same shape. The set is **not established as complete**, since no systematic sweep of
-28 classes against 6 factors has been run, and closing it requires a decision
-either to widen the factor set or to state the risk as out of scope. That decision
-belongs to the scoring-engine work and is recorded as outstanding.
+One coverage gap in the factor set is known, and it belongs in this chapter rather
+than in the limitations of a later one, because it is a property of the design.
+
+**Fourteen of the twenty-eight taxonomy classes map to no contextual factor**,
+covering **434 of 1,025 eligible findings (42.3%)**. Findings in those classes score
+on severity plus declared context alone, with no factor capturing the risk the class
+names.
+
+That population divides, by a textual test on each class's own definition, into two
+figures that must not be combined. Four classes covering 178 findings (17.4%)
+describe themselves as "lower-severity" or as having "no direct impact" — for these
+no factor is missing anything the model should rank on. The remaining **ten classes
+covering 256 findings (25.0%) make no such disclaimer**, and that is the figure this
+limitation carries: data recoverability, image provenance, container escape, audit
+visibility, identity management, credential theft via instance metadata, egress
+exfiltration, and registry-side vulnerability scanning.
+
+**An earlier draft of this chapter reported three classes** and described the set as
+not established as complete, pending a systematic sweep. The sweep has since been
+run, and the figure was understated by a factor of three and a half; the three named
+classes were simply the ones that had been noticed. The committed class-to-factor
+table that made the sweep possible did not exist when that draft was written.
+
+**The decision taken was not to widen the factor set.** A seventh factor changes the
+score ceiling, which invalidates every band boundary, because the bands are
+positioned against the ceiling — so the result would be a new model, and the
+a-priori freeze that answers the circularity objection would not transfer to it.
+The decisive consideration is that one factor cannot close ten classes: the missing
+dimensions are eight unrelated ones, and closing them properly needs roughly five new
+factors with their own source-anchored levels. That is a different framework with a
+different contribution, not an adjustment to this one.
+
+**What this costs is stated rather than absorbed.** On a quarter of the corpus the
+framework orders a finding with no factor representing the risk its class names, so
+those findings are ranked by severity and declared context alone. Where such a finding
+sits on a low-sensitivity, low-criticality resource it ranks below findings whose risk
+the model does represent — and for container host-isolation breakout, an escape path,
+that ordering may well be wrong. This is the framework's single largest limitation.
 
 ## 3.11 Scope boundaries
 

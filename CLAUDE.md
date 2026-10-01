@@ -216,18 +216,18 @@ future session will get wrong without stating them explicitly:
   severity at all in this corpus. Gate 2 asserts the zero directly rather than
   leaving it as an absence a later reader could "fix" with a pair that
   isolates nothing.
-- **Three taxonomy classes map to no rubric factor**: `networking-egress-exposure`
-  (data exfiltration; a distinct property from inbound exposure),
-  `containers-host-isolation-breakout` (hostPID / hostPath / SA-token
-  automount), and `iam-hardcoded-secrets` (credential exposure in provider
-  config, user_data, Lambda env or manifests - exercised by
-  `ec2-web-host-compute`, ec2.tf:15-16, CRITICAL). Findings in those classes
-  score on severity plus declared context only, with no factor capturing the
-  risk itself. `compute-instance-metadata-hardening` and
-  `containers-image-supply-chain` read as further candidates of the same
-  shape, and the set is not established as complete - a systematic
-  28-class x 6-factor sweep is S4's, once a factor-mapping rule exists. S4
-  must rule: widen the factor set, or state the risk is out of scope.
+- **Taxonomy classes mapping to no rubric factor: 14 of 28, not the three this
+  entry used to name.** S2 named `networking-egress-exposure`,
+  `containers-host-isolation-breakout` and `iam-hardcoded-secrets`, flagged
+  `compute-instance-metadata-hardening` and `containers-image-supply-chain` as
+  further candidates, and said the set was **not established as complete** —
+  a systematic 28-class x 6-factor sweep being S4's. **S4 ran that sweep and the
+  doubt was justified: the answer is 14 classes, 434 of 1025 eligible findings
+  (42.3%), against the 122 (11.9%) five classes implied — 3.6x.** The five were
+  simply the ones someone had noticed. See `src/iacrisk/data/factor_map.json`
+  (the committed 28 x 6 table, which did not exist before S4) and the S4 design
+  spec section 1.4. **S4 ruled: do not widen the factor set** — argued in that
+  spec's section 2.1 on the measured 25.0%, not the comfortable 11.9%.
 - **The oracle is a blinded LLM reviewer, and agreement is reported as a
   number, not a claim**: exact-tier agreement 3 of 5 scenarios; rank
   correlation (Kendall's τ_b) by scenario: storage 1.000, networking 1.000,
@@ -299,6 +299,39 @@ corpus. Before S4 reports any figure, check the real *match rate*, not just a gr
 `docs/superpowers/specs/2026-09-30-s3b-handoff.md` records these and six more residual
 risks in full, with what each costs if ignored. Read it before starting S4 or S3c.
 
+**S4** built layers 4 and 5: `src/iacrisk/scoring/` with the committed 28 x 6
+class-to-factor table and its loader, the scoring engine, the severity baseline, ranking
+with ties preserved, the band-distribution reports and JSON/Markdown emission. Eight
+acceptance gates in `tests/test_s4_gates.py`; 820 tests in the suite. Seven decisions are
+recorded in the design spec's section 11 with cost-if-wrong. **Four measured facts a future
+session will get wrong without being told:**
+
+- **Zero findings reach Critical, and the cause is arithmetic.** The measured distribution
+  over all 1055 findings is Critical **0**, High 555 (52.6%), Medium 466 (44.2%), Low 34
+  (3.2%). The all-defaults total is exactly **20, two short of Critical's 22**, so an
+  unresolved finding can never be Critical. `band_for`'s Critical branch is reached only by
+  unit tests, so any claim about Critical-band behaviour rests on constructed examples.
+- **Resolving a factor typically LOWERS its contribution** — five of six factors have a
+  mean resolved value below their conservative default: privilege 0.01 against 4,
+  encryption 0.00 against 2, sensitivity 1.33 against 3, criticality 2.44 against 4,
+  severity 2.53 against 4; only exposure is marginally above at 3.04 against 3. **So an
+  unresolved finding outranks a resolved one of the same actual risk.** That follows from
+  PLAN Q9 forbidding a missing value to read as low, but it is a ranking artefact, and
+  sweeping the five `unresolved_default` values is a more consequential Q10 experiment than
+  sweeping the band thresholds. The washout is visible directly: the largest bucket is
+  5-missing at **415 findings, every one scoring exactly 20, all High**.
+- **The framework re-ranks substantially, but the baseline's own coverage must travel with
+  every comparison.** 283 findings demote out of baseline-High, 195 promote out of
+  baseline-Low, and all 16 baseline-Critical demote. **489 of 1055 (46.4%) reach their
+  baseline band through the unknown-severity route**, so an unknown share of the baseline
+  column was never a scanner judgement at all.
+- **`exposure` contributes a flat 3 to 970 of 1025 findings** (934 defaults plus 36 resolved
+  values that equal it), so it does almost no ranking work. It discriminates *within* PLAN
+  Q9's closed pattern list and is `unresolved` outside it, never low.
+
+`docs/superpowers/specs/2026-10-01-s4-handoff.md` records these and six more residual
+risks in full, with what each costs if ignored. Read it before starting S5 or S3c.
+
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
 are exposure 3, privilege 4, sensitivity 3, criticality 4, encryption 2 — **sum
@@ -312,9 +345,10 @@ The rubric already carries the mitigation as data, in the `unresolved_default_re
 coherence rule: report band distribution **split by count-of-defaulted-factors**, flag
 findings above a defaulted-factor threshold as low-confidence and **exclude them from
 prioritization-quality claims**, and carry the stacked-default total into the Q10
-sensitivity analysis. **That threshold is not specified anywhere** — choosing it is
-S3b's or S4's decision, and it must be chosen before scoring output exists or it is a
-tuned parameter rather than a frozen one.
+sensitivity analysis. **That threshold was unspecified and S3b fixed it at 3 of 5**, before any scoring
+output existed, so it is a frozen parameter rather than a tuned one. Its rationale rests
+on majority-of-evidence rather than arithmetic — two defaults already exceed the
+narrowest band, so the arithmetic does not single out three on its own.
 
 **Draft dissertation chapters live in `docs/writeup/`**: `03-framework-design.md` and
 `04-research-methodology.md`, plus a `README.md` carrying the provisional chapter
