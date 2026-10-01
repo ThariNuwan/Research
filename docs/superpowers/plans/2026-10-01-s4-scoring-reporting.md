@@ -66,7 +66,7 @@ Copied from the spec's §0.1. Every task's requirements implicitly include this 
 
 **Therefore `factor_gap` is decided by the three parsed factors alone** — `exposure`, `privilege`, `encryption` — because the other three bear on everything and so can never distinguish a gap. `GAP_CANDIDATE_FACTORS` is exactly that set, and `is_factor_gap` is `bearing_factors(c) & GAP_CANDIDATE_FACTORS == frozenset()`.
 
-Applying the rule to the five classes spec §1.4 measures, as a worked check the authored table must reproduce:
+Applying the rule to five of the fourteen classes spec §1.4 measures, as a worked check the authored table must reproduce. **The full set is 14 of 28** — §1.4 has the complete table, the finding counts, and the two-number split that keeps the 178 self-declared-hygiene findings out of the 256 substantive figure:
 
 | Class | exposure | privilege | encryption | Gap? |
 |---|---|---|---|---|
@@ -90,12 +90,27 @@ from iacrisk.scoring.factor_map import (
     table,
 )
 
+# The 14 classes the systematic sweep found, measured against each class DEFINITION.
+# CLAUDE.md names five candidates and says the set "is not established as complete"; it was
+# right to doubt them - those were the ones someone had noticed. Spec section 1.4 carries the
+# full table and the two-number split.
 GAP_CLASSES = {
-    "networking-egress-exposure",
-    "containers-host-isolation-breakout",
-    "iam-hardcoded-secrets",
-    "compute-instance-metadata-hardening",
+    # self-declared lower-severity or no-direct-impact (4 classes, 178 findings)
+    "containers-workload-reliability",
+    "storage-data-lifecycle-hygiene",
+    "networking-config-hygiene",
+    "compute-reliability-observability",
+    # substantive gap (10 classes, 256 findings)
+    "storage-data-recoverability",
     "containers-image-supply-chain",
+    "containers-host-isolation-breakout",
+    "storage-logging-audit",
+    "iam-authentication-controls",
+    "compute-instance-metadata-hardening",
+    "networking-egress-exposure",
+    "iam-hardcoded-secrets",
+    "networking-flow-logging",
+    "containers-image-vulnerability-scanning",
 }
 
 
@@ -127,15 +142,15 @@ def test_gap_candidates_are_exactly_the_three_parsed_factors() -> None:
     assert GAP_CANDIDATE_FACTORS == frozenset({"exposure", "privilege", "encryption"})
 
 
-def test_the_five_measured_gap_classes_are_gaps() -> None:
+def test_the_fourteen_swept_gap_classes_are_gaps() -> None:
     for class_id in GAP_CLASSES:
         assert is_factor_gap(class_id), class_id
         assert not (bearing_factors(class_id) & GAP_CANDIDATE_FACTORS)
 
 
 def test_no_other_class_is_a_gap() -> None:
-    """Pins the gap set at exactly five. If a sixth is genuinely a gap, this test is
-    where that is argued and recorded - not somewhere a reader has to infer it.
+    """Pins the gap set at exactly the fourteen the sweep found. A fifteenth must be argued
+    and added to spec section 1.4's table, not absorbed silently here.
     """
     gaps = {c for c in taxonomy.classes() if is_factor_gap(c)}
     assert gaps == GAP_CLASSES
@@ -267,7 +282,7 @@ def rule() -> str:
 - [ ] **Step 6: Run tests to verify they pass**
 
 Run: `uv run pytest tests/scoring/test_factor_map.py`
-Expected: 8 passed. If `test_no_other_class_is_a_gap` fails, a sixth class was authored as a gap — do not edit the test to match. Decide whether the authoring or the expectation is right, and if a sixth class genuinely is a gap, add it to `GAP_CLASSES` **and** to spec §1.4's table, and say so in the report.
+Expected: 8 passed. If `test_no_other_class_is_a_gap` fails, a fifteenth class was authored as a gap — **do not edit the test to match**. Decide whether the authoring or the expectation is right, and if a fifteenth genuinely is a gap, add it to `GAP_CLASSES` **and** to spec §1.4's table, and say so in the report. This is exactly how the set grew from the 5 `CLAUDE.md` named to the 14 the sweep found: by running the rule over every definition instead of trusting the inherited list.
 
 - [ ] **Step 7: Lint, type-check, commit**
 

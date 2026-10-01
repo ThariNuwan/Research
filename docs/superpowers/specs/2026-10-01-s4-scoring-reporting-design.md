@@ -75,16 +75,51 @@ findings whose resource `corpus-v1` declares): **13.9% low-confidence, 86.1% usa
 Across all 1,025 eligible corpus-v0 findings: **77.9% low-confidence**. v0 is the
 measurement corpus; `corpus-v1` is the evaluation corpus and declares only 20 identities.
 
-**1.4 The factor-gap population is 122 of 1,025 (11.9%)**, measured across the five
-candidate classes §2 rules on:
+**1.4 The factor-gap population is 434 of 1,025 (42.3%) across 14 of 28 classes** — not
+the 5 classes and 122 findings an earlier draft of this spec carried.
 
-| Class | Category | Findings |
+`CLAUDE.md` names five candidate classes and states plainly that "the set is not established
+as complete — a systematic 28-class × 6-factor sweep is S4's". **This is that sweep, and it
+was right to doubt the five.** Those were the classes someone had noticed; applying §2.2's
+decision rule to all 28 class *definitions* finds 14. The measured population is **3.6× the
+earlier estimate**, which changes the weight of §2's ruling and is reported here before the
+ruling rather than after it.
+
+**Two numbers, never one.** The 434 split by a textual test on each class's own definition —
+does the definition describe the class as "lower-severity" or as having "no direct … impact"?
+
+**Self-declared lower-severity or no-direct-impact — 4 classes, 178 findings (17.4%):**
+
+| Class | Findings | The definition's own words |
 |---|---|---|
-| `containers-image-supply-chain` | containers | 63 |
-| `containers-host-isolation-breakout` | containers | 43 |
-| `networking-egress-exposure` | networking | 6 |
-| `compute-instance-metadata-hardening` | compute | 6 |
-| `iam-hardcoded-secrets` | iam | 4 |
+| `containers-workload-reliability` | 129 | "Lower-severity workload hygiene" |
+| `storage-data-lifecycle-hygiene` | 24 | "Lower-severity data-store operational hygiene" |
+| `networking-config-hygiene` | 16 | "no direct exposure impact" |
+| `compute-reliability-observability` | 9 | "Lower-severity operational hardening" |
+
+For these, no contextual factor is missing anything the model should rank on. The severity
+factor is doing the correct work and there is no further risk dimension to capture.
+
+**No such disclaimer — the substantive gap, 10 classes, 256 findings (25.0%):**
+
+| Class | Findings | The risk no factor measures |
+|---|---|---|
+| `storage-data-recoverability` | 67 | Backup, versioning, replication, deletion protection |
+| `containers-image-supply-chain` | 63 | Image provenance |
+| `containers-host-isolation-breakout` | 43 | Container escape to the host |
+| `storage-logging-audit` | 42 | Forensic and audit visibility |
+| `iam-authentication-controls` | 18 | How identity is managed, as distinct from how much it grants |
+| `compute-instance-metadata-hardening` | 6 | Credential theft via SSRF |
+| `networking-egress-exposure` | 6 | Data exfiltration |
+| `iam-hardcoded-secrets` | 4 | Credential exposure in source |
+| `networking-flow-logging` | 4 | Network-level visibility |
+| `containers-image-vulnerability-scanning` | 3 | Registry-side CVE detection |
+
+**25.0% is the figure the write-up must carry**, and the 17.4% must not be folded into it —
+combining them would overstate the limitation by nearly double, in the same way reporting
+Tier-2's 91 same-scanner candidates as cross-scanner overlap would.
+
+The 14 non-gap classes divide as exposure 3, privilege 5, encryption 6.
 
 **1.5 Banding is already implemented and already validates.** `rubric.band_for()` maps
 1–8 Low, 9–15 Medium, 16–21 High, 22–28 Critical, and raises `ValueError` outside 1–28. S4
@@ -99,26 +134,45 @@ scope.** This section is that ruling.
 
 ### 2.1 The ruling: do not widen the factor set
 
-**Three reasons, in order of weight.**
+**The ruling survives the larger number, but the argument has to be made on the larger
+number.** §1.4 measures the substantive gap at 25.0% of findings, not the 11.9% an earlier
+draft assumed. "The freeze is worth more than 11.9%" is an easy claim; "worth more than 25%"
+is not, so here is the argument in full.
 
-**The freeze is load-bearing for the central methodological claim.** Six factors, their
-ranges, the 1–28 ceiling and the four bands were fixed before any scoring output existed,
-and that ordering is the whole of the project's answer to the circularity objection — *"I did
-not tune to fit the data; I fixed the model a priori and then analysed its sensitivity."* A
-seventh factor changes the ceiling, which invalidates every band boundary, because the bands
-are positioned against the ceiling. Widening would therefore not be an improvement to the
-model; it would be a **new model**, and the a-priori claim would not transfer to it.
+**One. Widening cannot be done without replacing the model.** Six factors, their ranges, the
+1–28 ceiling and the four bands were fixed before any scoring output existed, and that
+ordering is the whole of the project's answer to the circularity objection — *"I did not tune
+to fit the data; I fixed the model a priori and then analysed its sensitivity."* A seventh
+factor changes the ceiling, which invalidates every band boundary, because the bands are
+positioned against the ceiling. The result would not be an improved model; it would be a
+**new model**, and the a-priori claim would not transfer to it.
 
-**The trade is bad on its own terms.** The gap covers 11.9% of findings. The freeze covers
-the credibility of the entire evaluation. Trading the second for the first is not a close
-call.
+**Two, and this is the reason the larger number does not change the ruling: one factor
+cannot close ten classes.** The missing dimensions are not one omission, they are **eight
+unrelated ones** — data recoverability, image provenance, container escape, audit visibility,
+identity management, credential theft via metadata, egress exfiltration, and registry-side
+CVE detection. Closing them properly needs roughly five new factors, each with its own
+source-anchored level definitions and its own contribution to a new ceiling. That is not an
+adjustment to this framework; it is a different framework with a different research
+contribution. **The larger gap therefore argues more strongly against widening, not less**:
+at 11.9% a single extra factor might have looked sufficient, and at 25.0% across eight
+dimensions it visibly is not.
 
-**The gap is not a scoring error.** A finding in `containers-image-supply-chain` still has
-all six factors legitimately scored for its resource — its severity, its exposure, its
-privilege, its declared sensitivity and criticality, its encryption state. What is missing
-is a *term for that specific risk dimension*. The ranking is **insensitive** to supply-chain
-risk; it is not **wrong** about the finding. That distinction matters, because it is the
-difference between a limitation to report and a defect to fix.
+**Three. The gap is not a scoring error.** A finding in `containers-image-supply-chain` still
+has all six factors legitimately scored for its resource — its severity, its exposure, its
+privilege, its declared sensitivity and criticality, its encryption state. What is missing is
+a *term for that specific risk dimension*. The ranking is **insensitive** to supply-chain
+risk; it is not **wrong** about the finding. That distinction is the difference between a
+limitation to report and a defect to fix.
+
+**What this costs, stated plainly, because §2.2's reporting does not make it disappear.** On a
+quarter of the corpus the framework ranks a finding without any factor representing the risk
+its class names, so those findings are ordered by severity and declared context alone. Where
+such a finding sits on a low-sensitivity, low-criticality resource it will rank below findings
+whose risk the model does represent — and for `containers-host-isolation-breakout`, a
+container-escape path, that ordering may well be wrong. **This is the framework's single
+largest limitation and the write-up states it as such**, with §2.2's measured band comparison
+as the evidence for how much it moves the result.
 
 ### 2.2 What S4 does instead: make the gap measurable
 
@@ -138,8 +192,9 @@ class names.
 the class's named risk. Derived, never hand-listed, so a taxonomy change cannot leave the
 marker stale.
 
-**A band distribution reported twice** — with and without the gap findings — so a reader can
-see whether excluding them changes any conclusion. If gap findings cluster low, that is a
+**A band distribution reported three ways** — all findings, excluding the 256 substantive-gap
+findings, and excluding all 434 — so a reader can see whether excluding them changes any
+conclusion, and can see the two gap populations separately rather than merged. If gap findings cluster low, that is a
 reportable understatement and the write-up says so; if they distribute like the rest, the
 limitation is cosmetic. **Either way the number is reported, not predicted.**
 
@@ -342,8 +397,8 @@ report rates, not only assert over hand-built inputs** — and gate 7 is that re
 
 | # | Decision | Taken by | Cost if wrong |
 |---|---|---|---|
-| 1 | **Do not widen the factor set**; state the factor-gap risk as a scope limitation (§2.1) | This spec, under the S1 freeze | 11.9% of findings are ranked insensitively to the risk their class names; the alternative forfeits the a-priori freeze that answers the circularity objection |
-| 2 | **Author `factor_map.json`**, a committed 28 × 6 class-to-factor table (§2.2) | This spec | Without it the gap set stays "not established as complete" and single-factor purity stays an unverifiable authored judgement |
+| 1 | **Do not widen the factor set**; state the factor-gap risk as a scope limitation (§2.1) | This spec, under the S1 freeze, on the swept figure | **25.0%** of findings are ranked insensitively to the risk their class names — the framework's largest limitation. The alternative forfeits the a-priori freeze **and** needs about five new factors to close eight unrelated dimensions, which is a different framework |
+| 2 | **Author `factor_map.json`**, a committed 28 × 6 class-to-factor table (§2.2) | This spec | Without it the gap set stays "not established as complete" — and the sweep it enabled found 14 gap classes where `CLAUDE.md` named 5, so the artifact has already paid for itself |
 | 3 | **Gap findings are reported, not excluded** from quality claims (§2.3) | This spec | Excluding them would shrink the denominator and overstate coverage; including them without the marker would hide the insensitivity |
 | 4 | **Severity becomes a `FactorValue` at the boundary** (§3.1) | This spec | `int \| str` reaching six call sites reproduces the `normalize_severity` trap the S1 and S3a handoffs both record |
 | 5 | **Baseline maps severity directly to a band**, not onto 1–28 (§6.1) | This spec | Scaling a 1–5 severity onto a 28-point ceiling invents precision the scanner never supplied and would flatter the framework by comparison |
