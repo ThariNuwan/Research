@@ -224,7 +224,9 @@ future session will get wrong without stating them explicitly:
   a systematic 28-class x 6-factor sweep being S4's. **S4 ran that sweep and the
   doubt was justified: the answer is 14 classes, 434 of 1025 eligible findings
   (42.3%), against the 122 (11.9%) five classes implied — 3.6x.** The five were
-  simply the ones someone had noticed. See `src/iacrisk/data/factor_map.json`
+  simply the ones someone had noticed. **The substantive 25.0% is a FLOOR**, because the
+  test is per-class: five non-gap classes carrying 191 further findings (18.6%) name a risk
+  their bearing factor only partly covers, which puts the upper bound at 43.6%. See `src/iacrisk/data/factor_map.json`
   (the committed 28 x 6 table, which did not exist before S4) and the S4 design
   spec section 1.4. **S4 ruled: do not widen the factor set** — argued in that
   spec's section 2.1 on the measured 25.0%, not the comfortable 11.9%.
@@ -306,20 +308,28 @@ acceptance gates in `tests/test_s4_gates.py`; 820 tests in the suite. Seven deci
 recorded in the design spec's section 11 with cost-if-wrong. **Four measured facts a future
 session will get wrong without being told:**
 
-- **Zero findings reach Critical, and the cause is arithmetic.** The measured distribution
-  over all 1055 findings is Critical **0**, High 555 (52.6%), Medium 466 (44.2%), Low 34
-  (3.2%). The all-defaults total is exactly **20, two short of Critical's 22**, so an
-  unresolved finding can never be Critical. `band_for`'s Critical branch is reached only by
-  unit tests, so any claim about Critical-band behaviour rests on constructed examples.
+- **Zero findings reach Critical, and the cause is arithmetic.** Over all 1055 findings:
+  Critical **0**, High 555, Medium 466, Low 34. **Report the context-eligible column
+  instead** — spec §3.3 excludes ineligible findings from quality claims and 30 of those
+  34 Low findings are exactly those, so on the 1025 eligible findings **Low is 4, not 34**.
+  The all-defaults total is exactly **20, two short of Critical's 22**, so an unresolved
+  finding can never be Critical, and `band_for`'s Critical branch is reached only by unit
+  tests — any claim about Critical-band behaviour rests on constructed examples.
 - **Resolving a factor typically LOWERS its contribution** — five of six factors have a
-  mean resolved value below their conservative default: privilege 0.01 against 4,
-  encryption 0.00 against 2, sensitivity 1.33 against 3, criticality 2.44 against 4,
-  severity 2.53 against 4; only exposure is marginally above at 3.04 against 3. **So an
+  mean resolved value below their conservative default: privilege 0.13 against 4,
+  encryption 0.20 against 2, sensitivity 2.45 against 3, criticality 2.50 against 4,
+  severity 3.04 against 4; only exposure is above, and marginally, at 3.02 against 3.
+  (**An earlier version of this entry gave all six means wrong** — 0.01, 0.00, 1.33, 2.44,
+  2.53 and 3.04 — by computing them with each factor's own default bucket dropped, which
+  discards *resolved* findings that happen to land on the default. Severity's resolved n is
+  **566**, the standing corpus fact above, not the 370 that version implied.) **So an
   unresolved finding outranks a resolved one of the same actual risk.** That follows from
   PLAN Q9 forbidding a missing value to read as low, but it is a ranking artefact, and
   sweeping the five `unresolved_default` values is a more consequential Q10 experiment than
-  sweeping the band thresholds. The washout is visible directly: the largest bucket is
-  5-missing at **415 findings, every one scoring exactly 20, all High**.
+  sweeping the band thresholds. The washout is visible in the missing-count split,
+  `{0:38, 1:43, 2:122, 3:203, 4:234, 5:293, 6:122}`: the largest bucket is 5-missing at
+  **293**, and with the 122 six-missing findings that is **415 all in High, of which 154
+  score exactly 20**. The range reaches 6 because severity is one of the six factors.
 - **The framework re-ranks substantially, but the baseline's own coverage must travel with
   every comparison.** 283 findings demote out of baseline-High, 195 promote out of
   baseline-Low, and all 16 baseline-Critical demote. **489 of 1055 (46.4%) reach their

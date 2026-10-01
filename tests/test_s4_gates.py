@@ -207,6 +207,55 @@ def test_gate_4b_orthogonality_declared_sensitivity_moves_only_its_own_factor() 
     assert moved > 0, "declared sensitivity must move the sensitivity contribution somewhere"
 
 
+def test_gate_4c_orthogonality_an_encryption_attribute_moves_only_encryption() -> None:
+    """The third clause of gate 4, which spec section 10 and section 4.3 both state and which
+    was missing from the first implementation of this file while the commit reported all
+    eight gates green.
+
+    `encryption_sensitivity_orthogonality` says the two axes share no input, which is a claim
+    in both directions. Gate 4b varies declared sensitivity; this varies the resource's own
+    encryption attribute and asserts nothing but the encryption contribution moves - in
+    particular not sensitivity, whose level comes from declared context alone.
+    """
+    findings = _all_real_findings()
+    declared, k8s_index = _declared(), _k8s_index()
+    base_index = _tf_index()
+
+    # Flip every readable at-rest encryption flag. Mutating the resource bodies is the only
+    # way to exercise this direction: the attribute is read from source, not declared.
+    flipped: dict[str, TerraformResource] = {}
+    touched = 0
+    for identity, resource in base_index.items():
+        body = dict(resource.body)
+        changed = False
+        for attr in ("encrypted", "storage_encrypted"):
+            if isinstance(body.get(attr), bool):
+                body[attr] = not body[attr]
+                changed = True
+        if changed:
+            touched += 1
+        flipped[identity] = replace(resource, body=body)
+    assert touched > 0, "expected at least one literal encryption flag in the corpus"
+
+    before = score_all(contextualize(findings, declared, base_index, k8s_index))
+    after = score_all(contextualize(findings, declared, flipped, k8s_index))
+
+    moved = 0
+    for a, b in zip(before, after, strict=True):
+        for key in FACTOR_ORDER:
+            if key not in a.contributions:
+                continue
+            if key == "encryption":
+                if a.contributions[key] != b.contributions[key]:
+                    moved += 1
+                continue
+            assert a.contributions[key] == b.contributions[key], (
+                f"{a.finding.resource_identity}: {key} moved when only an encryption "
+                f"attribute changed - the two axes share an input"
+            )
+    assert moved > 0, "flipping encryption flags must move the encryption contribution"
+
+
 def test_gate_5_context_ineligible_findings_score_on_severity_alone() -> None:
     """The washout `context_eligible` closes stays closed: no defaulted context creeps in."""
     ineligible = [item for item in _scored() if not item.finding.context_eligible]
@@ -226,7 +275,13 @@ def test_gate_6_all_four_distributions_and_the_per_factor_summary_are_emitted() 
 
     assert set(built.overall) == bands
     assert sum(built.overall.values()) == len(results)
-    assert sorted(built.by_defaulted_count) == [0, 1, 2, 3, 4, 5]
+    # Spec §3.3 excludes context-ineligible findings from quality claims, so the headline
+    # distribution needs an eligible-only companion. Without it the Low band reads as 34 when
+    # 30 of those are findings the spec excludes.
+    assert set(built.eligible_only) == bands
+    eligible = [r for r in results if not r.baseline_only_informational]
+    assert sum(built.eligible_only.values()) == len(eligible)
+    assert sorted(built.by_defaulted_count) == [0, 1, 2, 3, 4, 5, 6]
     assert sum(sum(v.values()) for v in built.by_defaulted_count.values()) == len(results)
 
     # The three gap views, which spec §2.2 requires as a set rather than a single number.

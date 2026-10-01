@@ -80,10 +80,52 @@ def test_all_four_band_keys_are_present_even_at_zero() -> None:
     assert report.overall["Low"] == 0
 
 
-def test_all_six_defaulted_count_keys_are_present() -> None:
+def test_all_seven_defaulted_count_keys_are_present() -> None:
+    """Seven, 0 through 6: severity is one of the six factors and can itself be unresolved.
+
+    An earlier version asserted 0-5, which encoded a real bug - the cap merged a 6-missing
+    bucket of 122 corpus findings into the 5 bucket, so the coherence rule's own report could
+    not express the fully-unresolved case it exists to surface.
+    """
     report = build([_scored(target=20)])
-    assert sorted(report.by_defaulted_count) == [0, 1, 2, 3, 4, 5]
+    assert sorted(report.by_defaulted_count) == [0, 1, 2, 3, 4, 5, 6]
     assert set(report.by_defaulted_count[0]) == BANDS
+
+
+def test_a_fully_unresolved_finding_lands_in_the_six_bucket() -> None:
+    all_missing = _scored(
+        severity_unknown=True,
+        unresolved=("exposure", "privilege", "sensitivity", "criticality", "encryption"),
+    )
+    report = build([all_missing])
+    assert sum(report.by_defaulted_count[6].values()) == 1
+    assert sum(report.by_defaulted_count[5].values()) == 0
+    assert all_missing.score == 20
+
+
+def test_the_eligible_only_distribution_excludes_context_ineligible_findings() -> None:
+    """Spec section 3.3 excludes them from prioritization-quality claims, so the headline
+    distribution needs an eligible-only companion. Measured on the corpus without it, the Low
+    band read as 34 when 30 of those were findings the spec excludes.
+    """
+    report = build([_scored(target=20), _scored(target=4, eligible=False)])
+    assert sum(report.overall.values()) == 2
+    assert sum(report.eligible_only.values()) == 1
+    assert set(report.eligible_only) == BANDS
+
+
+def test_building_a_report_over_weighted_scores_is_refused() -> None:
+    """Spec section 4.4 says any report-producing path refuses. build() is one: it emits a
+    full band distribution, so guarding only emit.to_json left to_json(build(weighted))
+    producing a weighted report in silence.
+    """
+    import pytest
+
+    from iacrisk.scoring.engine import score
+
+    weighted = score(_scored(target=20).contextualized, weights={"exposure": 2})
+    with pytest.raises(ValueError, match="weighted"):
+        build([weighted])
 
 
 def test_the_defaulted_count_split_counts_an_unknown_severity_too() -> None:
@@ -173,7 +215,7 @@ def test_low_confidence_and_weighted_counts_are_reported() -> None:
 def test_to_json_is_serialisable_with_string_keys() -> None:
     payload = to_json(build([_scored(target=20)]))
     json.dumps(payload)
-    assert sorted(payload["by_defaulted_count"]) == ["0", "1", "2", "3", "4", "5"]
+    assert sorted(payload["by_defaulted_count"]) == ["0", "1", "2", "3", "4", "5", "6"]
     assert all("|" in key for key in payload["framework_vs_baseline"])
     assert set(payload["per_factor"]) == {
         "severity",

@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 
@@ -75,7 +76,7 @@ def _scored(
     return score(ctx, weights)
 
 
-def _payload(*scored: ScoredFinding) -> dict[str, object]:
+def _payload(*scored: ScoredFinding) -> dict[str, Any]:
     items = list(scored) or [_scored()]
     return to_json(rank_all(items), build(items))
 
@@ -86,7 +87,7 @@ def test_the_payload_round_trips_through_json() -> None:
 
 def test_every_finding_carries_its_states_and_decomposition() -> None:
     payload = _payload()
-    entry = payload["findings"][0]  # type: ignore[index]
+    entry = payload["findings"][0]
     for key in (
         "rank",
         "resource_identity",
@@ -115,14 +116,14 @@ def test_per_factor_state_survives_into_the_payload() -> None:
     S5 report depends on the difference.
     """
     payload = _payload(_scored(unresolved=("exposure",)))
-    states = payload["findings"][0]["factor_states"]  # type: ignore[index]
+    states = payload["findings"][0]["factor_states"]
     assert states["exposure"] == "unresolved"
     assert states["privilege"] == "resolved"
 
 
 def test_a_context_ineligible_finding_carries_one_contribution_and_its_flag() -> None:
     payload = _payload(_scored(eligible=False))
-    entry = payload["findings"][0]  # type: ignore[index]
+    entry = payload["findings"][0]
     assert entry["contributions"] == {"severity": entry["score"]}
     assert entry["baseline_only_informational"] is True
     assert len(entry["explanation"]) == 1
@@ -144,7 +145,7 @@ def test_the_renderer_reads_the_payload_and_nothing_else() -> None:
     """
     payload = _payload()
     text = render_markdown(payload)
-    entry = payload["findings"][0]  # type: ignore[index]
+    entry = payload["findings"][0]
     assert str(entry["score"]) in text
     assert entry["resource_identity"] in text
     assert entry["band"] in text
@@ -178,10 +179,28 @@ def test_the_renderer_shows_the_score_decomposition_and_the_flags() -> None:
     payload = _payload(
         _scored(target=20, issue_class="containers-image-supply-chain", unresolved=("exposure",))
     )
-    entry = payload["findings"][0]  # type: ignore[index]
+    entry = payload["findings"][0]
     text = render_markdown(payload)
     assert "factor-gap" in text
     assert f"= {entry['score']}" in text
     assert sum(entry["contributions"].values()) == entry["score"]
     assert entry["contributions"]["exposure"] == 3
     assert "exposure" in text
+
+
+def test_the_payload_distinguishes_the_class_flag_from_the_counted_population() -> None:
+    """Spec section 2.3's two populations, one layer out. Summing `factor_gap` over the
+    payload gives a different total from the report's own `factor_gap_count` - measured on
+    corpus v0, 446 against 434 - because `factor_gap` is a property of the CLASS while the
+    report counts only context-eligible findings. Both fields are present so a consumer
+    cannot pick the wrong one silently.
+    """
+    ineligible_gap = _scored(issue_class="containers-image-supply-chain", eligible=False)
+    eligible_gap = _scored(issue_class="containers-image-supply-chain", identity="aws_s3.x")
+    payload = _payload(ineligible_gap, eligible_gap)
+
+    entries: list[dict[str, Any]] = payload["findings"]
+    assert sum(1 for e in entries if e["factor_gap"]) == 2
+    assert sum(1 for e in entries if e["factor_gap_counted"]) == 1
+    report_section: dict[str, Any] = payload["report"]
+    assert report_section["factor_gap_count"] == 1

@@ -5,9 +5,18 @@ machine-readable form cannot be a lossy derivative of a document formatted for p
 `render_markdown` therefore takes **the payload**, not the dataclasses - which is what makes
 the human report structurally incapable of disagreeing with the JSON.
 
-Every explicit state survives into the payload: `low_confidence`, `factor_gap`, `unmapped`,
-`baseline_only_informational`, and a per-factor `state` map. A consumer must be able to tell
-a resolved 3 from an unresolved one, because every S5 report depends on the difference.
+Every explicit state survives into the payload: `low_confidence`, `factor_gap`,
+`factor_gap_counted`, `unmapped`, `baseline_only_informational`, and a per-factor `state`
+map. A consumer must be able to tell a resolved 3 from an unresolved one, because every S5
+report depends on the difference.
+
+**`factor_gap` and `factor_gap_counted` are both present on purpose, and summing the wrong
+one is a reporting error.** `factor_gap` is a property of the issue class, so it is true even
+for a context-ineligible finding that carries no context factors at all. `factor_gap_counted`
+is membership of the population `report.build` counts, which excludes findings already
+excluded as `baseline_only_informational`. Measured over corpus v0 the two differ: summing
+`factor_gap` gives **446**, while the report's `factor_gap_count` is **434**. S5 should read
+`factor_gap_counted`, or `report.factor_gap_count`, and not the raw flag.
 """
 
 from __future__ import annotations
@@ -53,7 +62,13 @@ def _finding_entry(ranked: RankedFinding) -> dict[str, Any]:
         "explanation": list(scored.explanation),
         "baseline_band": baseline_band(finding),
         "low_confidence": scored.low_confidence,
+        # Two fields, because they answer two different questions and summing the wrong one
+        # reproduces the two-populations-conflated error. `factor_gap` is a property of the
+        # CLASS and is true even for a context-ineligible finding; `factor_gap_counted` is
+        # membership of the population the report counts, which excludes findings already
+        # excluded as baseline_only_informational. Measured on corpus v0: 446 against 434.
         "factor_gap": scored.factor_gap,
+        "factor_gap_counted": scored.factor_gap and not scored.baseline_only_informational,
         "unmapped": scored.unmapped,
         "baseline_only_informational": scored.baseline_only_informational,
         "weighted": scored.weighted,

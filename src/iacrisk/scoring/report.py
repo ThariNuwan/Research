@@ -31,7 +31,13 @@ from iacrisk.scoring.factor_map import is_substantive_gap
 
 __all__ = ["FactorContribution", "PriorityReport", "build", "to_json"]
 
-_MAX_MISSING = 5
+_MAX_MISSING = 6
+"""Six, not five: `severity` is one of the six factors and can itself be unresolved.
+
+Capping at 5 silently merged a real 6-missing bucket into the 5 bucket - measured, 122
+findings - and made the `unresolved_default_reporting` coherence rule's own report unable to
+express the fully-unresolved case it exists to surface.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +52,7 @@ class PriorityReport:
     total: int
     overall: dict[str, int]
     by_defaulted_count: dict[int, dict[str, int]]
+    eligible_only: dict[str, int]
     including_factor_gap: dict[str, int]
     excluding_substantive_gap: dict[str, int]
     excluding_all_gap: dict[str, int]
@@ -71,9 +78,23 @@ def _substantive(scored: ScoredFinding) -> bool:
 
 
 def build(scored: Iterable[ScoredFinding]) -> PriorityReport:
+    """Build the distributions. Refuses weighted scores.
+
+    Spec §4.4 says "any report-producing path" rejects a non-default weight map, and
+    `report.build` is one: it emits a full band distribution, so guarding only
+    `emit.to_json` left `to_json(build(weighted))` producing a weighted report in silence.
+    """
     items: Sequence[ScoredFinding] = list(scored)
+    weighted = [i.finding.resource_identity for i in items if i.weighted]
+    if weighted:
+        raise ValueError(
+            f"refusing to build a report over weighted scores: {sorted(set(weighted))[:3]} "
+            f"and {max(0, len(weighted) - 3)} more. The frozen primary model is unweighted; "
+            f"weighting belongs to S5's sensitivity analysis."
+        )
 
     overall = _empty_bands()
+    eligible_only = _empty_bands()
     by_count = {n: _empty_bands() for n in range(_MAX_MISSING + 1)}
     including = _empty_bands()
     excluding_substantive = _empty_bands()
@@ -91,6 +112,11 @@ def build(scored: Iterable[ScoredFinding]) -> PriorityReport:
     for item in items:
         overall[item.band] += 1
         including[item.band] += 1
+        if not item.baseline_only_informational:
+            # Spec §3.3 excludes context-ineligible findings from prioritization-quality
+            # claims, so the headline distribution needs an eligible-only companion: without
+            # it the Low band reads as 34 when 30 of those are findings the spec excludes.
+            eligible_only[item.band] += 1
 
         missing = len(item.contextualized.defaulted_factors) + len(
             item.contextualized.unresolved_factors
@@ -142,6 +168,7 @@ def build(scored: Iterable[ScoredFinding]) -> PriorityReport:
     return PriorityReport(
         total=len(items),
         overall=overall,
+        eligible_only=eligible_only,
         by_defaulted_count=by_count,
         including_factor_gap=including,
         excluding_substantive_gap=excluding_substantive,
@@ -167,6 +194,7 @@ def to_json(report: PriorityReport) -> dict[str, Any]:
     return {
         "total": report.total,
         "overall": dict(report.overall),
+        "eligible_only": dict(report.eligible_only),
         "by_defaulted_count": {
             str(count): dict(bands) for count, bands in sorted(report.by_defaulted_count.items())
         },
