@@ -104,7 +104,14 @@ def build(scored: Iterable[ScoredFinding]) -> PriorityReport:
         if item.weighted:
             weighted_total += 1
 
-        if item.factor_gap:
+        # The gap population is counted over CONTEXT-ELIGIBLE findings only. A
+        # context-ineligible finding is already excluded as `baseline_only_informational`
+        # and carries no context factors at all, so counting it here would inflate one
+        # limitation with findings excluded for a different reason - measured, that is 12
+        # findings, and it would report the gap as 446 rather than 434. `factor_gap` itself
+        # stays a property of the class, which is why the engine sets it either way.
+        counts_as_gap = item.factor_gap and not item.baseline_only_informational
+        if counts_as_gap:
             gap_total += 1
             if _substantive(item):
                 substantive_total += 1

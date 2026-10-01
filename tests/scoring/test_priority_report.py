@@ -16,6 +16,7 @@ def _scored(
     identity: str = "aws_s3_bucket.b",
     unresolved: tuple[str, ...] = (),
     severity_unknown: bool = False,
+    eligible: bool = True,
 ) -> ScoredFinding:
     assert 1 <= target <= 28
     remainder = target - 1
@@ -43,7 +44,7 @@ def _scored(
         file_path="x.tf",
         line_range=None,
         fingerprint=None,
-        context_eligible=True,
+        context_eligible=eligible,
     )
 
     def fv(key: str) -> FactorValue:
@@ -51,14 +52,24 @@ def _scored(
             return FactorValue.unresolved(key, "t")
         return FactorValue.resolved(key, levels[key], "t")
 
-    ctx = ContextualizedFinding(
-        finding=finding,
-        exposure=fv("exposure"),
-        privilege=fv("privilege"),
-        sensitivity=fv("sensitivity"),
-        criticality=fv("criticality"),
-        encryption=fv("encryption"),
-    )
+    if not eligible:
+        ctx = ContextualizedFinding(
+            finding=finding,
+            exposure=None,
+            privilege=None,
+            sensitivity=None,
+            criticality=None,
+            encryption=None,
+        )
+    else:
+        ctx = ContextualizedFinding(
+            finding=finding,
+            exposure=fv("exposure"),
+            privilege=fv("privilege"),
+            sensitivity=fv("sensitivity"),
+            criticality=fv("criticality"),
+            encryption=fv("encryption"),
+        )
     return score(ctx)
 
 
@@ -99,6 +110,28 @@ def test_the_three_gap_views_are_reported_separately() -> None:
     assert sum(report.excluding_all_gap.values()) == 1
     assert report.factor_gap_count == 2
     assert report.substantive_gap_count == 1
+
+
+def test_a_context_ineligible_finding_in_a_gap_class_is_not_counted_as_a_gap() -> None:
+    """Two exclusions, not one. A context-ineligible finding is already excluded as
+    baseline_only_informational and carries no context factors at all, so counting it in the
+    gap population would inflate one limitation with findings excluded for a different
+    reason. Measured over corpus v0 before this was fixed: 12 such findings, reporting the
+    gap as 446 rather than 434.
+
+    `factor_gap` itself stays a property of the CLASS, so the engine still sets it - only the
+    report's population is gated on eligibility.
+    """
+    ineligible_gap = _scored(issue_class="containers-image-supply-chain", eligible=False)
+    assert ineligible_gap.factor_gap is True
+    assert ineligible_gap.baseline_only_informational is True
+
+    built = build([ineligible_gap])
+    assert built.factor_gap_count == 0
+    assert built.substantive_gap_count == 0
+    # It stays in every band view, because it is excluded by a different flag.
+    assert sum(built.including_factor_gap.values()) == 1
+    assert sum(built.excluding_all_gap.values()) == 1
 
 
 def test_the_contingency_table_is_counts_only() -> None:
