@@ -2,17 +2,17 @@
   "schema_version": 1,
   "description": "The independent harness's metrics over corpus v0's ranked findings and corpus v1's cases, graded against the pre-registered oracle.",
   "provenance": {
-    "generated_utc": "2026-10-06T06:39:17Z",
+    "generated_utc": "2026-10-06T07:15:00Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "0b53d9ef7ca1e5717581da3378196cc7d3cb4972",
+      "commit": "9b9de590491ef935df4e3cccab43712a44c15730",
       "state": "ok"
     },
-    "worktree_clean": true,
+    "worktree_clean": false,
     "inputs": {
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
-      "artifacts/scored-corpus-v0.json": "a4cccdd9456114756ac2c20961fb536ccb52996641128eb8447ac6766a4d5cbc",
-      "artifacts/scored-cases-v1.json": "021826948bfc4ad4955d7978362712f287e89bf70e6431661de7f32881d9785b"
+      "artifacts/scored-corpus-v0.json": "28dbbd269e10bca007352d9f95886db3e697ebba044e8f3a2e08ed3a26c6214f",
+      "artifacts/scored-cases-v1.json": "50d37422e6cb09925456a6f96e3489dac4972eb2277f313e828fa75542d5b56e"
     }
   },
   "registered_rules": {
@@ -102,14 +102,14 @@
         },
         "framework": {
           "Critical": 0,
-          "High": 531,
-          "Medium": 451,
+          "High": 235,
+          "Medium": 747,
           "Low": 34
         },
         "baseline_critical_or_high": 662,
-        "framework_critical_or_high": 531,
-        "reduction": 131,
-        "reduction_rate": 0.19788519637462235,
+        "framework_critical_or_high": 235,
+        "reduction": 427,
+        "reduction_rate": 0.6450151057401813,
         "baseline_from_unknown_severity": 450,
         "baseline_critical_or_high_from_unknown_severity": 450
       },
@@ -123,14 +123,14 @@
         },
         "framework": {
           "Critical": 0,
-          "High": 531,
-          "Medium": 451,
+          "High": 235,
+          "Medium": 747,
           "Low": 4
         },
         "baseline_critical_or_high": 649,
-        "framework_critical_or_high": 531,
-        "reduction": 118,
-        "reduction_rate": 0.18181818181818182,
+        "framework_critical_or_high": 235,
+        "reduction": 414,
+        "reduction_rate": 0.637904468412943,
         "baseline_from_unknown_severity": 441,
         "baseline_critical_or_high_from_unknown_severity": 441
       }
@@ -139,19 +139,19 @@
   "baseline_comparison": {
     "findings": 986,
     "promoted": {
-      "count": 245,
-      "low_confidence": 215,
+      "count": 196,
+      "low_confidence": 165,
       "baseline_from_unknown_severity": 0
     },
     "demoted": {
-      "count": 271,
-      "low_confidence": 131,
-      "baseline_from_unknown_severity": 164
+      "count": 427,
+      "low_confidence": 267,
+      "baseline_from_unknown_severity": 286
     },
     "unchanged": {
-      "count": 470,
-      "low_confidence": 416,
-      "baseline_from_unknown_severity": 277
+      "count": 363,
+      "low_confidence": 308,
+      "baseline_from_unknown_severity": 155
     },
     "cells": {
       "Critical->High": {
@@ -193,60 +193,60 @@
         }
       },
       "High->High": {
-        "count": 378,
-        "low_confidence": 346,
-        "baseline_from_unknown_severity": 277,
+        "count": 222,
+        "low_confidence": 190,
+        "baseline_from_unknown_severity": 155,
         "mean_contribution": {
-          "exposure": 3.0476190476190474,
-          "privilege": 1.8412698412698412,
-          "sensitivity": 2.9523809523809526,
-          "criticality": 3.878306878306878,
-          "encryption": 1.9153439153439153
+          "exposure": 3.081081081081081,
+          "privilege": 0.32432432432432434,
+          "sensitivity": 3.0,
+          "criticality": 3.954954954954955,
+          "encryption": 1.8558558558558558
         },
         "resolved_share": {
-          "exposure": 0.08465608465608465,
-          "privilege": 0.5767195767195767,
-          "sensitivity": 0.09523809523809523,
-          "criticality": 0.09523809523809523,
-          "encryption": 0.10846560846560846
+          "exposure": 0.14414414414414414,
+          "privilege": 0.9819819819819819,
+          "sensitivity": 0.08108108108108109,
+          "criticality": 0.08108108108108109,
+          "encryption": 0.18468468468468469
         }
       },
       "High->Medium": {
-        "count": 255,
-        "low_confidence": 124,
-        "baseline_from_unknown_severity": 164,
+        "count": 411,
+        "low_confidence": 260,
+        "baseline_from_unknown_severity": 286,
         "mean_contribution": {
-          "exposure": 2.9607843137254903,
-          "privilege": 0.00392156862745098,
-          "sensitivity": 2.7254901960784315,
-          "criticality": 3.2784313725490195,
-          "encryption": 0.6745098039215687
+          "exposure": 2.965936739659367,
+          "privilege": 0.0024330900243309003,
+          "sensitivity": 2.7858880778588806,
+          "criticality": 3.464720194647202,
+          "encryption": 0.41849148418491483
         },
         "resolved_share": {
-          "exposure": 0.12156862745098039,
+          "exposure": 0.08029197080291971,
           "privilege": 1.0,
-          "sensitivity": 0.4235294117647059,
-          "criticality": 0.4392156862745098,
-          "encryption": 0.6627450980392157
+          "sensitivity": 0.30656934306569344,
+          "criticality": 0.31630170316301703,
+          "encryption": 0.7907542579075426
         }
       },
       "Low->High": {
-        "count": 93,
-        "low_confidence": 93,
+        "count": 2,
+        "low_confidence": 2,
         "baseline_from_unknown_severity": 0,
         "mean_contribution": {
           "exposure": 3.0,
           "privilege": 4.0,
           "sensitivity": 3.0,
           "criticality": 4.0,
-          "encryption": 1.956989247311828
+          "encryption": 0.0
         },
         "resolved_share": {
           "exposure": 0.0,
           "privilege": 0.0,
           "sensitivity": 0.0,
           "criticality": 0.0,
-          "encryption": 0.021505376344086023
+          "encryption": 1.0
         }
       },
       "Low->Low": {
@@ -269,60 +269,60 @@
         }
       },
       "Low->Medium": {
-        "count": 102,
-        "low_confidence": 72,
+        "count": 193,
+        "low_confidence": 162,
         "baseline_from_unknown_severity": 0,
         "mean_contribution": {
-          "exposure": 3.0588235294117645,
-          "privilege": 0.0392156862745098,
-          "sensitivity": 2.872549019607843,
-          "criticality": 3.5686274509803924,
-          "encryption": 0.49019607843137253
+          "exposure": 3.0310880829015545,
+          "privilege": 0.0,
+          "sensitivity": 2.9326424870466323,
+          "criticality": 3.772020725388601,
+          "encryption": 0.24870466321243523
         },
         "resolved_share": {
-          "exposure": 0.0784313725490196,
-          "privilege": 0.9901960784313726,
-          "sensitivity": 0.28431372549019607,
-          "criticality": 0.30392156862745096,
-          "encryption": 0.7745098039215687
+          "exposure": 0.04145077720207254,
+          "privilege": 1.0,
+          "sensitivity": 0.15025906735751296,
+          "criticality": 0.16062176165803108,
+          "encryption": 0.8860103626943006
         }
       },
       "Medium->High": {
-        "count": 50,
-        "low_confidence": 50,
+        "count": 1,
+        "low_confidence": 1,
         "baseline_from_unknown_severity": 0,
         "mean_contribution": {
           "exposure": 3.0,
-          "privilege": 4.02,
-          "sensitivity": 2.98,
-          "criticality": 3.96,
-          "encryption": 1.96
+          "privilege": 5.0,
+          "sensitivity": 3.0,
+          "criticality": 4.0,
+          "encryption": 0.0
         },
         "resolved_share": {
           "exposure": 0.0,
-          "privilege": 0.02,
-          "sensitivity": 0.02,
-          "criticality": 0.02,
-          "encryption": 0.02
+          "privilege": 1.0,
+          "sensitivity": 0.0,
+          "criticality": 0.0,
+          "encryption": 1.0
         }
       },
       "Medium->Medium": {
-        "count": 88,
-        "low_confidence": 70,
+        "count": 137,
+        "low_confidence": 118,
         "baseline_from_unknown_severity": 0,
         "mean_contribution": {
           "exposure": 3.0,
           "privilege": 0.0,
-          "sensitivity": 2.909090909090909,
-          "criticality": 3.7954545454545454,
-          "encryption": 1.0227272727272727
+          "sensitivity": 2.934306569343066,
+          "criticality": 3.854014598540146,
+          "encryption": 0.656934306569343
         },
         "resolved_share": {
-          "exposure": 0.06818181818181818,
+          "exposure": 0.043795620437956206,
           "privilege": 1.0,
-          "sensitivity": 0.13636363636363635,
-          "criticality": 0.13636363636363635,
-          "encryption": 0.5795454545454546
+          "sensitivity": 0.0948905109489051,
+          "criticality": 0.0948905109489051,
+          "encryption": 0.7299270072992701
         }
       }
     }
@@ -1093,21 +1093,21 @@
         "state_mismatches": []
       },
       "scores": {
-        "max": 17,
-        "sum": 337,
-        "mean": 16.85
+        "max": 11,
+        "sum": 217,
+        "mean": 10.85
       },
       "baseline": 3,
-      "band": "High",
+      "band": "Medium",
       "contributions": {
         "severity": 4,
         "exposure": 3,
-        "privilege": 4,
+        "privilege": 0,
         "sensitivity": 2,
         "criticality": 2,
-        "encryption": 2
+        "encryption": 0
       },
-      "low_confidence": true,
+      "low_confidence": false,
       "context_uniform": true
     },
     "k8s-internal-proxy-api-container": {
@@ -1813,9 +1813,9 @@
           "max": {
             "exact_tier_matches": 2,
             "ordered_pairs_expected": 21,
-            "ordered_pairs_concordant": 18,
+            "ordered_pairs_concordant": 19,
             "ordered_pairs_tied": 2,
-            "ordered_pairs_discordant": 1,
+            "ordered_pairs_discordant": 0,
             "tied_pairs_expected": 4,
             "tied_pairs_as_expected": 2
           },
@@ -1831,9 +1831,9 @@
           "mean": {
             "exact_tier_matches": 1,
             "ordered_pairs_expected": 21,
-            "ordered_pairs_concordant": 19,
+            "ordered_pairs_concordant": 20,
             "ordered_pairs_tied": 0,
-            "ordered_pairs_discordant": 2,
+            "ordered_pairs_discordant": 1,
             "tied_pairs_expected": 4,
             "tied_pairs_as_expected": 1
           }
@@ -1849,45 +1849,45 @@
         }
       },
       "clean": {
-        "scenarios": 2,
-        "evaluable": 2,
+        "scenarios": 3,
+        "evaluable": 3,
         "framework": {
           "max": {
             "exact_tier_matches": 2,
-            "ordered_pairs_expected": 11,
-            "ordered_pairs_concordant": 11,
-            "ordered_pairs_tied": 0,
+            "ordered_pairs_expected": 13,
+            "ordered_pairs_concordant": 12,
+            "ordered_pairs_tied": 1,
             "ordered_pairs_discordant": 0,
-            "tied_pairs_expected": 2,
+            "tied_pairs_expected": 3,
             "tied_pairs_as_expected": 2
           },
           "sum": {
             "exact_tier_matches": 0,
-            "ordered_pairs_expected": 11,
-            "ordered_pairs_concordant": 10,
+            "ordered_pairs_expected": 13,
+            "ordered_pairs_concordant": 11,
             "ordered_pairs_tied": 0,
-            "ordered_pairs_discordant": 1,
-            "tied_pairs_expected": 2,
+            "ordered_pairs_discordant": 2,
+            "tied_pairs_expected": 3,
             "tied_pairs_as_expected": 1
           },
           "mean": {
             "exact_tier_matches": 1,
-            "ordered_pairs_expected": 11,
-            "ordered_pairs_concordant": 11,
+            "ordered_pairs_expected": 13,
+            "ordered_pairs_concordant": 13,
             "ordered_pairs_tied": 0,
             "ordered_pairs_discordant": 0,
-            "tied_pairs_expected": 2,
+            "tied_pairs_expected": 3,
             "tied_pairs_as_expected": 1
           }
         },
         "baseline": {
           "exact_tier_matches": 0,
-          "ordered_pairs_expected": 11,
+          "ordered_pairs_expected": 13,
           "ordered_pairs_concordant": 0,
-          "ordered_pairs_tied": 11,
+          "ordered_pairs_tied": 13,
           "ordered_pairs_discordant": 0,
-          "tied_pairs_expected": 2,
-          "tied_pairs_as_expected": 2
+          "tied_pairs_expected": 3,
+          "tied_pairs_as_expected": 3
         }
       }
     },
@@ -2499,30 +2499,30 @@
         ],
         "evaluable": true,
         "ground_truth_excluded": false,
-        "low_confidence": true,
+        "low_confidence": false,
         "framework": {
           "max": {
             "scores": {
               "k8s-goat-home-workload": 13,
               "k8s-internal-proxy-api-container": 13,
-              "k8s-kube-bench-node-workload": 17
+              "k8s-kube-bench-node-workload": 11
             },
             "ordering": [
               [
-                "k8s-kube-bench-node-workload"
-              ],
-              [
                 "k8s-goat-home-workload",
                 "k8s-internal-proxy-api-container"
+              ],
+              [
+                "k8s-kube-bench-node-workload"
               ]
             ],
             "exact_tier_match": false,
-            "kendall_tau_b": -0.5,
+            "kendall_tau_b": 0.5,
             "ordered_pairs": {
               "expected": 2,
-              "concordant": 0,
+              "concordant": 1,
               "tied": 1,
-              "discordant": 1
+              "discordant": 0
             },
             "tied_pairs": {
               "expected": 1,
@@ -2533,7 +2533,7 @@
             "scores": {
               "k8s-goat-home-workload": 206,
               "k8s-internal-proxy-api-container": 152,
-              "k8s-kube-bench-node-workload": 337
+              "k8s-kube-bench-node-workload": 217
             },
             "ordering": [
               [
@@ -2563,26 +2563,26 @@
             "scores": {
               "k8s-goat-home-workload": 12.875,
               "k8s-internal-proxy-api-container": 11.692307692307692,
-              "k8s-kube-bench-node-workload": 16.85
+              "k8s-kube-bench-node-workload": 10.85
             },
             "ordering": [
-              [
-                "k8s-kube-bench-node-workload"
-              ],
               [
                 "k8s-goat-home-workload"
               ],
               [
                 "k8s-internal-proxy-api-container"
+              ],
+              [
+                "k8s-kube-bench-node-workload"
               ]
             ],
             "exact_tier_match": false,
-            "kendall_tau_b": 0.0,
+            "kendall_tau_b": 0.8164965809277261,
             "ordered_pairs": {
               "expected": 2,
-              "concordant": 1,
+              "concordant": 2,
               "tied": 0,
-              "discordant": 1
+              "discordant": 0
             },
             "tied_pairs": {
               "expected": 1,

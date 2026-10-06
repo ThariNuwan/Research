@@ -9,7 +9,7 @@ test_measures` compares them record for record.
 
 **The pre-collapse population is the one S3b and S4 measured.** The tool's `before_dedupe`
 block is compared with the path S4's gates score (`contextualize` then `score_all` over every
-finding), and with the band distribution the S4 handoff records.
+finding). The headline band distributions are pinned as literals beside it.
 
 **A case is scored under its own declared context.** Asserted as wiring - each finding's
 declared contributions equal the case's own declaration - and deliberately not as an outcome:
@@ -163,12 +163,25 @@ def test_before_dedupe_is_the_population_s4s_gates_score() -> None:
     assert _corpus_document()["before_dedupe"]["report"] == direct
 
 
-def test_before_dedupe_reproduces_the_band_distribution_the_s4_handoff_records() -> None:
-    """`docs/superpowers/specs/2026-10-01-s4-handoff.md` section 1, both columns. Restated
-    on purpose: the claim under test is that this tool reproduces that committed record."""
-    recorded = _corpus_document()["before_dedupe"]["report"]
-    assert recorded["overall"] == {"Critical": 0, "High": 555, "Medium": 466, "Low": 34}
-    assert recorded["eligible_only"] == {"Critical": 0, "High": 555, "Medium": 466, "Low": 4}
+def test_the_headline_band_distributions_are_the_ones_the_record_quotes() -> None:
+    """Restated on purpose: these are the figures the write-up quotes, so moving one has to
+    be a deliberate edit here and not a side effect of a change elsewhere.
+
+    They are **not** the S4 handoff's. That document records Critical 0 / High 555 /
+    Medium 466 / Low 34 over the 1,055 findings, and this test asserted exactly that until
+    the Kubernetes body-index defect was fixed (`context/kubernetes.py`): 311 findings
+    whose manifests omit `metadata.namespace` had been scoring privilege and encryption at
+    their unresolved defaults. The artifact committed at `f7fbcfc` reproduces the handoff's
+    figures; the ones below are what the same captures score once those manifests are read.
+    """
+    document = _corpus_document()
+    before = document["before_dedupe"]["report"]
+    assert before["overall"] == {"Critical": 0, "High": 245, "Medium": 776, "Low": 34}
+    assert before["eligible_only"] == {"Critical": 0, "High": 245, "Medium": 776, "Low": 4}
+
+    ranked = document["report"]
+    assert ranked["overall"] == {"Critical": 0, "High": 235, "Medium": 747, "Low": 34}
+    assert ranked["eligible_only"] == {"Critical": 0, "High": 235, "Medium": 747, "Low": 4}
 
 
 def test_the_ranked_population_is_what_survives_tier_1() -> None:

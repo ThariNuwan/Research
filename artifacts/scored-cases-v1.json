@@ -3,13 +3,13 @@
   "description": "Each corpus-v1 case's findings, scored under that case's own declared context. Finding level only: no case-level aggregate is computed here.",
   "provenance": {
     "mode": "replay",
-    "generated_utc": "2026-10-06T06:39:15Z",
+    "generated_utc": "2026-10-06T07:13:56Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "4d21966f7d5160bd63a16a05572b0b8730bbd215",
+      "commit": "9b9de590491ef935df4e3cccab43712a44c15730",
       "state": "ok"
     },
-    "worktree_clean": true,
+    "worktree_clean": false,
     "scanner_pins": {
       "checkov": "3.3.12",
       "tfsec": "1.28.14",
@@ -15844,35 +15844,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_38",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -15892,35 +15892,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_17",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -15940,35 +15940,35 @@
           "scanner": "trivy",
           "rule_id": "KSV-0010",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "resolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (resolved) - trivy severity normalized to 4",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -15988,35 +15988,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_14",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16040,35 +16040,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_28",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16092,35 +16092,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_20",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16140,35 +16140,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_23",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16188,35 +16188,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_40",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16236,35 +16236,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_30",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16284,35 +16284,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_29",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16332,35 +16332,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_22",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16380,35 +16380,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_31",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16428,35 +16428,35 @@
           "scanner": "trivy",
           "rule_id": "KSV-0118",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "resolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (resolved) - trivy severity normalized to 4",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": false,
           "factor_gap_counted": false,
           "unmapped": false,
@@ -16476,35 +16476,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_11",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16524,35 +16524,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_10",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16572,35 +16572,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_21",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16620,35 +16620,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_13",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16668,35 +16668,35 @@
           "scanner": "checkov",
           "rule_id": "CKV_K8S_12",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 17,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 11,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 4,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "unresolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 4 (unresolved, the rubric default) - checkov supplied no severity ('unknown'); scored at the rubric default",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "High",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16716,35 +16716,35 @@
           "scanner": "trivy",
           "rule_id": "KSV-0023",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 16,
-          "band": "High",
-          "action": "Fix before production / require approval",
+          "score": 10,
+          "band": "Medium",
+          "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 3,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "resolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 3 (resolved) - trivy severity normalized to 3",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "Medium",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,
@@ -16764,35 +16764,35 @@
           "scanner": "trivy",
           "rule_id": "KSV-0110",
           "file_path": "kube-bench-security/node-job.yaml",
-          "score": 15,
+          "score": 9,
           "band": "Medium",
           "action": "Schedule in normal sprint/backlog",
           "contributions": {
             "severity": 2,
             "exposure": 3,
-            "privilege": 4,
+            "privilege": 0,
             "sensitivity": 2,
             "criticality": 2,
-            "encryption": 2
+            "encryption": 0
           },
           "factor_states": {
             "severity": "resolved",
             "exposure": "unresolved",
-            "privilege": "unresolved",
+            "privilege": "resolved",
             "sensitivity": "resolved",
             "criticality": "resolved",
-            "encryption": "unresolved"
+            "encryption": "resolved"
           },
           "explanation": [
             "severity: 2 (resolved) - trivy severity normalized to 2",
-            "exposure: 3 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
-            "privilege: 4 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node",
+            "exposure: 3 (unresolved, the rubric default) - batch/v1/Job/default/kube-bench-node kind 'Job' is outside the supported pattern list",
+            "privilege: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' grants no RBAC permission",
             "sensitivity: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
             "criticality: 2 (resolved) - declared context for batch/v1/Job/default/kube-bench-node",
-            "encryption: 2 (unresolved, the rubric default) - no resource body indexed for batch/v1/Job/default/kube-bench-node"
+            "encryption: 0 (resolved) - batch/v1/Job/default/kube-bench-node kind 'Job' carries no data-at-rest requirement"
           ],
           "baseline_band": "Low",
-          "low_confidence": true,
+          "low_confidence": false,
           "factor_gap": true,
           "factor_gap_counted": true,
           "unmapped": false,

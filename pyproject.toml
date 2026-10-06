@@ -75,4 +75,9 @@ testpaths = ["tests"]
 # at which pytest drops the `N passed, M skipped` line entirely. A gate with
 # flags to retype is a gate with a way to get it wrong.
 addopts = "-q --strict-markers -rs"
-pythonpath = ["src", "."]
+# `tests` is here for `tests/_corpus.py`, the one wiring of corpus v0's adapter runs. Without
+# it the module is importable only from a test file directly under `tests/`, because pytest
+# puts each test file's own directory on the path: a subdirectory test importing it passed
+# in a full run, where an earlier module had already added `tests/`, and failed at
+# collection when its directory was run alone.
+pythonpath = ["src", ".", "tests"]

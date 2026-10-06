@@ -5,9 +5,19 @@ and deliberately carries no attribute values - `ResourceEntry` holds api_version
 namespace, name, container and line spans, and nothing of the spec. Layer 3 needs the
 spec itself (a Service's `type`, an RBAC `rules` block), so this module reads bodies.
 
-It does not extend or replace S3a's index. Both key on `identity.kubernetes_identity`,
-so the two agree by construction rather than by coincidence: this module supplies
-attribute values for an identity S3a's index already knows how to produce.
+It does not extend or replace S3a's index. Both key on `identity.kubernetes_identity`
+**and both apply the same namespace rule before calling it**: a cluster-scoped kind
+carries no namespace, and a namespaced manifest that omits `metadata.namespace` takes
+`DEFAULT_NAMESPACE`. The rule is `resources._entries_for_document`'s, restated in
+`_namespace` against the same `CLUSTER_SCOPED_KINDS`.
+
+An earlier version of this docstring said the two indexes agreed "by construction rather
+than by coincidence" because they shared the formatter. They did not agree: this module
+passed an omitted namespace through as `None`, which the formatter renders as no segment at
+all, while every finding's identity carried `default`. Measured over corpus v0: **311 of
+579** context-eligible Kubernetes findings missed their manifest body for that reason
+alone and scored all three parsed factors at the unresolved default; with the rule applied
+all 579 match. Sharing a formatter is not sharing a key - the arguments have to agree too.
 """
 
 from __future__ import annotations
@@ -18,7 +28,8 @@ from typing import Any
 
 import yaml
 
-from iacrisk.identity import kubernetes_identity
+from iacrisk.identity import DEFAULT_NAMESPACE, kubernetes_identity
+from iacrisk.resources import CLUSTER_SCOPED_KINDS
 
 __all__ = ["build_body_index", "lookup"]
 
@@ -79,12 +90,21 @@ def build_body_index(files: Iterable[Path]) -> dict[str, dict[str, Any]]:
             name = metadata.get("name")
             if not isinstance(name, str):
                 continue
-            namespace = metadata.get("namespace")
             resource_identity = kubernetes_identity(
-                api_version,
-                kind,
-                name=name,
-                namespace=namespace if isinstance(namespace, str) else None,
+                api_version, kind, name=name, namespace=_namespace(kind, metadata)
             )
             index[resource_identity] = document
     return index
+
+
+def _namespace(kind: str, metadata: Mapping[str, Any]) -> str | None:
+    """The namespace component S3a's index gives this document's identity.
+
+    Three states, in `resources._entries_for_document`'s order: a cluster-scoped kind has
+    none, whatever its metadata says; a declared namespace is used as written; an omitted
+    one is the default namespace, which is where Kubernetes itself would place it.
+    """
+    if kind in CLUSTER_SCOPED_KINDS:
+        return None
+    declared = metadata.get("namespace")
+    return declared if isinstance(declared, str) else DEFAULT_NAMESPACE

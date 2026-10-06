@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from _corpus import all_real_findings
 from iacrisk.context.kubernetes import build_body_index, lookup
 
 
@@ -73,7 +74,7 @@ def test_an_unparseable_manifest_is_skipped_not_raised(tmp_path: Path) -> None:
 
     index = build_body_index([good, bad])
     assert len(index) == 1
-    assert "v1/Service/ok" in index
+    assert "v1/Service/default/ok" in index
 
 
 def test_documents_without_the_required_metadata_are_skipped(tmp_path: Path) -> None:
@@ -90,7 +91,62 @@ def test_documents_without_the_required_metadata_are_skipped(tmp_path: Path) -> 
         encoding="utf-8",
     )
     index = build_body_index([manifest])
-    assert list(index) == ["v1/Service/fine"]
+    assert list(index) == ["v1/Service/default/fine"]
+
+
+def test_an_omitted_namespace_is_the_default_namespace(tmp_path: Path) -> None:
+    """The defect this pins: an omitted `metadata.namespace` used to render as no segment
+    at all (`batch/v1/Job/scan`), while S3a's index and so every finding's identity says
+    `batch/v1/Job/default/scan`. The two tests above asserted the un-namespaced key and so
+    pinned the bug rather than catching it.
+    """
+    manifest = tmp_path / "job.yaml"
+    manifest.write_text(
+        "apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: scan\nspec: {}\n", encoding="utf-8"
+    )
+    assert list(build_body_index([manifest])) == ["batch/v1/Job/default/scan"]
+
+
+def test_a_cluster_scoped_kind_carries_no_namespace_even_if_one_is_declared(
+    tmp_path: Path,
+) -> None:
+    """`resources._entries_for_document`'s rule, so the two indexes spell these alike."""
+    manifest = tmp_path / "cluster.yaml"
+    manifest.write_text(
+        "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: prod\n"
+        "---\n"
+        "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\n"
+        "metadata:\n  name: admin\n  namespace: ignored\n",
+        encoding="utf-8",
+    )
+    assert sorted(build_body_index([manifest])) == [
+        "rbac.authorization.k8s.io/v1/ClusterRoleBinding/admin",
+        "v1/Namespace/prod",
+    ]
+
+
+def test_every_real_kubernetes_finding_reaches_its_manifest_body() -> None:
+    """The check that would have caught the defect, and the form it has to take: identities
+    produced by the **adapters** meeting an index produced by **this reader**. Every earlier
+    test here built both sides itself, so the key shapes agreed by authorship.
+
+    Measured before the fix: 268 of 579 context-eligible Kubernetes findings in corpus v0
+    matched (46.3%), the other 311 all on manifests that omit `metadata.namespace`. S3b
+    recorded that 46.3% and attributed part of it to Helm templates that do not parse. No
+    part of it was: with the namespace rule applied all 579 match, so whatever findings the
+    unparseable templates draw were never among the context-eligible ones.
+    """
+    root = Path(__file__).resolve().parent.parent.parent / "corpus" / "vendor" / "kubernetes-goat"
+    files = sorted(root.rglob("*.yaml")) + sorted(root.rglob("*.yml"))
+    index = build_body_index(files)
+
+    eligible = [f for f in all_real_findings() if f.platform == "kubernetes" and f.context_eligible]
+    unmatched = sorted(
+        {f.resource_identity for f in eligible if lookup(index, f.resource_identity) is None}
+    )
+
+    assert eligible, "corpus v0 has context-eligible Kubernetes findings; none would be vacuous"
+    assert not unmatched, f"{len(unmatched)} identities have no manifest body: {unmatched[:5]}"
 
 
 def test_a_real_corpus_manifest_directory_yields_bodies_with_specs() -> None:

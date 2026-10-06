@@ -283,10 +283,18 @@ without being told:
   constant 3 and does **no ranking work**. It resolves correctly on the cases the oracle
   turns on — the networking scenario's three tiers reproduce from code — so the honest
   framing is that it discriminates *within* the supported patterns.
-- **Body coverage is asymmetric: Terraform 99.1%, Kubernetes 46.3%.** The Terraform
-  misses are 4 findings on a `data` block. The Kubernetes gap is roughly half *parsing*
-  rather than scope: 4 of 22 manifests are Helm templates carrying Go templating and do
-  not parse as YAML. Attributing the whole Kubernetes rate to the pattern list is wrong.
+- **Body coverage: Terraform 99.1%, Kubernetes 100% - and the 46.3% this entry used to give
+  for Kubernetes was a defect, not a property of the corpus.** The Terraform misses are 4
+  findings on a `data` block. **Corrected 2026-10-06:** S3b recorded Kubernetes at 46.3%
+  (268 of 579 context-eligible findings) and attributed "roughly half" of the gap to Helm
+  templates that do not parse. **No part of it was Helm.** `build_body_index` rendered an
+  omitted `metadata.namespace` as no segment while every finding's identity carried
+  `default`, so 311 findings on 8 resources never met their body and scored privilege and
+  encryption at the unresolved defaults. With S3a's namespace rule applied all 579 match.
+  It is the 0-of-217 lesson below a second time, in the same module: the two tests that
+  touched an un-namespaced manifest asserted the un-namespaced key, and so pinned the bug.
+  **Every S3b and S4 corpus-level figure in this file that is not marked otherwise was
+  measured with this defect present** - the S5 entry below gives the corrected ones.
 - **`exposure` is inbound reachability only.** An egress `0.0.0.0/0` does **not** trigger
   the precedence rule; egress risk maps to `networking-egress-exposure`, one of the three
   classes with no rubric factor. Reading egress as inbound inverts the networking
@@ -307,7 +315,12 @@ class-to-factor table and its loader, the scoring engine, the severity baseline,
 with ties preserved, the band-distribution reports and JSON/Markdown emission. Eight
 acceptance gates in `tests/test_s4_gates.py`; 820 tests in the suite. Seven decisions are
 recorded in the design spec's section 11 with cost-if-wrong. **Four measured facts a future
-session will get wrong without being told:**
+session will get wrong without being told** - and a fifth about the four: **every count
+below was measured before the Kubernetes body-index defect was fixed on 2026-10-06** (the
+S3b entry above), over 1,055 findings before the Tier-1 collapse. The mechanisms they
+describe are real and unchanged; the numbers are superseded by the S5 entry below, and the
+per-factor means in the second bullet have not been recomputed - derive them from
+`artifacts/scored-corpus-v0.json` before quoting any:
 
 - **Zero findings reach Critical, and the cause is arithmetic.** Over all 1055 findings:
   Critical **0**, High 555, Medium 466, Low 34. **Report the context-eligible column
@@ -352,15 +365,21 @@ will get wrong without being told:
 
 - **Every S3b and S4 figure above is over 1,055 findings, before the Tier-1 collapse** -
   although S4's spec §5.1 and `rank.py` both say ranking runs over the deduplicated set. No
-  path applied the collapse before scoring until `pipeline.py`. Over the **1,016 survivors**
-  the bands are Critical 0, High **531**, Medium **451**, Low 34 (eligible-only Low still 4),
-  the factor-gap population is 420 with 242 substantive, and 762 are low-confidence. The
-  artifact carries both: the ranked payload over the survivors, and the earlier population
-  under `before_dedupe`, where it reproduces the S4 handoff's figures exactly. **The
-  project author ruled on 2026-10-06 that the 1,016 deduplicated population is the
-  headline.** The 1,055 figures above stay correct for what they measured; name the
-  population whenever quoting either, and the S4 handoff and chapter 3 still carry the
-  1,055 figures without that label.
+  path applied the collapse before scoring until `pipeline.py`. **The project author ruled
+  on 2026-10-06 that the 1,016 deduplicated population is the headline.** The artifact
+  carries both - the ranked payload over the survivors, and the earlier population under
+  `before_dedupe` - so name the population whenever quoting either.
+- **The headline band distribution has three recorded states, and only the last is
+  current.** Over 1,055 with the body-index defect: Critical 0 / High 555 / Medium 466 /
+  Low 34 - the S4 handoff's figures, which the artifact committed at `f7fbcfc` reproduces
+  exactly. Over 1,016 with the defect: 0 / 531 / 451 / 34 (commit `9b9de59`'s record).
+  **Over 1,016 with the defect fixed: Critical 0 / High 235 / Medium 747 / Low 34**, with
+  eligible-only Low still 4, 740 low-confidence, and the factor-gap population 420 with 242
+  substantive. Over 1,055 fixed it is 0 / 245 / 776 / 34 with 774 low-confidence. The fix
+  moved 296 findings from High to Medium because privilege went from unresolved on 319 of
+  1,025 eligible findings to 8, and encryption from 648 to 337; exposure barely moved
+  (934 to 932). The missing-count split over 1,055 is now `{0:38, 1:47, 2:140, 3:372,
+  4:332, 5:122, 6:4}`. The S4 handoff and chapter 3 still carry the first state.
 - **The corpus-level declared context is a last-case-wins merge, and 4 identities conflict.**
   `aws_s3_bucket.data`, `.data_science`, `.financials` and `.operations` each carry two or
   three cases with different declared values - the four declared-factor pairs, on purpose -
@@ -375,10 +394,53 @@ will get wrong without being told:
   resolution rule was pre-registered. The rule must be committed in `eval/` **before**
   `artifacts/scored-cases-v1.json` exists, so git history carries the ordering. Sum and
   mean are reported beside it as an aggregation-sensitivity check, never substituted.
+  That ordering holds and is tested: `eval/harness.py` arrived in `4d21966`, the case
+  scores in `0b53d9e`, and `tests/test_s5_gates.py` gate 8 asserts the ancestry from git.
 - **The suite passed only at `D:\Research` until commit `3e092f8`.** tfsec's captures carry
   absolute paths from the host that made them, and 66 of 825 tests failed in a clone
   anywhere else. `capture_scan_root` recovers the capture root from the document; replay a
   tfsec capture through it, never against the live scan root.
+
+**S5's harness and first results (2026-10-06).** `eval/harness.py` computes every metric
+from JSON and imports nothing of the framework; `uv run python -m eval.run` writes
+`artifacts/evaluation-v1.json`. Its eight rules are stated once, in the module docstring.
+Eight acceptance gates in `tests/test_s5_gates.py`, each recomputing a figure by a second
+route; 915 tests in the suite. **The results exist in two committed states - as first
+measured (`9b9de59`), and after the body-index fix - and where they differ both are given,
+because the fix was made after the first results had been seen:**
+
+- **Contrastive pairs: 8 of 10 pass, against the baseline's 1 of 10.** Unchanged by the
+  fix. Mechanism holds in 8 and all 8 are isolated; 5 of 7 mined pairs pass and 3 of 3
+  hand-crafted. Under `sum` 9 pass and under `mean` 8.
+- **Both failures are the two encryption pairs, and both are 15-15 ties.** This is a
+  result, not a defect. The encrypted bucket's `server_side_encryption_configuration`
+  holds an interpolated key ARN, so literals-only extraction calls it unresolved; the
+  unencrypted buckets declare none, which S3b also calls unresolved because the platform
+  default is account-level. Both sides score the default of 2. **The encryption factor is
+  not shown to discriminate anywhere in this evaluation**, and the storage scenario's exact
+  match owes nothing to it - all five buckets contribute 2.
+- **Scenarios: 2 of 5 exact tier matches (storage, iam), baseline 0 of 5.** Of 21 ordered
+  case pairs the framework gets 19 right, ties 2 and inverts 0; first measured it was 18,
+  2 and 1. The baseline gets 4, ties 16, inverts 1. Networking orders every pair correctly
+  and splits the expected tie on scanner severity. Compute ties the contested pair - the
+  author's order and the reviewer's both fail to appear.
+- **The containers scenario was the defect's visible symptom.** First measured,
+  `kube-bench-node` outranked `goat-home` (17 against 13, tau-b -0.5) purely because its
+  three parsed factors were unresolved. Fixed, it scores 11 and the ordering is
+  `[goat-home = internal-proxy] > kube-bench` (tau-b 0.5) - **the blinded reviewer's
+  ordering exactly, not the author's**. Three scenarios are now free of excluded and
+  low-confidence cases, and 2 of those 3 match.
+- **Alert reduction is two numbers.** Deduplication: 39 of 1,055 (3.7%). Critical/High
+  count, over the 986 findings the framework makes a quality claim about: **649 to 235, a
+  63.8% reduction** - first measured it was 649 to 531, 18.2%. **Two caveats travel with
+  it:** 441 of the baseline's 649 reach High through an unknown severity, and 740 of the
+  1,016 ranked findings are low-confidence.
+- **Rank changes over those 986: 196 promoted, 427 demoted, 363 unchanged** (first
+  measured: 245, 271, 470). 267 of the 427 demotions and 165 of the 196 promotions are
+  low-confidence. The fix removed nearly every default-driven promotion into High: 143
+  before, all low-confidence, against 3 after.
+- **Ranking consistency is not measured yet.** Auto-inference agreement needs S3c and the
+  model-sensitivity sweep is S6; the record states both as explicit not-run states.
 
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
