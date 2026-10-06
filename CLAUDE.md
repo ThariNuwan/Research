@@ -69,10 +69,14 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0, S1, S2, S3a, S3b and S4 complete. **S5 is next** (the independent evaluation
-harness and every metric); its groundwork - the pipeline runner - is recorded below.
-**S3c** (convention-based auto-inference of the two declared factors) was split out of
-S3b and is still unbuilt. S0 pinned the toolchain and
+S0, S1, S2, S3a, S3b and S4 complete. **S5 (the independent evaluation harness and its
+first results) and S6's sensitivity analysis are done on branch `s5-evaluation-harness`**,
+unmerged and unpushed as of 2026-10-06; both are recorded below. **What remains: S3c**
+(convention-based auto-inference of the two declared factors, split out of S3b and still
+unbuilt - the auto-inference agreement metric waits on it), **the write-up** (results and
+evaluation chapters, plus the S4 handoff and chapter 3, which still carry superseded
+figures), and the two items that need a person: supervisor review of the oracle and the
+NSA-CISA citations. S0 pinned the toolchain and
 harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
 the five specification artifacts the runtime and the harness are built
 against:
@@ -439,8 +443,45 @@ because the fix was made after the first results had been seen:**
   measured: 245, 271, 470). 267 of the 427 demotions and 165 of the 196 promotions are
   low-confidence. The fix removed nearly every default-driven promotion into High: 143
   before, all low-confidence, against 3 after.
-- **Ranking consistency is not measured yet.** Auto-inference agreement needs S3c and the
-  model-sensitivity sweep is S6; the record states both as explicit not-run states.
+- **Ranking consistency: model sensitivity is measured (S6, below); auto-inference
+  agreement is not**, and needs S3c. `evaluation-v1.json` still states both as explicit
+  not-run states - it was written before S6 and the sensitivity record is its own artifact.
+
+**S6's sensitivity analysis (2026-10-06).** `eval/sensitivity_plan.json` registers 63
+variants in four experiments; the project author approved it and it was committed
+(`4467cf4`) before any variant was computed. `uv run python -m eval.sensitivity` computes
+all of them from the scored JSON and writes `artifacts/sensitivity-v1.json`. Five gates in
+`tests/test_s6_gates.py`; 956 tests in the suite. **The plan file is the registration: do
+not edit it.** A changed or added variant is a second registered round in its own file, and
+gate 5 fails if the plan has more than one commit. What it found splits cleanly in two:
+
+- **The ordering results are stable.** Pairs pass 8 of 10 under all 29 default variants,
+  all 16 boundary variants, all six doubled weights and both named weightings. They fall
+  only when the factor under test is weighted to zero, as they must. Scenario exact matches
+  stay at 2 of 5 in 56 of 63 variants and range from 1 to 3.
+- **The band counts are not, and the 63.8% alert-reduction figure inherits that.** 199 of
+  the 235 High findings score **exactly 16**, the lowest High score. Raising the High
+  boundary one point leaves 36 in High; lowering it one gives 296. Lowering any one of four
+  defaults by a single point removes most of the band: exposure 3 to 2 leaves 60,
+  sensitivity 3 to 2 leaves 46, criticality 4 to 3 leaves 46, encryption 2 to 1 leaves 64.
+  With every default at its minimum Critical/High is 0; at its maximum, 907. **Never quote
+  the Critical/High reduction without this beside it.**
+- **Dropping the encryption factor changes no pair and no scenario.** It is the same
+  non-result as the two tied encryption pairs, seen from the other side.
+- **`exposure-security-group` passes without exposure.** With exposure weighted to zero it
+  still passes on a one-point severity difference, so it is weaker evidence for the
+  exposure mechanism than `exposure-s3-public-access`, which fails as it should.
+- **The networking scenario across the exposure default**, by name as the S2 handoff's
+  item 12 asks: over the rubric's registered sweep the tier separation holds at 2, 3 and 4
+  and collapses into a shared top tier at 5.
+- **The low-confidence threshold is a cliff:** 962, 890, 740 (frozen), 210 and 2 findings
+  at thresholds 1 to 5, because 530 findings have exactly three factors missing.
+- **Critical stays empty** until its boundary drops from 22 to 20, where 2 findings enter.
+- **The two named weightings are not independently expert-derived.** Likelihood-weighted
+  (exposure and privilege doubled) and impact-weighted (sensitivity and criticality
+  doubled) were proposed from sources the rubric cites and approved by the author; the
+  plan says so in its own text. PLAN Q10 asks for "expert-derived" alternatives, so a
+  supervisor's weightings, if obtained, are a second registered round.
 
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
@@ -511,7 +552,12 @@ uv run python -m tools.harvest.run   # regenerate artifacts/rule-inventory.json 
 uv run python -m tools.score.run corpus   # replay the captures -> artifacts/scored-corpus-v0.json
 uv run python -m tools.score.run cases    # per-case scores -> artifacts/scored-cases-v1.json
                                           # (not before the case-aggregation rule is committed)
+uv run python -m eval.run                 # the harness -> artifacts/evaluation-v1.json
+uv run python -m eval.sensitivity         # the 63 registered variants -> artifacts/sensitivity-v1.json
 ```
+
+Regenerate in that order - corpus, cases, `eval.run`, `eval.sensitivity` - because each
+later record digests the earlier ones, and a gate fails when a digest is stale.
 
 **Give `mypy` no path argument.** A path overrides `[tool.mypy] files` entirely:
 measured on this tree, `uv run mypy` checks 19 files and `uv run mypy src tools
