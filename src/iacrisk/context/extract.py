@@ -16,6 +16,7 @@ from iacrisk.context import encryption as encryption_extractor
 from iacrisk.context import exposure as exposure_extractor
 from iacrisk.context import privilege as privilege_extractor
 from iacrisk.context.declared import join
+from iacrisk.context.inferred import Inference, join_inferred
 from iacrisk.context.terraform import TerraformResource
 from iacrisk.context.value import FactorState, FactorValue
 from iacrisk.finding import NormalizedFinding
@@ -93,8 +94,16 @@ def contextualize(
     declared: Mapping[str, Mapping[str, int]],
     tf_index: Mapping[str, TerraformResource],
     k8s_index: Mapping[str, Mapping[str, Any]] | None = None,
+    *,
+    inference: Inference | None = None,
 ) -> list[ContextualizedFinding]:
-    """Attach the five contextual attributes to every context-eligible finding."""
+    """Attach the five contextual attributes to every context-eligible finding.
+
+    `inference` selects the auto-inference mode: sensitivity and criticality then come
+    from the conventions (`context/inferred.py`) and `declared` is not consulted at all.
+    The two are alternatives, never merged - a run is one mode or the other, so no value
+    in a record can be of uncertain origin.
+    """
     results: list[ContextualizedFinding] = []
     for finding in findings:
         if not finding.context_eligible:
@@ -109,7 +118,11 @@ def contextualize(
                 )
             )
             continue
-        sensitivity, criticality = join(finding.resource_identity, declared, tf_index)
+        sensitivity, criticality = (
+            join(finding.resource_identity, declared, tf_index)
+            if inference is None
+            else join_inferred(finding.resource_identity, inference, tf_index)
+        )
         results.append(
             ContextualizedFinding(
                 finding=finding,

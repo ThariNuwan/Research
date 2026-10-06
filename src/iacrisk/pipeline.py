@@ -32,6 +32,7 @@ from typing import Any
 
 from iacrisk.context import coverage
 from iacrisk.context.extract import contextualize
+from iacrisk.context.inferred import Inference
 from iacrisk.context.terraform import TerraformResource
 from iacrisk.dedupe import DedupeGroup, DedupeResult, deduplicate
 from iacrisk.finding import NormalizedFinding
@@ -102,8 +103,13 @@ def prioritize(
     k8s_index: Mapping[str, Mapping[str, Any]] | None = None,
     *,
     collapse: bool = True,
+    inference: Inference | None = None,
 ) -> dict[str, Any]:
     """Tier-1 collapse, context, score, rank and emit for one set of findings.
+
+    `inference` runs the auto-inference mode: sensitivity and criticality come from the
+    conventions and `declared` is ignored (`context/extract.py`). Everything downstream
+    of layer 3 is identical in both modes.
 
     `collapse=False` scores every finding as its own row. It exists so the figures S3b and
     S4 recorded before any path applied the collapse stay reproducible; the ranking a
@@ -118,7 +124,9 @@ def prioritize(
         if collapse
         else [Survivor(finding=f, members=(f,)) for f in findings]
     )
-    contextualized = contextualize([s.finding for s in survivors], declared, tf_index, k8s_index)
+    contextualized = contextualize(
+        [s.finding for s in survivors], declared, tf_index, k8s_index, inference=inference
+    )
     scored = score_all(contextualized)
     ranked = rank_all(scored)
     payload = emit.to_json(ranked, report.build(scored))
@@ -146,6 +154,8 @@ def run(
     tf_index: Mapping[str, TerraformResource],
     k8s_index: Mapping[str, Mapping[str, Any]] | None,
     unparseable: frozenset[str],
+    *,
+    inference: Inference | None = None,
 ) -> dict[str, Any]:
     """Every adapter run for one corpus, through to the payload S5's harness reads.
 
@@ -154,8 +164,10 @@ def run(
     list - the population S3b's and S4's handoff figures were measured on.
     """
     findings = [finding for result in results.values() for finding in result.findings]
-    ranked = prioritize(findings, declared, tf_index, k8s_index)
-    uncollapsed = prioritize(findings, declared, tf_index, k8s_index, collapse=False)
+    ranked = prioritize(findings, declared, tf_index, k8s_index, inference=inference)
+    uncollapsed = prioritize(
+        findings, declared, tf_index, k8s_index, collapse=False, inference=inference
+    )
     return {
         "retention": build_report(results, deduplicate(findings), unparseable).to_json(),
         **ranked,

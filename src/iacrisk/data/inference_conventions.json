@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "registered": "2026-10-06",
+  "approved_by": "Jayathissa E.A.T.N. (258243J)",
+  "description": "The conventions the auto-inference mode reads Resource Sensitivity and Environment Criticality from, in place of a declared-context input. Fixed and committed before any inferred result was generated, and written without reference to the values corpus v1 declares. The mode is the framework's second, automated path (PLAN, root decision B+); the declared-context path remains the primary evaluation path.",
+  "rules": {
+    "literals_only": "A tag, label or namespace is read only when its value is a literal. A computed or interpolated value is not read, as everywhere else in layer 3 (PLAN Q9).",
+    "explicit_before_hint": "A tag, label or namespace is the owner's explicit statement and is used as written, up or down. A word in a resource's name is a hint, consulted only when no explicit signal resolved.",
+    "a_hint_may_raise_but_never_lower": "A name hint is applied only where it places the value above the rubric's default. A name that suggested a lower value is ignored: lowering a finding's priority on a name alone would be the false reassurance PLAN Q9 forbids.",
+    "criticality_ceiling": "Criticality is never inferred above 4. The rubric reserves level 5 for an explicit declared regulated or crown-jewel designation.",
+    "ambiguity_resolves_nothing": "Explicit signals that resolve to more than one distinct level resolve nothing, and so do name hints that do. The value then falls through to the next signal or to the default.",
+    "unmatched_is_the_default": "A resource no convention matches takes the rubric's documented default and is counted as defaulted, exactly as an undeclared resource is on the primary path."
+  },
+  "normalization": {
+    "values_and_keys": "Lower-cased, with spaces, hyphens, underscores and dots removed, then matched whole. 'Pre-Prod' and 'pre_prod' both become 'preprod'; nothing is matched as a substring, so 'pre-prod' can never match 'prod'.",
+    "names": "Lower-cased and split on every non-alphanumeric character into words, each matched whole. The name is the resource's own: the Terraform local name, or the Kubernetes metadata.name."
+  },
+  "criticality": {
+    "sources": "Terraform: the resource's literal `tags`. Kubernetes: the resource's own `metadata.labels`, and its `metadata.namespace`.",
+    "keys": ["environment", "env", "stage"],
+    "kubernetes_namespace": true,
+    "values": {
+      "0": ["sandbox", "scratch", "playground"],
+      "1": ["dev", "development"],
+      "2": ["test", "testing", "qa"],
+      "3": ["staging", "stage", "stg", "uat", "preprod", "preproduction"],
+      "4": ["prod", "production", "prd", "live"]
+    },
+    "basis": "The rubric's own criticality levels: 0 throwaway sandbox, 1 development, 2 integration/QA/test, 3 staging/pre-production/UAT, 4 production. The key names are AWS's recommended technical tag `Environment` and the `environment` label the Kubernetes documentation uses as its example."
+  },
+  "sensitivity": {
+    "sources": "Terraform: the resource's literal `tags`. Kubernetes: the resource's own `metadata.labels`. Then, only if neither resolved, the resource's name.",
+    "keys": ["dataclassification", "classification", "confidentiality", "sensitivity", "datasensitivity"],
+    "values": {
+      "0": ["public"],
+      "1": ["low"],
+      "2": ["internal"],
+      "3": ["moderate", "medium"],
+      "4": ["confidential", "restricted", "sensitive", "high", "pii", "phi", "pci"]
+    },
+    "name_words": {
+      "4": ["pii", "phi", "pci", "hipaa", "cardholder", "payment", "payments", "patient", "patients"],
+      "5": ["secret", "secrets", "credential", "credentials", "password", "passwords", "token", "tokens"]
+    },
+    "basis": "The rubric's own sensitivity levels: 0 public or no data, 1 minimal, 2 limited internal, 3 moderate regulated-but-standard, 4 sensitive regulated data (PII, PHI, PCI, confidential IP), 5 crown-jewel secrets (credentials, keys, token and secret stores). The key names are AWS's recommended security tag `Confidentiality` and the common data-classification tag; the values are the public / internal / confidential / restricted scheme and FIPS 199's low / moderate / high. No tag value maps to 5: that level describes what a resource holds, which a classification label does not state. Every name word sits above the default of 3, which is what makes the raise-only rule hold by construction."
+  }
+}

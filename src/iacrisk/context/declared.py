@@ -79,12 +79,21 @@ def join(
     identity: str,
     declared: Mapping[str, Mapping[str, int]],
     tf_index: Mapping[str, TerraformResource],
+    *,
+    origin: str = "declared context",
+    notes: Mapping[str, Mapping[str, str]] | None = None,
 ) -> tuple[FactorValue, FactorValue]:
     """Resolve (sensitivity, criticality) for one finding's resource identity.
 
     Exact match on canonical identity only. No fuzzy matching and no fallback to a
     shorter key, because a near-match join would attach one resource's business
     context to a different resource.
+
+    `origin` and `notes` exist for the auto-inference mode, which supplies the same shape
+    of input from conventions (`context/inferred.py`). They change what the evidence says
+    and nothing about what is joined: `origin` names where the values came from, and
+    `notes` adds, per identity and factor, the tag or word a value was read from. The
+    defaults leave the primary path's evidence strings exactly as they were.
     """
     entry: Mapping[str, int] | None = declared.get(identity)
     source = identity
@@ -97,13 +106,19 @@ def join(
                 source = target
 
     if entry is None:
-        reason = f"no declared-context match for {identity}"
+        # Spelled out for the default rather than built from `origin`: the primary path's
+        # wording is "declared-context", hyphenated, and existing records carry it.
+        reason = (
+            f"no declared-context match for {identity}"
+            if origin == "declared context"
+            else f"no {origin} for {identity}"
+        )
         return (
             FactorValue.defaulted("sensitivity", reason),
             FactorValue.defaulted("criticality", reason),
         )
 
-    evidence = f"declared context for {source}"
+    evidence = f"{origin} for {source}"
     values: list[FactorValue] = []
     for key in ("sensitivity", "criticality"):
         raw = entry.get(key)
@@ -112,5 +127,6 @@ def join(
             continue
         if not isinstance(raw, int) or isinstance(raw, bool):
             raise ValueError(f"declared {key} for {source} is not an integer: {raw!r}")
-        values.append(FactorValue.resolved(key, raw, evidence))
+        note = (notes or {}).get(source, {}).get(key)
+        values.append(FactorValue.resolved(key, raw, f"{evidence}: {note}" if note else evidence))
     return (values[0], values[1])

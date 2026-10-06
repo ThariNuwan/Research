@@ -7,6 +7,7 @@ reads - the harness sees JSON, never `iacrisk`.
 
     uv run python -m tools.score.run corpus    # artifacts/scored-corpus-v0.json
     uv run python -m tools.score.run cases     # artifacts/scored-cases-v1.json
+    uv run python -m tools.score.run inferred  # the same two, in auto-inference mode
 
 `corpus --markdown` also renders the human report. It is a view over the JSON and about a
 megabyte, so it is written on request rather than committed beside its own source.
@@ -30,6 +31,13 @@ arbitrary part of the corpus target's input is visible instead of implicit.
 
 A case is scored at finding level and no further. How a case's findings become one rank is
 the harness's rule to state, not this tool's.
+
+**`inferred` is the second mode, not a third target.** It writes the corpus and the cases
+again with sensitivity and criticality read from the registered conventions
+(`iacrisk.context.inferred`) instead of from corpus v1's declarations, to
+`scored-corpus-v0-inferred.json` and `scored-cases-v1-inferred.json`. The declared values
+play no part in either file: a case's `declared_context` is carried through only so a
+reader can see what was replaced.
 """
 
 from __future__ import annotations
@@ -44,6 +52,7 @@ from typing import Any
 
 from eval.ground_truth import load_and_validate
 from iacrisk import pipeline
+from iacrisk.context.inferred import Inference, infer
 from iacrisk.context.kubernetes import build_body_index
 from iacrisk.context.terraform import TerraformResource
 from iacrisk.context.terraform import build_index as build_tf_index
@@ -71,6 +80,8 @@ ARTIFACTS = REPO_ROOT / "artifacts"
 CORPUS_JSON = ARTIFACTS / "scored-corpus-v0.json"
 CORPUS_MARKDOWN = ARTIFACTS / "priority-report-corpus-v0.md"
 CASES_JSON = ARTIFACTS / "scored-cases-v1.json"
+INFERRED_CORPUS_JSON = ARTIFACTS / "scored-corpus-v0-inferred.json"
+INFERRED_CASES_JSON = ARTIFACTS / "scored-cases-v1-inferred.json"
 
 ADAPTERS: dict[str, ScannerAdapter] = {
     "checkov": CheckovAdapter(),
@@ -225,14 +236,22 @@ def _root_for(case: dict[str, Any]) -> str:
     return "terragoat" if case["platform"] == "terraform" else "kubernetes-goat"
 
 
-def score_cases(document: dict[str, Any]) -> dict[str, Any]:
+def score_cases(document: dict[str, Any], *, inferred: bool = False) -> dict[str, Any]:
     """Each case's findings, scored under that case's own declared context.
 
     A case's findings are those on the identities it declares. A case that matches none is
     an error, not an empty entry: there would be nothing to rank, and an identity that has
     drifted from the adapters' spelling would otherwise score as silently absent.
+
+    With `inferred`, the declaration only selects which findings a case holds. Their
+    sensitivity and criticality come from the conventions applied to the case's root.
     """
     replayed = {name: replay(root) for name, root in ROOTS.items()}
+    inferences: dict[str, Inference] = (
+        {name: infer(part.tf_index, part.k8s_index) for name, part in replayed.items()}
+        if inferred
+        else {}
+    )
     cases: dict[str, Any] = {}
     for case in document["cases"]:
         root = _root_for(case)
@@ -244,7 +263,13 @@ def score_cases(document: dict[str, Any]) -> dict[str, Any]:
                 f"case {case['case_id']!r} declares {sorted(declared)} and no finding in "
                 f"the {root} root carries that identity"
             )
-        scored = pipeline.prioritize(findings, declared, part.tf_index, part.k8s_index)
+        scored = pipeline.prioritize(
+            findings,
+            {} if inferred else declared,
+            part.tf_index,
+            part.k8s_index,
+            inference=inferences.get(root),
+        )
         cases[case["case_id"]] = {
             "root": root,
             "declared_context": declared,
@@ -323,6 +348,47 @@ def cases_document() -> dict[str, Any]:
     }
 
 
+def inferred_corpus_document() -> dict[str, Any]:
+    """Corpus v0 with the two declared factors read from conventions instead."""
+    corpus = merge([replay(ROOTS[name]) for name in CORPUS_V0])
+    inference = infer(corpus.tf_index, corpus.k8s_index)
+    return {
+        "schema_version": 1,
+        "description": (
+            "Corpus v0 through pipeline layers 2-5 in auto-inference mode: sensitivity and "
+            "criticality read from the registered conventions, with no declared context."
+        ),
+        "provenance": provenance(_inputs(CORPUS_V0)),
+        "context_mode": "auto-inference",
+        "inference": {
+            "conventions": (DATA / "inference_conventions.json").relative_to(REPO_ROOT).as_posix(),
+            "values": inference.to_json(),
+        },
+        **pipeline.run(
+            corpus.results,
+            {},
+            corpus.tf_index,
+            corpus.k8s_index,
+            corpus.unparseable,
+            inference=inference,
+        ),
+    }
+
+
+def inferred_cases_document() -> dict[str, Any]:
+    document = load_and_validate(GROUND_TRUTH)
+    return {
+        "schema_version": 1,
+        "description": (
+            "Each corpus-v1 case's findings in auto-inference mode. The case's declared "
+            "context selects its findings and is otherwise unused. Finding level only."
+        ),
+        "provenance": provenance(_inputs(tuple(ROOTS))),
+        "context_mode": "auto-inference",
+        "cases": score_cases(document, inferred=True),
+    }
+
+
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="\n")
@@ -334,7 +400,7 @@ def _write_json(path: Path, document: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Replay the scanner captures and score them.")
-    parser.add_argument("target", choices=("corpus", "cases"))
+    parser.add_argument("target", choices=("corpus", "cases", "inferred"))
     parser.add_argument(
         "--markdown",
         action="store_true",
@@ -353,10 +419,19 @@ def main(argv: list[str] | None = None) -> int:
             f"tier1_collapsed={population['tier1_collapsed']} ranked={population['ranked']} "
             f"bands={document['report']['overall']}"
         )
-    else:
+    elif args.target == "cases":
         document = cases_document()
         _write_json(CASES_JSON, document)
         print(f"cases={len(document['cases'])}")
+    else:
+        document = inferred_corpus_document()
+        _write_json(INFERRED_CORPUS_JSON, document)
+        cases = inferred_cases_document()
+        _write_json(INFERRED_CASES_JSON, cases)
+        print(
+            f"mode=auto-inference resources_inferred={len(document['inference']['values'])} "
+            f"ranked={document['population']['ranked']} cases={len(cases['cases'])}"
+        )
     return 0
 
 
