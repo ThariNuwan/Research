@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "registered": "2026-10-06",
+  "approved_by": "Jayathissa E.A.T.N. (258243J)",
+  "description": "The PLAN Q10 sensitivity analysis, registered before any variant was computed. Every variant listed here is computed and reported; none is adopted, and no variant is named best. The frozen model in `frozen` remains the reported result.",
+  "frozen": {
+    "unresolved_defaults": {
+      "severity": 4,
+      "exposure": 3,
+      "privilege": 4,
+      "sensitivity": 3,
+      "criticality": 4,
+      "encryption": 2
+    },
+    "weights": {
+      "severity": 1,
+      "exposure": 1,
+      "privilege": 1,
+      "sensitivity": 1,
+      "criticality": 1,
+      "encryption": 1
+    },
+    "band_minimums": {
+      "Critical": 22,
+      "High": 16,
+      "Medium": 9
+    },
+    "low_confidence_threshold": 3
+  },
+  "experiments": {
+    "unresolved_defaults": {
+      "why": "The value a factor takes when it could not be resolved or was not declared. The S4 handoff names this the most consequential sweep: an unresolved finding outranks a resolved one of the same risk, because the defaults are conservative.",
+      "one_at_a_time": {
+        "severity": [1, 2, 3, 4, 5],
+        "exposure": [0, 1, 2, 3, 4, 5],
+        "privilege": [0, 1, 2, 3, 4, 5],
+        "sensitivity": [0, 1, 2, 3, 4, 5],
+        "criticality": [0, 1, 2, 3, 4, 5],
+        "encryption": [0, 1, 2, 3]
+      },
+      "joint": {
+        "all_minimum": {
+          "severity": 1,
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "all_maximum": {
+          "severity": 5,
+          "exposure": 5,
+          "privilege": 5,
+          "sensitivity": 5,
+          "criticality": 5,
+          "encryption": 3
+        }
+      },
+      "note": "Each list is a factor's whole range, so no value is selected. The frozen value in each list is the identity and is not counted as a variant. Exposure 2 to 5 is the sweep rubric.json itself registers for the one factor whose unresolved policy is sensitivity-analysed; the networking scenario is reported by name across it, as the S2 handoff's item 12 requires."
+    },
+    "band_boundaries": {
+      "why": "Where a score becomes a band. Corpus v1 sets expected_band nowhere, so this shows how the distribution shifts and validates no boundary.",
+      "boundaries": ["Medium", "High", "Critical"],
+      "shifts": [-2, -1, 1, 2],
+      "each_alone": true,
+      "all_together": true,
+      "note": "No score changes, so no ordering metric can."
+    },
+    "weights": {
+      "why": "Equal weighting is a declared neutral baseline, not a claim that the six factors matter equally (PLAN Q10).",
+      "drop_one": ["severity", "exposure", "privilege", "sensitivity", "criticality", "encryption"],
+      "double_one": ["severity", "exposure", "privilege", "sensitivity", "criticality", "encryption"],
+      "named": {
+        "likelihood_weighted": {
+          "weights": {"exposure": 2, "privilege": 2},
+          "motivation": "The likelihood axis of the OWASP Risk Rating Methodology and the exploitability metrics of CVSS v3.1: how reachable the resource is and how much authority it carries."
+        },
+        "impact_weighted": {
+          "weights": {"sensitivity": 2, "criticality": 2},
+          "motivation": "The impact axis of the OWASP Risk Rating Methodology and the impact assessment of NIST SP 800-30 Rev.1: what the asset holds and how much the environment matters."
+        }
+      },
+      "note": "Bands are not reported for a weighted variant. The four bands are positioned against the 1-28 ceiling, a weighted sum has a different ceiling, and rescaling the boundaries to fit it would define a new model. Weighted variants are judged on ordering alone. The two named weightings were proposed from sources the rubric already cites and approved by the project author; they are not presented as independently expert-derived."
+    },
+    "low_confidence_threshold": {
+      "why": "How many of the five contextual factors may be defaulted or unresolved before a finding is low-confidence. Frozen at 3 by S3b before any scoring output existed.",
+      "values": [1, 2, 4, 5],
+      "note": "No score changes. Only the low-confidence count and the clean subsets move."
+    }
+  },
+  "reported_for_each_variant": [
+    "the Critical/High/Medium/Low counts over the findings the framework makes a quality claim about (unweighted variants only)",
+    "how many of those findings changed band and how many changed score",
+    "Kendall's tau-b between the frozen ranking and the variant's over the same findings",
+    "contrastive pairs passed under the registered case rule, and which failed",
+    "scenario exact tier matches and the ordered case pairs right, tied and inverted, with each scenario's ordering",
+    "the low-confidence count, and the clean pair and scenario subsets"
+  ],
+  "rules": [
+    "The plan is committed before any variant is computed, and a test checks that order against git.",
+    "At the frozen settings the recomputation must reproduce every committed score, band and low-confidence flag exactly, or the analysis refuses to run.",
+    "Every registered variant is computed and written to the artifact. There is no filtering step.",
+    "No variant replaces the frozen model anywhere in the evaluation record.",
+    "The baseline is not varied: it is the fixed comparator, banded at the frozen settings."
+  ]
+}
