@@ -52,7 +52,9 @@ def evaluation_document() -> dict[str, Any]:
             "generated_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "python": platform.python_version(),
             "repo_commit": _git_commit(REPO_ROOT),
-            "worktree_clean": worktree_clean(REPO_ROOT),
+            # Outside `artifacts/`: the harness's inputs live there and are pinned by the
+            # digests below, so what this states is that the harness code is the commit's.
+            "source_clean": worktree_clean(REPO_ROOT, ignoring=("artifacts",)),
             "inputs": {path.relative_to(REPO_ROOT).as_posix(): hash_file(path) for path in INPUTS},
         },
         **result,

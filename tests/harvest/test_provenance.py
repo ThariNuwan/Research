@@ -512,6 +512,35 @@ def test_worktree_clean_tracks_whether_the_tree_matches_head(tmp_path: Path) -> 
     assert worktree_clean(tmp_path) is False
 
 
+def test_worktree_clean_can_ignore_a_directory_of_outputs(tmp_path: Path) -> None:
+    """A regenerated output does not make the code that produced it dirty; an edit
+    anywhere else still does."""
+    _skip_without_git()
+    _skip_inside_a_checkout(tmp_path)
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            check=True,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+
+    git("init", "-q")
+    (tmp_path / "out").mkdir()
+    (tmp_path / "out" / "result.json").write_text("{}\n", encoding="utf-8")
+    (tmp_path / "code.py").write_text("x = 1\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-q", "-m", "one")
+
+    (tmp_path / "out" / "result.json").write_text('{"a": 1}\n', encoding="utf-8")
+    assert worktree_clean(tmp_path) is False
+    assert worktree_clean(tmp_path, ignoring=("out",)) is True
+
+    (tmp_path / "code.py").write_text("x = 2\n", encoding="utf-8")
+    assert worktree_clean(tmp_path, ignoring=("out",)) is False
+
+
 def test_worktree_clean_is_none_where_git_cannot_say(tmp_path: Path) -> None:
     """Not False: outside a repository there is no tree to be dirty."""
     _skip_without_git()

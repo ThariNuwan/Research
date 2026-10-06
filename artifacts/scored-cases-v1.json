@@ -3,13 +3,13 @@
   "description": "Each corpus-v1 case's findings, scored under that case's own declared context. Finding level only: no case-level aggregate is computed here.",
   "provenance": {
     "mode": "replay",
-    "generated_utc": "2026-10-06T07:13:56Z",
+    "generated_utc": "2026-10-06T07:19:58Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "9b9de590491ef935df4e3cccab43712a44c15730",
+      "commit": "33c055c9f122b90606587679bdc0ffd3836d3b0e",
       "state": "ok"
     },
-    "worktree_clean": false,
+    "source_clean": false,
     "scanner_pins": {
       "checkov": "3.3.12",
       "tfsec": "1.28.14",

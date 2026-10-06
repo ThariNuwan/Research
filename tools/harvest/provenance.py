@@ -179,14 +179,20 @@ def _git_commit(repo_root: Path) -> dict[str, str | None]:
     return {"commit": commit, "state": "ok"}
 
 
-def worktree_clean(repo_root: Path) -> bool | None:
+def worktree_clean(repo_root: Path, ignoring: tuple[str, ...] = ()) -> bool | None:
     """Whether the working tree matches HEAD, or None when git could not say.
 
     The companion `repo_commit` needs: an artifact generated before its own tool is
     committed names a commit that does not contain the code that produced it, and without
     this the block would state that commit as though it did.
+
+    `ignoring` names repository-relative directories whose changes do not count. It exists
+    for outputs: regenerating three artifacts in a row from one clean commit leaves the
+    first two modified while the third is written, which says nothing about whether the
+    code and inputs that produced the third are HEAD's.
     """
-    stdout, failure, _ = _git_stdout(repo_root, "status", "--porcelain")
+    excludes = [f":(exclude){path}" for path in ignoring]
+    stdout, failure, _ = _git_stdout(repo_root, "status", "--porcelain", "--", ".", *excludes)
     if failure is not None:
         return None
     return not (stdout or "").strip()

@@ -266,7 +266,8 @@ def provenance(inputs: list[Path]) -> dict[str, Any]:
         "generated_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "python": platform.python_version(),
         "repo_commit": _git_commit(REPO_ROOT),
-        "worktree_clean": worktree_clean(REPO_ROOT),
+        # Outside `artifacts/`: whether the code and inputs that ran are `repo_commit`'s.
+        "source_clean": worktree_clean(REPO_ROOT, ignoring=("artifacts",)),
         "scanner_pins": {
             name: entry["version"] for name, entry in sorted(lock["scanners"].items())
         },
