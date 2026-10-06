@@ -405,7 +405,7 @@ will get wrong without being told:
 from JSON and imports nothing of the framework; `uv run python -m eval.run` writes
 `artifacts/evaluation-v1.json`. Its eight rules are stated once, in the module docstring.
 Eight acceptance gates in `tests/test_s5_gates.py`, each recomputing a figure by a second
-route; 915 tests in the suite. **The results exist in two committed states - as first
+route; 916 tests in the suite. **The results exist in two committed states - as first
 measured (`9b9de59`), and after the body-index fix - and where they differ both are given,
 because the fix was made after the first results had been seen:**
 
