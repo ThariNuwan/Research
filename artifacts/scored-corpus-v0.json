@@ -3,13 +3,13 @@
   "description": "Corpus v0 through pipeline layers 2-5, replayed from the committed scanner captures under corpus-v1's declared context.",
   "provenance": {
     "mode": "replay",
-    "generated_utc": "2026-10-06T06:26:28Z",
+    "generated_utc": "2026-10-06T06:31:53Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "3e092f87a526f694af932f043a865d877b8c64d4",
+      "commit": "66a5c82eeda2f841588e272f40ee3738ec97dedc",
       "state": "ok"
     },
-    "worktree_clean": false,
+    "worktree_clean": true,
     "scanner_pins": {
       "checkov": "3.3.12",
       "tfsec": "1.28.14",
