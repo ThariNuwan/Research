@@ -69,9 +69,10 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 
 ## Current state
 
-S0, S1, S2, S3a and S3b complete. **S4 is next** (the scoring engine and
-reporting); **S3c** (convention-based auto-inference of the two declared factors)
-was split out of S3b and can run before or after S4. S0 pinned the toolchain and
+S0, S1, S2, S3a, S3b and S4 complete. **S5 is next** (the independent evaluation
+harness and every metric); its groundwork - the pipeline runner - is recorded below.
+**S3c** (convention-based auto-inference of the two declared factors) was split out of
+S3b and is still unbuilt. S0 pinned the toolchain and
 harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
 the five specification artifacts the runtime and the harness are built
 against:
@@ -342,6 +343,43 @@ session will get wrong without being told:**
 `docs/superpowers/specs/2026-10-01-s4-handoff.md` records these and six more residual
 risks in full, with what each costs if ignored. Read it before starting S5 or S3c.
 
+**S5 groundwork (2026-10-06, branch `s5-evaluation-harness`)** built the composition S5
+reads: `src/iacrisk/pipeline.py` runs layers 2-5 in order (Tier-1 collapse, context, score,
+rank, emit), and `tools/score/run.py` replays the committed captures through it. No scanner
+runs. The `corpus` target writes `artifacts/scored-corpus-v0.json`; the `cases` target
+writes `artifacts/scored-cases-v1.json`. Building it surfaced four facts a future session
+will get wrong without being told:
+
+- **Every S3b and S4 figure above is over 1,055 findings, before the Tier-1 collapse** -
+  although S4's spec §5.1 and `rank.py` both say ranking runs over the deduplicated set. No
+  path applied the collapse before scoring until `pipeline.py`. Over the **1,016 survivors**
+  the bands are Critical 0, High **531**, Medium **451**, Low 34 (eligible-only Low still 4),
+  the factor-gap population is 420 with 242 substantive, and 762 are low-confidence. The
+  artifact carries both: the ranked payload over the survivors, and the earlier population
+  under `before_dedupe`, where it reproduces the S4 handoff's figures exactly. **The
+  project author ruled on 2026-10-06 that the 1,016 deduplicated population is the
+  headline.** The 1,055 figures above stay correct for what they measured; name the
+  population whenever quoting either, and the S4 handoff and chapter 3 still carry the
+  1,055 figures without that label.
+- **The corpus-level declared context is a last-case-wins merge, and 4 identities conflict.**
+  `aws_s3_bucket.data`, `.data_science`, `.financials` and `.operations` each carry two or
+  three cases with different declared values - the four declared-factor pairs, on purpose -
+  and the `-low` case won all four. S4's corpus-level figures inherit that. The artifact
+  lists the conflicts. **Pairs and scenarios must be read from the `cases` target**, which
+  scores each case under its own declaration.
+- **Case-level aggregation was undefined until 2026-10-06, and is now the highest-scoring
+  finding.** How a case's several findings become one rank decides the pair pass rate and
+  the scenario agreement; the S2 handoff's item 12 says it was undefined and S4 did not
+  define it. The project author chose **a case ranks where its top-scoring finding ranks**
+  before any case-level score had been generated or looked at, for the reason the oracle's
+  resolution rule was pre-registered. The rule must be committed in `eval/` **before**
+  `artifacts/scored-cases-v1.json` exists, so git history carries the ordering. Sum and
+  mean are reported beside it as an aggregation-sensitivity check, never substituted.
+- **The suite passed only at `D:\Research` until commit `3e092f8`.** tfsec's captures carry
+  absolute paths from the host that made them, and 66 of 825 tests failed in a clone
+  anywhere else. `capture_scan_root` recovers the capture root from the document; replay a
+  tfsec capture through it, never against the live scan root.
+
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
 are exposure 3, privilege 4, sensitivity 3, criticality 4, encryption 2 — **sum
@@ -382,6 +420,10 @@ interpreter facts about this host, because they are easy to state backwards:
 Which is why `.python-version` and `uv run` are load-bearing rather than
 decorative: **always `uv run python`**, never bare `python`.
 
+Those four were measured on the original host, where the repository sat at `D:\Research`.
+A second host (cloned 2026-10-06 to `C:\Users\TYN\Research\Research`) has no system Python,
+no `py` launcher and only uv's 3.12.13, so the last two do not hold there; the rule does.
+
 ### Commands
 
 ```powershell
@@ -403,6 +445,10 @@ uv run mypy                  # type-check - BARE, no path arguments (see below)
 .\tools\capture_fixtures.ps1     # re-capture the golden scanner JSON fixtures
 
 uv run python -m tools.harvest.run   # regenerate artifacts/rule-inventory.json + artifacts/raw/
+
+uv run python -m tools.score.run corpus   # replay the captures -> artifacts/scored-corpus-v0.json
+uv run python -m tools.score.run cases    # per-case scores -> artifacts/scored-cases-v1.json
+                                          # (not before the case-aggregation rule is committed)
 ```
 
 **Give `mypy` no path argument.** A path overrides `[tool.mypy] files` entirely:
