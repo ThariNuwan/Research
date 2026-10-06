@@ -501,13 +501,22 @@ output existed, so it is a frozen parameter rather than a tuned one. Its rationa
 on majority-of-evidence rather than arithmetic — two defaults already exceed the
 narrowest band, so the arithmetic does not single out three on its own.
 
-**Draft dissertation chapters live in `docs/writeup/`**: `03-framework-design.md` and
-`04-research-methodology.md`, plus a `README.md` carrying the provisional chapter
-numbering and two standing rules — every number traces to a committed artifact, and
-no rubric `source` string resting on NSA-CISA may be quoted. Results and evaluation
-chapters need S4 and S5; there is no scoring output to write about yet. The chapters
-are written from the measured record, so a figure that changes in an artifact must be
-changed there too.
+**Draft dissertation chapters live in `docs/writeup/`**: `03-framework-design.md`,
+`04-research-methodology.md` and `06-evaluation.md`, plus a `README.md` carrying the
+provisional chapter numbering and two standing rules — every number traces to a
+committed artifact, and no rubric `source` string resting on NSA-CISA may be quoted.
+Chapters 1, 2, 5 and 7 are not drafted. The chapters are written from the measured
+record, so a figure that changes in an artifact must be changed there too.
+
+Chapter 6 was drafted on 2026-10-06 from the four `artifacts/*.json` records. Three
+things about it that a later edit could undo without noticing: it gives the results
+in **both** committed states wherever the body-index fix moved them (§6.2); it states
+that **the encryption factor fails its mechanism test** by Chapter 4's own
+falsification criterion (§6.4.2, §6.9); and it concludes that the evidence supports
+the ordering claim and **not** a claim about how many alerts are saved (§6.9). Its
+§6.7 reports auto-inference agreement as unmeasured and needs revisiting if S3c is
+built. Chapters 3 and 4 carry dated status notes pointing at it rather than being
+rewritten; chapter 3's §3.10 figures are still the pre-fix, pre-dedupe ones, labelled.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

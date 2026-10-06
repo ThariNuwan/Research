@@ -176,6 +176,23 @@ runs against a documented, version-controlled per-scanner normalization table ra
 than against raw labels, since a comparison against un-normalized severities would
 measure tool convention as much as prioritization.
 
+### 4.5.1 How the framework's output is compared with the oracle
+
+The ground truth fixes which ordering is expected. It does not fix how a case's several
+findings become the one rank that is compared with that ordering, and when the oracle
+was authored that rule was undefined.
+
+It was fixed afterwards, but before any case-level score had been generated: **a case
+ranks where its highest-scoring finding ranks**, a contrastive pair passes only when
+the high case scores strictly above the low one, and a scenario is compared as tiers.
+Section 6.1.1 states the full set of eight rules. They were committed together with
+the evaluation harness, and the repository's history shows that commit preceding the
+one that first produced per-case scores; a test asserts the ancestry rather than
+leaving it to be taken on trust.
+
+The sum and the mean of a case's finding scores are reported beside the registered
+rule, as a check on how far the results depend on it. They are not alternatives to it.
+
 ## 4.6 The freeze, and sensitivity analysis as a reported experiment
 
 The six factor ranges, the 1–28 score bounds and the four band boundaries were
@@ -198,6 +215,22 @@ six factors matter equally, and the analysis is where that declaration is put un
 pressure. Second, because the band boundaries are positioned against the score
 ceiling, any change to a factor range in the analysis requires the boundaries to be
 recomputed rather than held fixed.
+
+**What was registered, and where it falls short of the paragraph above.** The analysis
+was specified as a plan of 63 variants, approved, and committed before any variant was
+computed; Section 6.7 reports all of them. It sweeps each factor's unresolved default
+across its whole range, the three band boundaries, the weight of each factor, and the
+threshold at which a finding is called low-confidence. Two of the variants are named
+weightings — one emphasising exposure and privilege, the other sensitivity and
+criticality — motivated by the likelihood and impact axes of sources the rubric
+already cites. They were proposed and approved within the project. **They are not
+independently expert-derived**, and to that extent the first commitment above is
+unmet; weightings supplied by an independent expert would be a second registered round.
+
+The second commitment was met by reporting less rather than by recomputing. A weighted
+sum has a different ceiling from the unweighted one, and rescaling the band boundaries
+to fit it would define a new model. The weighted variants therefore report no bands at
+all and are judged on ordering alone.
 
 A procedural rule accompanies the freeze. The rubric's structure is frozen, but its
 citation strings are separately auditable and were in fact corrected after the
@@ -275,7 +308,7 @@ are repeated here because each would otherwise be mistaken for an evaluation res
 
 - **The deduplication figure is Tier 1 only** — 3.7% of findings — and Tier 2's 91 same-scanner candidates are a limit of the fingerprinting method, not evidence of scanner overlap. The same-scanner figure belongs in the limitations discussion and never in the alert-reduction result.
 - **Cross-scanner attribute normalization is unattempted**, and would materially raise the measured deduplication figure. The reported number is a floor.
-- **Three taxonomy classes map to no rubric factor**, so findings in those classes score on severity and declared context alone, with no factor capturing the risk the class names. The set is not established as complete; no systematic sweep of 28 classes against 6 factors has been run.
+- **Fourteen of the twenty-eight taxonomy classes map to no contextual factor** (Section 3.10), so findings in those classes score on severity and declared context alone. Ten of the fourteen name a risk the model has no term for, and they cover 242 of the 986 findings the evaluation ranks (24.5%). An earlier draft of this bullet reported three classes and said no systematic sweep had been run; the sweep has since been run.
 - **The citation audit is incomplete.** 69 of the rubric's 86 citation claims are verified and 6 were corrected, but the 11 NSA-CISA claims remain unverified because the primary source is unreachable from the build host. No rubric citation resting on NSA-CISA is quoted in this dissertation.
 
 One reporting-integrity caveat belongs here too, because it concerns a metric rather

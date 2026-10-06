@@ -9,6 +9,17 @@ measurement, which on design reasoning, and which on work not yet done.
 |---|---|---|
 | `03-framework-design.md` | Framework Design | `docs/PLAN.md`, the S1/S3a design specs, `src/iacrisk/data/*.json` |
 | `04-research-methodology.md` | Research Methodology | the S2 corpus design spec, `eval/ground_truth/corpus-v1.json`, `docs/PLAN.md` Q7/Q10 |
+| `06-evaluation.md` | Evaluation | `artifacts/scored-corpus-v0.json`, `artifacts/scored-cases-v1.json`, `artifacts/evaluation-v1.json`, `artifacts/sensitivity-v1.json`, `eval/sensitivity_plan.json` |
+
+Chapters 1, 2, 5 and 7 are not drafted. Chapter 6 reports the auto-inference agreement
+metric as unmeasured, because the mode it measures has not been built; that section
+needs revisiting if it is.
+
+**Chapter 6's figures are regenerable, and regenerating them is how to check one.** Run
+`uv run python -m tools.score.run corpus`, then `cases`, then `uv run python -m
+eval.run` and `uv run python -m eval.sensitivity`, and read the figure from the JSON.
+Where the chapter gives a figure "as first measured", that state is the record
+committed at `9b9de59`, before the Kubernetes manifest-reader defect was corrected.
 
 **Chapter numbering is provisional.** It assumes 1 Introduction, 2 Literature
 Review, 3 Design, 4 Methodology, 5 Implementation, 6 Evaluation, 7 Conclusion.
