@@ -1,0 +1,2632 @@
+{
+  "schema_version": 1,
+  "description": "The independent harness's metrics over corpus v0's ranked findings and corpus v1's cases, graded against the pre-registered oracle.",
+  "provenance": {
+    "generated_utc": "2026-10-06T06:39:17Z",
+    "python": "3.12.13",
+    "repo_commit": {
+      "commit": "0b53d9ef7ca1e5717581da3378196cc7d3cb4972",
+      "state": "ok"
+    },
+    "worktree_clean": true,
+    "inputs": {
+      "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
+      "artifacts/scored-corpus-v0.json": "a4cccdd9456114756ac2c20961fb536ccb52996641128eb8447ac6766a4d5cbc",
+      "artifacts/scored-cases-v1.json": "021826948bfc4ad4955d7978362712f287e89bf70e6431661de7f32881d9785b"
+    }
+  },
+  "registered_rules": {
+    "primary_case_rule": "max",
+    "sensitivity_case_rules": [
+      "sum",
+      "mean"
+    ],
+    "pair_passes_when": "case_high scores strictly above case_low",
+    "set_aside_findings": [
+      "unmapped",
+      "baseline_only_informational"
+    ],
+    "headline_excludes": "scenarios the reviewer marked disagree, and nothing else"
+  },
+  "retention": {
+    "runs": 5,
+    "findings_in": 1055,
+    "findings_out": 1055,
+    "identity_unresolved": 19,
+    "unmapped": 0,
+    "unknown_severity": 489,
+    "context_ineligible": 30,
+    "dropped": 0,
+    "retention_rate": 1.0,
+    "identity_unresolved_rate": 0.01800947867298578,
+    "unmapped_rate": 0.0,
+    "unknown_severity_rate": 0.46350710900473935,
+    "context_ineligible_rate": 0.02843601895734597,
+    "per_run": {
+      "checkov/kubernetes": {
+        "findings_in": 268,
+        "findings_out": 268,
+        "dropped": 0,
+        "unknown_severity": 268,
+        "unmapped": 0
+      },
+      "checkov/terraform": {
+        "findings_in": 221,
+        "findings_out": 221,
+        "dropped": 0,
+        "unknown_severity": 221,
+        "unmapped": 0
+      },
+      "tfsec/terraform": {
+        "findings_in": 119,
+        "findings_out": 119,
+        "dropped": 0,
+        "unknown_severity": 0,
+        "unmapped": 0
+      },
+      "trivy/kubernetes": {
+        "findings_in": 332,
+        "findings_out": 332,
+        "dropped": 0,
+        "unknown_severity": 0,
+        "unmapped": 0
+      },
+      "trivy/terraform": {
+        "findings_in": 115,
+        "findings_out": 115,
+        "dropped": 0,
+        "unknown_severity": 0,
+        "unmapped": 0
+      }
+    }
+  },
+  "alert_reduction": {
+    "deduplication": {
+      "findings_in": 1055,
+      "tier1_collapsed": 39,
+      "ranked": 1016,
+      "reduction_rate": 0.03696682464454976,
+      "tier2_candidates_not_merged": {
+        "cross_scanner": 116,
+        "same_scanner": 91
+      }
+    },
+    "priority_band": {
+      "all_ranked": {
+        "findings": 1016,
+        "baseline": {
+          "Critical": 16,
+          "High": 646,
+          "Medium": 147,
+          "Low": 207
+        },
+        "framework": {
+          "Critical": 0,
+          "High": 531,
+          "Medium": 451,
+          "Low": 34
+        },
+        "baseline_critical_or_high": 662,
+        "framework_critical_or_high": 531,
+        "reduction": 131,
+        "reduction_rate": 0.19788519637462235,
+        "baseline_from_unknown_severity": 450,
+        "baseline_critical_or_high_from_unknown_severity": 450
+      },
+      "quality_claim_population": {
+        "findings": 986,
+        "baseline": {
+          "Critical": 16,
+          "High": 633,
+          "Medium": 138,
+          "Low": 199
+        },
+        "framework": {
+          "Critical": 0,
+          "High": 531,
+          "Medium": 451,
+          "Low": 4
+        },
+        "baseline_critical_or_high": 649,
+        "framework_critical_or_high": 531,
+        "reduction": 118,
+        "reduction_rate": 0.18181818181818182,
+        "baseline_from_unknown_severity": 441,
+        "baseline_critical_or_high_from_unknown_severity": 441
+      }
+    }
+  },
+  "baseline_comparison": {
+    "findings": 986,
+    "promoted": {
+      "count": 245,
+      "low_confidence": 215,
+      "baseline_from_unknown_severity": 0
+    },
+    "demoted": {
+      "count": 271,
+      "low_confidence": 131,
+      "baseline_from_unknown_severity": 164
+    },
+    "unchanged": {
+      "count": 470,
+      "low_confidence": 416,
+      "baseline_from_unknown_severity": 277
+    },
+    "cells": {
+      "Critical->High": {
+        "count": 10,
+        "low_confidence": 7,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 3.2,
+          "privilege": 0.1,
+          "sensitivity": 3.0,
+          "criticality": 3.8,
+          "encryption": 1.8
+        },
+        "resolved_share": {
+          "exposure": 0.3,
+          "privilege": 1.0,
+          "sensitivity": 0.2,
+          "criticality": 0.2,
+          "encryption": 0.2
+        }
+      },
+      "Critical->Medium": {
+        "count": 6,
+        "low_confidence": 0,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 2.6666666666666665,
+          "privilege": 0.0,
+          "sensitivity": 3.0,
+          "criticality": 3.0,
+          "encryption": 0.0
+        },
+        "resolved_share": {
+          "exposure": 1.0,
+          "privilege": 1.0,
+          "sensitivity": 1.0,
+          "criticality": 1.0,
+          "encryption": 1.0
+        }
+      },
+      "High->High": {
+        "count": 378,
+        "low_confidence": 346,
+        "baseline_from_unknown_severity": 277,
+        "mean_contribution": {
+          "exposure": 3.0476190476190474,
+          "privilege": 1.8412698412698412,
+          "sensitivity": 2.9523809523809526,
+          "criticality": 3.878306878306878,
+          "encryption": 1.9153439153439153
+        },
+        "resolved_share": {
+          "exposure": 0.08465608465608465,
+          "privilege": 0.5767195767195767,
+          "sensitivity": 0.09523809523809523,
+          "criticality": 0.09523809523809523,
+          "encryption": 0.10846560846560846
+        }
+      },
+      "High->Medium": {
+        "count": 255,
+        "low_confidence": 124,
+        "baseline_from_unknown_severity": 164,
+        "mean_contribution": {
+          "exposure": 2.9607843137254903,
+          "privilege": 0.00392156862745098,
+          "sensitivity": 2.7254901960784315,
+          "criticality": 3.2784313725490195,
+          "encryption": 0.6745098039215687
+        },
+        "resolved_share": {
+          "exposure": 0.12156862745098039,
+          "privilege": 1.0,
+          "sensitivity": 0.4235294117647059,
+          "criticality": 0.4392156862745098,
+          "encryption": 0.6627450980392157
+        }
+      },
+      "Low->High": {
+        "count": 93,
+        "low_confidence": 93,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 3.0,
+          "privilege": 4.0,
+          "sensitivity": 3.0,
+          "criticality": 4.0,
+          "encryption": 1.956989247311828
+        },
+        "resolved_share": {
+          "exposure": 0.0,
+          "privilege": 0.0,
+          "sensitivity": 0.0,
+          "criticality": 0.0,
+          "encryption": 0.021505376344086023
+        }
+      },
+      "Low->Low": {
+        "count": 4,
+        "low_confidence": 0,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 0.0,
+          "privilege": 0.0,
+          "sensitivity": 3.0,
+          "criticality": 3.0,
+          "encryption": 0.0
+        },
+        "resolved_share": {
+          "exposure": 1.0,
+          "privilege": 1.0,
+          "sensitivity": 1.0,
+          "criticality": 1.0,
+          "encryption": 1.0
+        }
+      },
+      "Low->Medium": {
+        "count": 102,
+        "low_confidence": 72,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 3.0588235294117645,
+          "privilege": 0.0392156862745098,
+          "sensitivity": 2.872549019607843,
+          "criticality": 3.5686274509803924,
+          "encryption": 0.49019607843137253
+        },
+        "resolved_share": {
+          "exposure": 0.0784313725490196,
+          "privilege": 0.9901960784313726,
+          "sensitivity": 0.28431372549019607,
+          "criticality": 0.30392156862745096,
+          "encryption": 0.7745098039215687
+        }
+      },
+      "Medium->High": {
+        "count": 50,
+        "low_confidence": 50,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 3.0,
+          "privilege": 4.02,
+          "sensitivity": 2.98,
+          "criticality": 3.96,
+          "encryption": 1.96
+        },
+        "resolved_share": {
+          "exposure": 0.0,
+          "privilege": 0.02,
+          "sensitivity": 0.02,
+          "criticality": 0.02,
+          "encryption": 0.02
+        }
+      },
+      "Medium->Medium": {
+        "count": 88,
+        "low_confidence": 70,
+        "baseline_from_unknown_severity": 0,
+        "mean_contribution": {
+          "exposure": 3.0,
+          "privilege": 0.0,
+          "sensitivity": 2.909090909090909,
+          "criticality": 3.7954545454545454,
+          "encryption": 1.0227272727272727
+        },
+        "resolved_share": {
+          "exposure": 0.06818181818181818,
+          "privilege": 1.0,
+          "sensitivity": 0.13636363636363635,
+          "criticality": 0.13636363636363635,
+          "encryption": 0.5795454545454546
+        }
+      }
+    }
+  },
+  "cases": {
+    "sg-default-low-exposure": {
+      "case_id": "sg-default-low-exposure",
+      "domain": "networking",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 3,
+      "counted": 3,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 10,
+        "sum": 26,
+        "mean": 8.666666666666666
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 0,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "sg-web-node-high-exposure": {
+      "case_id": "sg-web-node-high-exposure",
+      "domain": "networking",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 15,
+      "counted": 15,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 15,
+        "sum": 202,
+        "mean": 13.466666666666667
+      },
+      "baseline": 4,
+      "band": "Medium",
+      "contributions": {
+        "severity": 5,
+        "exposure": 4,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "sgr-ingress-vpc-interpolated": {
+      "case_id": "sgr-ingress-vpc-interpolated",
+      "domain": "networking",
+      "hand_crafted": false,
+      "ground_truth_excluded": true,
+      "findings": 3,
+      "counted": 3,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 35,
+        "mean": 11.666666666666666
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "sgr-egress-unrestricted": {
+      "case_id": "sgr-egress-unrestricted",
+      "domain": "networking",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 6,
+      "counted": 6,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 11,
+        "sum": 58,
+        "mean": 9.666666666666666
+      },
+      "baseline": 4,
+      "band": "Medium",
+      "contributions": {
+        "severity": 5,
+        "exposure": 0,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-logs-encryption-ok": {
+      "case_id": "s3-logs-encryption-ok",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 15,
+      "counted": 15,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 15,
+        "sum": 221,
+        "mean": 14.733333333333333
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-data-encryption-gap": {
+      "case_id": "s3-data-encryption-gap",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 24,
+      "counted": 24,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 15,
+        "sum": 351,
+        "mean": 14.625
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-financials-encryption-gap": {
+      "case_id": "s3-financials-encryption-gap",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 24,
+      "counted": 24,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 15,
+        "sum": 351,
+        "mean": 14.625
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-financials-sensitivity-high": {
+      "case_id": "s3-financials-sensitivity-high",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 24,
+      "counted": 24,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 17,
+        "sum": 399,
+        "mean": 16.625
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 5,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-financials-sensitivity-low": {
+      "case_id": "s3-financials-sensitivity-low",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 24,
+      "counted": 24,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 303,
+        "mean": 12.625
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 1,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-operations-sensitivity-high": {
+      "case_id": "s3-operations-sensitivity-high",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 21,
+      "counted": 21,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 16,
+        "sum": 329,
+        "mean": 15.666666666666666
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 4,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-operations-sensitivity-low": {
+      "case_id": "s3-operations-sensitivity-low",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 21,
+      "counted": 21,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 266,
+        "mean": 12.666666666666666
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 1,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-data-criticality-high": {
+      "case_id": "s3-data-criticality-high",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 24,
+      "counted": 24,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 17,
+        "sum": 399,
+        "mean": 16.625
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 5,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-data-criticality-low": {
+      "case_id": "s3-data-criticality-low",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 24,
+      "counted": 24,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 303,
+        "mean": 12.625
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 1,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-data-science-criticality-high": {
+      "case_id": "s3-data-science-criticality-high",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 18,
+      "counted": 18,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 16,
+        "sum": 284,
+        "mean": 15.777777777777779
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 4,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-data-science-criticality-low": {
+      "case_id": "s3-data-science-criticality-low",
+      "domain": "storage",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 18,
+      "counted": 18,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 230,
+        "mean": 12.777777777777779
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 1,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "iam-s3-bucket-scope": {
+      "case_id": "iam-s3-bucket-scope",
+      "domain": "iam",
+      "hand_crafted": true,
+      "ground_truth_excluded": false,
+      "findings": 2,
+      "counted": 2,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 15,
+        "sum": 30,
+        "mean": 15.0
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 2,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "iam-s3-account-scope": {
+      "case_id": "iam-s3-account-scope",
+      "domain": "iam",
+      "hand_crafted": true,
+      "ground_truth_excluded": false,
+      "findings": 5,
+      "counted": 5,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 16,
+        "sum": 80,
+        "mean": 16.0
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 3,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "iam-unrestricted-scope": {
+      "case_id": "iam-unrestricted-scope",
+      "domain": "iam",
+      "hand_crafted": true,
+      "ground_truth_excluded": false,
+      "findings": 7,
+      "counted": 4,
+      "set_aside": 3,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 18,
+        "sum": 72,
+        "mean": 18.0
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 5,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "ec2-db-app-compute": {
+      "case_id": "ec2-db-app-compute",
+      "domain": "compute",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 8,
+      "counted": 8,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 17,
+        "sum": 136,
+        "mean": 17.0
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 4,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 4,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "ec2-web-host-compute": {
+      "case_id": "ec2-web-host-compute",
+      "domain": "compute",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 12,
+      "counted": 12,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 17,
+        "sum": 194,
+        "mean": 16.166666666666668
+      },
+      "baseline": 4,
+      "band": "High",
+      "contributions": {
+        "severity": 5,
+        "exposure": 4,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "ebs-web-host-storage-compute": {
+      "case_id": "ebs-web-host-storage-compute",
+      "domain": "compute",
+      "hand_crafted": false,
+      "ground_truth_excluded": true,
+      "findings": 6,
+      "counted": 6,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 14,
+        "sum": 80,
+        "mean": 13.333333333333334
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 2,
+        "encryption": 2
+      },
+      "low_confidence": true,
+      "context_uniform": true
+    },
+    "k8s-goat-home-workload": {
+      "case_id": "k8s-goat-home-workload",
+      "domain": "containers",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 16,
+      "counted": 16,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 206,
+        "mean": 12.875
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "k8s-kube-bench-node-workload": {
+      "case_id": "k8s-kube-bench-node-workload",
+      "domain": "containers",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 20,
+      "counted": 20,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 17,
+        "sum": 337,
+        "mean": 16.85
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 4,
+        "sensitivity": 2,
+        "criticality": 2,
+        "encryption": 2
+      },
+      "low_confidence": true,
+      "context_uniform": true
+    },
+    "k8s-internal-proxy-api-container": {
+      "case_id": "k8s-internal-proxy-api-container",
+      "domain": "containers",
+      "hand_crafted": false,
+      "ground_truth_excluded": false,
+      "findings": 13,
+      "counted": 13,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 13,
+        "sum": 152,
+        "mean": 11.692307692307692
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 3,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 0
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-private-baseline-not-public": {
+      "case_id": "s3-private-baseline-not-public",
+      "domain": "storage",
+      "hand_crafted": true,
+      "ground_truth_excluded": false,
+      "findings": 13,
+      "counted": 13,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 12,
+        "sum": 151,
+        "mean": 11.615384615384615
+      },
+      "baseline": 3,
+      "band": "Medium",
+      "contributions": {
+        "severity": 4,
+        "exposure": 0,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    },
+    "s3-public-exposed": {
+      "case_id": "s3-public-exposed",
+      "domain": "storage",
+      "hand_crafted": true,
+      "ground_truth_excluded": false,
+      "findings": 14,
+      "counted": 14,
+      "set_aside": 0,
+      "rankable": true,
+      "expectation": {
+        "classes_match": true,
+        "missing_from_scored": [],
+        "not_in_ground_truth": [],
+        "states_match": true,
+        "state_mismatches": []
+      },
+      "scores": {
+        "max": 17,
+        "sum": 233,
+        "mean": 16.642857142857142
+      },
+      "baseline": 3,
+      "band": "High",
+      "contributions": {
+        "severity": 4,
+        "exposure": 5,
+        "privilege": 0,
+        "sensitivity": 3,
+        "criticality": 3,
+        "encryption": 2
+      },
+      "low_confidence": false,
+      "context_uniform": true
+    }
+  },
+  "contrastive_pairs": {
+    "summary": {
+      "primary_rule": "max",
+      "authored": {
+        "pairs": 10,
+        "evaluable": 10,
+        "framework_passes": {
+          "max": 8,
+          "sum": 9,
+          "mean": 8
+        },
+        "baseline_passes": 1,
+        "mechanism": 8,
+        "isolated": 8,
+        "severity_also_moved": 1
+      },
+      "clean": {
+        "pairs": 10,
+        "evaluable": 10,
+        "framework_passes": {
+          "max": 8,
+          "sum": 9,
+          "mean": 8
+        },
+        "baseline_passes": 1,
+        "mechanism": 8,
+        "isolated": 8,
+        "severity_also_moved": 1
+      },
+      "by_factor": {
+        "criticality": {
+          "pairs": 2,
+          "evaluable": 2,
+          "framework_passes": {
+            "max": 2,
+            "sum": 2,
+            "mean": 2
+          },
+          "baseline_passes": 0,
+          "mechanism": 2,
+          "isolated": 2,
+          "severity_also_moved": 0
+        },
+        "encryption": {
+          "pairs": 2,
+          "evaluable": 2,
+          "framework_passes": {
+            "max": 0,
+            "sum": 2,
+            "mean": 0
+          },
+          "baseline_passes": 0,
+          "mechanism": 0,
+          "isolated": 0,
+          "severity_also_moved": 0
+        },
+        "exposure": {
+          "pairs": 2,
+          "evaluable": 2,
+          "framework_passes": {
+            "max": 2,
+            "sum": 2,
+            "mean": 2
+          },
+          "baseline_passes": 1,
+          "mechanism": 2,
+          "isolated": 2,
+          "severity_also_moved": 1
+        },
+        "privilege": {
+          "pairs": 2,
+          "evaluable": 2,
+          "framework_passes": {
+            "max": 2,
+            "sum": 1,
+            "mean": 2
+          },
+          "baseline_passes": 0,
+          "mechanism": 2,
+          "isolated": 2,
+          "severity_also_moved": 0
+        },
+        "sensitivity": {
+          "pairs": 2,
+          "evaluable": 2,
+          "framework_passes": {
+            "max": 2,
+            "sum": 2,
+            "mean": 2
+          },
+          "baseline_passes": 0,
+          "mechanism": 2,
+          "isolated": 2,
+          "severity_also_moved": 0
+        }
+      },
+      "by_source": {
+        "mined": {
+          "pairs": 7,
+          "evaluable": 7,
+          "framework_passes": {
+            "max": 5,
+            "sum": 7,
+            "mean": 5
+          },
+          "baseline_passes": 1,
+          "mechanism": 5,
+          "isolated": 5,
+          "severity_also_moved": 1
+        },
+        "hand_crafted": {
+          "pairs": 3,
+          "evaluable": 3,
+          "framework_passes": {
+            "max": 3,
+            "sum": 2,
+            "mean": 3
+          },
+          "baseline_passes": 0,
+          "mechanism": 3,
+          "isolated": 3,
+          "severity_also_moved": 0
+        }
+      }
+    },
+    "pairs": [
+      {
+        "pair_id": "exposure-security-group",
+        "factor_under_test": "exposure",
+        "case_high": "sg-web-node-high-exposure",
+        "case_low": "sg-default-low-exposure",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 15,
+            "low": 10,
+            "delta": 5,
+            "passes": true
+          },
+          "sum": {
+            "high": 202,
+            "low": 26,
+            "delta": 176,
+            "passes": true
+          },
+          "mean": {
+            "high": 13.466666666666667,
+            "low": 8.666666666666666,
+            "delta": 4.800000000000001,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 4,
+          "low": 3,
+          "delta": 1,
+          "passes": true
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 4,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 1,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "encryption-s3-data",
+        "factor_under_test": "encryption",
+        "case_high": "s3-data-encryption-gap",
+        "case_low": "s3-logs-encryption-ok",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 15,
+            "low": 15,
+            "delta": 0,
+            "passes": false
+          },
+          "sum": {
+            "high": 351,
+            "low": 221,
+            "delta": 130,
+            "passes": true
+          },
+          "mean": {
+            "high": 14.625,
+            "low": 14.733333333333333,
+            "delta": -0.1083333333333325,
+            "passes": false
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": false,
+        "isolated": false
+      },
+      {
+        "pair_id": "encryption-s3-financials",
+        "factor_under_test": "encryption",
+        "case_high": "s3-financials-encryption-gap",
+        "case_low": "s3-logs-encryption-ok",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 15,
+            "low": 15,
+            "delta": 0,
+            "passes": false
+          },
+          "sum": {
+            "high": 351,
+            "low": 221,
+            "delta": 130,
+            "passes": true
+          },
+          "mean": {
+            "high": 14.625,
+            "low": 14.733333333333333,
+            "delta": -0.1083333333333325,
+            "passes": false
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": false,
+        "isolated": false
+      },
+      {
+        "pair_id": "sensitivity-s3-financials",
+        "factor_under_test": "sensitivity",
+        "case_high": "s3-financials-sensitivity-high",
+        "case_low": "s3-financials-sensitivity-low",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 17,
+            "low": 13,
+            "delta": 4,
+            "passes": true
+          },
+          "sum": {
+            "high": 399,
+            "low": 303,
+            "delta": 96,
+            "passes": true
+          },
+          "mean": {
+            "high": 16.625,
+            "low": 12.625,
+            "delta": 4.0,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 4,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "sensitivity-s3-operations",
+        "factor_under_test": "sensitivity",
+        "case_high": "s3-operations-sensitivity-high",
+        "case_low": "s3-operations-sensitivity-low",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 16,
+            "low": 13,
+            "delta": 3,
+            "passes": true
+          },
+          "sum": {
+            "high": 329,
+            "low": 266,
+            "delta": 63,
+            "passes": true
+          },
+          "mean": {
+            "high": 15.666666666666666,
+            "low": 12.666666666666666,
+            "delta": 3.0,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 3,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "criticality-s3-data",
+        "factor_under_test": "criticality",
+        "case_high": "s3-data-criticality-high",
+        "case_low": "s3-data-criticality-low",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 17,
+            "low": 13,
+            "delta": 4,
+            "passes": true
+          },
+          "sum": {
+            "high": 399,
+            "low": 303,
+            "delta": 96,
+            "passes": true
+          },
+          "mean": {
+            "high": 16.625,
+            "low": 12.625,
+            "delta": 4.0,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 4,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "criticality-s3-data-science",
+        "factor_under_test": "criticality",
+        "case_high": "s3-data-science-criticality-high",
+        "case_low": "s3-data-science-criticality-low",
+        "evaluable": true,
+        "hand_crafted": false,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 16,
+            "low": 13,
+            "delta": 3,
+            "passes": true
+          },
+          "sum": {
+            "high": 284,
+            "low": 230,
+            "delta": 54,
+            "passes": true
+          },
+          "mean": {
+            "high": 15.777777777777779,
+            "low": 12.777777777777779,
+            "delta": 3.0,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 3,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "privilege-iam-bucket-to-account",
+        "factor_under_test": "privilege",
+        "case_high": "iam-s3-account-scope",
+        "case_low": "iam-s3-bucket-scope",
+        "evaluable": true,
+        "hand_crafted": true,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 16,
+            "low": 15,
+            "delta": 1,
+            "passes": true
+          },
+          "sum": {
+            "high": 80,
+            "low": 30,
+            "delta": 50,
+            "passes": true
+          },
+          "mean": {
+            "high": 16.0,
+            "low": 15.0,
+            "delta": 1.0,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 1,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "privilege-iam-account-to-unrestricted",
+        "factor_under_test": "privilege",
+        "case_high": "iam-unrestricted-scope",
+        "case_low": "iam-s3-account-scope",
+        "evaluable": true,
+        "hand_crafted": true,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 18,
+            "low": 16,
+            "delta": 2,
+            "passes": true
+          },
+          "sum": {
+            "high": 72,
+            "low": 80,
+            "delta": -8,
+            "passes": false
+          },
+          "mean": {
+            "high": 18.0,
+            "low": 16.0,
+            "delta": 2.0,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 0,
+          "privilege": 2,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      },
+      {
+        "pair_id": "exposure-s3-public-access",
+        "factor_under_test": "exposure",
+        "case_high": "s3-public-exposed",
+        "case_low": "s3-private-baseline-not-public",
+        "evaluable": true,
+        "hand_crafted": true,
+        "ground_truth_excluded": false,
+        "framework": {
+          "max": {
+            "high": 17,
+            "low": 12,
+            "delta": 5,
+            "passes": true
+          },
+          "sum": {
+            "high": 233,
+            "low": 151,
+            "delta": 82,
+            "passes": true
+          },
+          "mean": {
+            "high": 16.642857142857142,
+            "low": 11.615384615384615,
+            "delta": 5.027472527472527,
+            "passes": true
+          }
+        },
+        "baseline": {
+          "high": 3,
+          "low": 3,
+          "delta": 0,
+          "passes": false
+        },
+        "low_confidence": false,
+        "context_delta": {
+          "exposure": 5,
+          "privilege": 0,
+          "sensitivity": 0,
+          "criticality": 0,
+          "encryption": 0
+        },
+        "severity_delta": 0,
+        "mechanism": true,
+        "isolated": true
+      }
+    ]
+  },
+  "scenarios": {
+    "summary": {
+      "primary_rule": "max",
+      "authored": 5,
+      "excluded_as_disagree": 0,
+      "headline": {
+        "scenarios": 5,
+        "evaluable": 5,
+        "framework": {
+          "max": {
+            "exact_tier_matches": 2,
+            "ordered_pairs_expected": 21,
+            "ordered_pairs_concordant": 18,
+            "ordered_pairs_tied": 2,
+            "ordered_pairs_discordant": 1,
+            "tied_pairs_expected": 4,
+            "tied_pairs_as_expected": 2
+          },
+          "sum": {
+            "exact_tier_matches": 1,
+            "ordered_pairs_expected": 21,
+            "ordered_pairs_concordant": 18,
+            "ordered_pairs_tied": 0,
+            "ordered_pairs_discordant": 3,
+            "tied_pairs_expected": 4,
+            "tied_pairs_as_expected": 1
+          },
+          "mean": {
+            "exact_tier_matches": 1,
+            "ordered_pairs_expected": 21,
+            "ordered_pairs_concordant": 19,
+            "ordered_pairs_tied": 0,
+            "ordered_pairs_discordant": 2,
+            "tied_pairs_expected": 4,
+            "tied_pairs_as_expected": 1
+          }
+        },
+        "baseline": {
+          "exact_tier_matches": 0,
+          "ordered_pairs_expected": 21,
+          "ordered_pairs_concordant": 4,
+          "ordered_pairs_tied": 16,
+          "ordered_pairs_discordant": 1,
+          "tied_pairs_expected": 4,
+          "tied_pairs_as_expected": 3
+        }
+      },
+      "clean": {
+        "scenarios": 2,
+        "evaluable": 2,
+        "framework": {
+          "max": {
+            "exact_tier_matches": 2,
+            "ordered_pairs_expected": 11,
+            "ordered_pairs_concordant": 11,
+            "ordered_pairs_tied": 0,
+            "ordered_pairs_discordant": 0,
+            "tied_pairs_expected": 2,
+            "tied_pairs_as_expected": 2
+          },
+          "sum": {
+            "exact_tier_matches": 0,
+            "ordered_pairs_expected": 11,
+            "ordered_pairs_concordant": 10,
+            "ordered_pairs_tied": 0,
+            "ordered_pairs_discordant": 1,
+            "tied_pairs_expected": 2,
+            "tied_pairs_as_expected": 1
+          },
+          "mean": {
+            "exact_tier_matches": 1,
+            "ordered_pairs_expected": 11,
+            "ordered_pairs_concordant": 11,
+            "ordered_pairs_tied": 0,
+            "ordered_pairs_discordant": 0,
+            "tied_pairs_expected": 2,
+            "tied_pairs_as_expected": 1
+          }
+        },
+        "baseline": {
+          "exact_tier_matches": 0,
+          "ordered_pairs_expected": 11,
+          "ordered_pairs_concordant": 0,
+          "ordered_pairs_tied": 11,
+          "ordered_pairs_discordant": 0,
+          "tied_pairs_expected": 2,
+          "tied_pairs_as_expected": 2
+        }
+      }
+    },
+    "scenarios": [
+      {
+        "scenario_id": "networking-exposure-precedence-over-declared-context",
+        "domain": "networking",
+        "reviewer_verdict": "agree",
+        "contributes_to_headline": true,
+        "expected_ordering": [
+          [
+            "sg-web-node-high-exposure"
+          ],
+          [
+            "sgr-ingress-vpc-interpolated"
+          ],
+          [
+            "sgr-egress-unrestricted",
+            "sg-default-low-exposure"
+          ]
+        ],
+        "evaluable": true,
+        "ground_truth_excluded": true,
+        "low_confidence": false,
+        "framework": {
+          "max": {
+            "scores": {
+              "sg-default-low-exposure": 10,
+              "sg-web-node-high-exposure": 15,
+              "sgr-egress-unrestricted": 11,
+              "sgr-ingress-vpc-interpolated": 13
+            },
+            "ordering": [
+              [
+                "sg-web-node-high-exposure"
+              ],
+              [
+                "sgr-ingress-vpc-interpolated"
+              ],
+              [
+                "sgr-egress-unrestricted"
+              ],
+              [
+                "sg-default-low-exposure"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.9128709291752769,
+            "ordered_pairs": {
+              "expected": 5,
+              "concordant": 5,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 1,
+              "tied_as_expected": 0
+            }
+          },
+          "sum": {
+            "scores": {
+              "sg-default-low-exposure": 26,
+              "sg-web-node-high-exposure": 202,
+              "sgr-egress-unrestricted": 58,
+              "sgr-ingress-vpc-interpolated": 35
+            },
+            "ordering": [
+              [
+                "sg-web-node-high-exposure"
+              ],
+              [
+                "sgr-egress-unrestricted"
+              ],
+              [
+                "sgr-ingress-vpc-interpolated"
+              ],
+              [
+                "sg-default-low-exposure"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.5477225575051661,
+            "ordered_pairs": {
+              "expected": 5,
+              "concordant": 4,
+              "tied": 0,
+              "discordant": 1
+            },
+            "tied_pairs": {
+              "expected": 1,
+              "tied_as_expected": 0
+            }
+          },
+          "mean": {
+            "scores": {
+              "sg-default-low-exposure": 8.666666666666666,
+              "sg-web-node-high-exposure": 13.466666666666667,
+              "sgr-egress-unrestricted": 9.666666666666666,
+              "sgr-ingress-vpc-interpolated": 11.666666666666666
+            },
+            "ordering": [
+              [
+                "sg-web-node-high-exposure"
+              ],
+              [
+                "sgr-ingress-vpc-interpolated"
+              ],
+              [
+                "sgr-egress-unrestricted"
+              ],
+              [
+                "sg-default-low-exposure"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.9128709291752769,
+            "ordered_pairs": {
+              "expected": 5,
+              "concordant": 5,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 1,
+              "tied_as_expected": 0
+            }
+          }
+        },
+        "baseline": {
+          "scores": {
+            "sg-default-low-exposure": 3,
+            "sg-web-node-high-exposure": 4,
+            "sgr-egress-unrestricted": 4,
+            "sgr-ingress-vpc-interpolated": 3
+          },
+          "ordering": [
+            [
+              "sg-web-node-high-exposure",
+              "sgr-egress-unrestricted"
+            ],
+            [
+              "sg-default-low-exposure",
+              "sgr-ingress-vpc-interpolated"
+            ]
+          ],
+          "exact_tier_match": false,
+          "kendall_tau_b": 0.22360679774997896,
+          "ordered_pairs": {
+            "expected": 5,
+            "concordant": 2,
+            "tied": 2,
+            "discordant": 1
+          },
+          "tied_pairs": {
+            "expected": 1,
+            "tied_as_expected": 0
+          }
+        }
+      },
+      {
+        "scenario_id": "storage-declared-context-symmetry-and-encryption-floor",
+        "domain": "storage",
+        "reviewer_verdict": "agree",
+        "contributes_to_headline": true,
+        "expected_ordering": [
+          [
+            "s3-financials-sensitivity-high",
+            "s3-data-criticality-high"
+          ],
+          [
+            "s3-operations-sensitivity-high",
+            "s3-data-science-criticality-high"
+          ],
+          [
+            "s3-logs-encryption-ok"
+          ]
+        ],
+        "evaluable": true,
+        "ground_truth_excluded": false,
+        "low_confidence": false,
+        "framework": {
+          "max": {
+            "scores": {
+              "s3-data-criticality-high": 17,
+              "s3-data-science-criticality-high": 16,
+              "s3-financials-sensitivity-high": 17,
+              "s3-logs-encryption-ok": 15,
+              "s3-operations-sensitivity-high": 16
+            },
+            "ordering": [
+              [
+                "s3-data-criticality-high",
+                "s3-financials-sensitivity-high"
+              ],
+              [
+                "s3-data-science-criticality-high",
+                "s3-operations-sensitivity-high"
+              ],
+              [
+                "s3-logs-encryption-ok"
+              ]
+            ],
+            "exact_tier_match": true,
+            "kendall_tau_b": 1.0,
+            "ordered_pairs": {
+              "expected": 8,
+              "concordant": 8,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 2,
+              "tied_as_expected": 2
+            }
+          },
+          "sum": {
+            "scores": {
+              "s3-data-criticality-high": 399,
+              "s3-data-science-criticality-high": 284,
+              "s3-financials-sensitivity-high": 399,
+              "s3-logs-encryption-ok": 221,
+              "s3-operations-sensitivity-high": 329
+            },
+            "ordering": [
+              [
+                "s3-data-criticality-high",
+                "s3-financials-sensitivity-high"
+              ],
+              [
+                "s3-operations-sensitivity-high"
+              ],
+              [
+                "s3-data-science-criticality-high"
+              ],
+              [
+                "s3-logs-encryption-ok"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.9428090415820635,
+            "ordered_pairs": {
+              "expected": 8,
+              "concordant": 8,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 2,
+              "tied_as_expected": 1
+            }
+          },
+          "mean": {
+            "scores": {
+              "s3-data-criticality-high": 16.625,
+              "s3-data-science-criticality-high": 15.777777777777779,
+              "s3-financials-sensitivity-high": 16.625,
+              "s3-logs-encryption-ok": 14.733333333333333,
+              "s3-operations-sensitivity-high": 15.666666666666666
+            },
+            "ordering": [
+              [
+                "s3-data-criticality-high",
+                "s3-financials-sensitivity-high"
+              ],
+              [
+                "s3-data-science-criticality-high"
+              ],
+              [
+                "s3-operations-sensitivity-high"
+              ],
+              [
+                "s3-logs-encryption-ok"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.9428090415820635,
+            "ordered_pairs": {
+              "expected": 8,
+              "concordant": 8,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 2,
+              "tied_as_expected": 1
+            }
+          }
+        },
+        "baseline": {
+          "scores": {
+            "s3-data-criticality-high": 3,
+            "s3-data-science-criticality-high": 3,
+            "s3-financials-sensitivity-high": 3,
+            "s3-logs-encryption-ok": 3,
+            "s3-operations-sensitivity-high": 3
+          },
+          "ordering": [
+            [
+              "s3-data-criticality-high",
+              "s3-data-science-criticality-high",
+              "s3-financials-sensitivity-high",
+              "s3-logs-encryption-ok",
+              "s3-operations-sensitivity-high"
+            ]
+          ],
+          "exact_tier_match": false,
+          "kendall_tau_b": null,
+          "ordered_pairs": {
+            "expected": 8,
+            "concordant": 0,
+            "tied": 8,
+            "discordant": 0
+          },
+          "tied_pairs": {
+            "expected": 2,
+            "tied_as_expected": 2
+          }
+        }
+      },
+      {
+        "scenario_id": "iam-privilege-breadth-nesting",
+        "domain": "iam",
+        "reviewer_verdict": "agree",
+        "contributes_to_headline": true,
+        "expected_ordering": [
+          [
+            "iam-unrestricted-scope"
+          ],
+          [
+            "iam-s3-account-scope"
+          ],
+          [
+            "iam-s3-bucket-scope"
+          ]
+        ],
+        "evaluable": true,
+        "ground_truth_excluded": false,
+        "low_confidence": false,
+        "framework": {
+          "max": {
+            "scores": {
+              "iam-s3-account-scope": 16,
+              "iam-s3-bucket-scope": 15,
+              "iam-unrestricted-scope": 18
+            },
+            "ordering": [
+              [
+                "iam-unrestricted-scope"
+              ],
+              [
+                "iam-s3-account-scope"
+              ],
+              [
+                "iam-s3-bucket-scope"
+              ]
+            ],
+            "exact_tier_match": true,
+            "kendall_tau_b": 1.0,
+            "ordered_pairs": {
+              "expected": 3,
+              "concordant": 3,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 0,
+              "tied_as_expected": 0
+            }
+          },
+          "sum": {
+            "scores": {
+              "iam-s3-account-scope": 80,
+              "iam-s3-bucket-scope": 30,
+              "iam-unrestricted-scope": 72
+            },
+            "ordering": [
+              [
+                "iam-s3-account-scope"
+              ],
+              [
+                "iam-unrestricted-scope"
+              ],
+              [
+                "iam-s3-bucket-scope"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.3333333333333333,
+            "ordered_pairs": {
+              "expected": 3,
+              "concordant": 2,
+              "tied": 0,
+              "discordant": 1
+            },
+            "tied_pairs": {
+              "expected": 0,
+              "tied_as_expected": 0
+            }
+          },
+          "mean": {
+            "scores": {
+              "iam-s3-account-scope": 16.0,
+              "iam-s3-bucket-scope": 15.0,
+              "iam-unrestricted-scope": 18.0
+            },
+            "ordering": [
+              [
+                "iam-unrestricted-scope"
+              ],
+              [
+                "iam-s3-account-scope"
+              ],
+              [
+                "iam-s3-bucket-scope"
+              ]
+            ],
+            "exact_tier_match": true,
+            "kendall_tau_b": 1.0,
+            "ordered_pairs": {
+              "expected": 3,
+              "concordant": 3,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 0,
+              "tied_as_expected": 0
+            }
+          }
+        },
+        "baseline": {
+          "scores": {
+            "iam-s3-account-scope": 3,
+            "iam-s3-bucket-scope": 3,
+            "iam-unrestricted-scope": 3
+          },
+          "ordering": [
+            [
+              "iam-s3-account-scope",
+              "iam-s3-bucket-scope",
+              "iam-unrestricted-scope"
+            ]
+          ],
+          "exact_tier_match": false,
+          "kendall_tau_b": null,
+          "ordered_pairs": {
+            "expected": 3,
+            "concordant": 0,
+            "tied": 3,
+            "discordant": 0
+          },
+          "tied_pairs": {
+            "expected": 0,
+            "tied_as_expected": 0
+          }
+        }
+      },
+      {
+        "scenario_id": "compute-severity-and-finding-breadth-over-single-point-criticality",
+        "domain": "compute",
+        "reviewer_verdict": "partial",
+        "contributes_to_headline": true,
+        "expected_ordering": [
+          [
+            "ec2-web-host-compute"
+          ],
+          [
+            "ec2-db-app-compute"
+          ],
+          [
+            "ebs-web-host-storage-compute"
+          ]
+        ],
+        "evaluable": true,
+        "ground_truth_excluded": true,
+        "low_confidence": true,
+        "framework": {
+          "max": {
+            "scores": {
+              "ebs-web-host-storage-compute": 14,
+              "ec2-db-app-compute": 17,
+              "ec2-web-host-compute": 17
+            },
+            "ordering": [
+              [
+                "ec2-db-app-compute",
+                "ec2-web-host-compute"
+              ],
+              [
+                "ebs-web-host-storage-compute"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.8164965809277261,
+            "ordered_pairs": {
+              "expected": 3,
+              "concordant": 2,
+              "tied": 1,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 0,
+              "tied_as_expected": 0
+            }
+          },
+          "sum": {
+            "scores": {
+              "ebs-web-host-storage-compute": 80,
+              "ec2-db-app-compute": 136,
+              "ec2-web-host-compute": 194
+            },
+            "ordering": [
+              [
+                "ec2-web-host-compute"
+              ],
+              [
+                "ec2-db-app-compute"
+              ],
+              [
+                "ebs-web-host-storage-compute"
+              ]
+            ],
+            "exact_tier_match": true,
+            "kendall_tau_b": 1.0,
+            "ordered_pairs": {
+              "expected": 3,
+              "concordant": 3,
+              "tied": 0,
+              "discordant": 0
+            },
+            "tied_pairs": {
+              "expected": 0,
+              "tied_as_expected": 0
+            }
+          },
+          "mean": {
+            "scores": {
+              "ebs-web-host-storage-compute": 13.333333333333334,
+              "ec2-db-app-compute": 17.0,
+              "ec2-web-host-compute": 16.166666666666668
+            },
+            "ordering": [
+              [
+                "ec2-db-app-compute"
+              ],
+              [
+                "ec2-web-host-compute"
+              ],
+              [
+                "ebs-web-host-storage-compute"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.3333333333333333,
+            "ordered_pairs": {
+              "expected": 3,
+              "concordant": 2,
+              "tied": 0,
+              "discordant": 1
+            },
+            "tied_pairs": {
+              "expected": 0,
+              "tied_as_expected": 0
+            }
+          }
+        },
+        "baseline": {
+          "scores": {
+            "ebs-web-host-storage-compute": 3,
+            "ec2-db-app-compute": 3,
+            "ec2-web-host-compute": 4
+          },
+          "ordering": [
+            [
+              "ec2-web-host-compute"
+            ],
+            [
+              "ebs-web-host-storage-compute",
+              "ec2-db-app-compute"
+            ]
+          ],
+          "exact_tier_match": false,
+          "kendall_tau_b": 0.8164965809277261,
+          "ordered_pairs": {
+            "expected": 3,
+            "concordant": 2,
+            "tied": 1,
+            "discordant": 0
+          },
+          "tied_pairs": {
+            "expected": 0,
+            "tied_as_expected": 0
+          }
+        }
+      },
+      {
+        "scenario_id": "containers-workload-dominance-and-a-genuine-tie",
+        "domain": "containers",
+        "reviewer_verdict": "partial",
+        "contributes_to_headline": true,
+        "expected_ordering": [
+          [
+            "k8s-goat-home-workload"
+          ],
+          [
+            "k8s-kube-bench-node-workload",
+            "k8s-internal-proxy-api-container"
+          ]
+        ],
+        "evaluable": true,
+        "ground_truth_excluded": false,
+        "low_confidence": true,
+        "framework": {
+          "max": {
+            "scores": {
+              "k8s-goat-home-workload": 13,
+              "k8s-internal-proxy-api-container": 13,
+              "k8s-kube-bench-node-workload": 17
+            },
+            "ordering": [
+              [
+                "k8s-kube-bench-node-workload"
+              ],
+              [
+                "k8s-goat-home-workload",
+                "k8s-internal-proxy-api-container"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": -0.5,
+            "ordered_pairs": {
+              "expected": 2,
+              "concordant": 0,
+              "tied": 1,
+              "discordant": 1
+            },
+            "tied_pairs": {
+              "expected": 1,
+              "tied_as_expected": 0
+            }
+          },
+          "sum": {
+            "scores": {
+              "k8s-goat-home-workload": 206,
+              "k8s-internal-proxy-api-container": 152,
+              "k8s-kube-bench-node-workload": 337
+            },
+            "ordering": [
+              [
+                "k8s-kube-bench-node-workload"
+              ],
+              [
+                "k8s-goat-home-workload"
+              ],
+              [
+                "k8s-internal-proxy-api-container"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.0,
+            "ordered_pairs": {
+              "expected": 2,
+              "concordant": 1,
+              "tied": 0,
+              "discordant": 1
+            },
+            "tied_pairs": {
+              "expected": 1,
+              "tied_as_expected": 0
+            }
+          },
+          "mean": {
+            "scores": {
+              "k8s-goat-home-workload": 12.875,
+              "k8s-internal-proxy-api-container": 11.692307692307692,
+              "k8s-kube-bench-node-workload": 16.85
+            },
+            "ordering": [
+              [
+                "k8s-kube-bench-node-workload"
+              ],
+              [
+                "k8s-goat-home-workload"
+              ],
+              [
+                "k8s-internal-proxy-api-container"
+              ]
+            ],
+            "exact_tier_match": false,
+            "kendall_tau_b": 0.0,
+            "ordered_pairs": {
+              "expected": 2,
+              "concordant": 1,
+              "tied": 0,
+              "discordant": 1
+            },
+            "tied_pairs": {
+              "expected": 1,
+              "tied_as_expected": 0
+            }
+          }
+        },
+        "baseline": {
+          "scores": {
+            "k8s-goat-home-workload": 3,
+            "k8s-internal-proxy-api-container": 3,
+            "k8s-kube-bench-node-workload": 3
+          },
+          "ordering": [
+            [
+              "k8s-goat-home-workload",
+              "k8s-internal-proxy-api-container",
+              "k8s-kube-bench-node-workload"
+            ]
+          ],
+          "exact_tier_match": false,
+          "kendall_tau_b": null,
+          "ordered_pairs": {
+            "expected": 2,
+            "concordant": 0,
+            "tied": 2,
+            "discordant": 0
+          },
+          "tied_pairs": {
+            "expected": 1,
+            "tied_as_expected": 1
+          }
+        }
+      }
+    ]
+  },
+  "ranking_consistency": {
+    "auto_inference_agreement": {
+      "state": "not-available",
+      "reason": "the auto-inference mode (S3c) is not built"
+    },
+    "model_sensitivity": {
+      "state": "not-run",
+      "reason": "the Q10 sensitivity analysis is a separate, later experiment"
+    }
+  }
+}
