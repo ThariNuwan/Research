@@ -505,7 +505,7 @@ def test_a_ground_truth_case_with_no_scored_entry_is_rejected_not_skipped() -> N
         harness.evaluate(ground_truth, _corpus(), {"cases": {"present": {"findings": []}}})
 
 
-def test_evaluate_states_what_it_could_not_measure_instead_of_omitting_it() -> None:
+def test_evaluate_points_at_the_two_records_it_does_not_restate() -> None:
     finding = _finding(3)
     ground_truth = {
         "cases": [_case("hi", [finding]), _case("lo", [finding])],
@@ -516,6 +516,13 @@ def test_evaluate_states_what_it_could_not_measure_instead_of_omitting_it() -> N
     result = harness.evaluate(ground_truth, _corpus(), scored)
 
     assert result["registered_rules"]["primary_case_rule"] == "max"
-    assert result["ranking_consistency"]["auto_inference_agreement"]["state"] == "not-available"
-    assert result["ranking_consistency"]["model_sensitivity"]["state"] == "not-run"
+    consistency = result["ranking_consistency"]
+    assert consistency["auto_inference_agreement"] == {
+        "state": "reported-separately",
+        "record": "artifacts/auto-inference-agreement-v1.json",
+    }
+    assert consistency["model_sensitivity"] == {
+        "state": "reported-separately",
+        "record": "artifacts/sensitivity-v1.json",
+    }
     assert result["contrastive_pairs"]["summary"]["authored"]["pairs"] == 1

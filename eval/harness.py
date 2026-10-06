@@ -638,14 +638,16 @@ def evaluate(
         "cases": cases,
         "contrastive_pairs": {"summary": _summarise_pairs(pairs), "pairs": pairs},
         "scenarios": {"summary": _summarise_scenarios(scenarios), "scenarios": scenarios},
+        # Both halves of this metric are experiments with their own registration and their
+        # own record. This one says where they are rather than restating either.
         "ranking_consistency": {
             "auto_inference_agreement": {
-                "state": "not-available",
-                "reason": "the auto-inference mode (S3c) is not built",
+                "state": "reported-separately",
+                "record": "artifacts/auto-inference-agreement-v1.json",
             },
             "model_sensitivity": {
-                "state": "not-run",
-                "reason": "the Q10 sensitivity analysis is a separate, later experiment",
+                "state": "reported-separately",
+                "record": "artifacts/sensitivity-v1.json",
             },
         },
     }
