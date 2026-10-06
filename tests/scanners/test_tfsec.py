@@ -26,7 +26,7 @@ from typing import Any
 from iacrisk import identity, rubric, taxonomy
 from iacrisk.scanners.base import rebase_to_scan_root
 from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
+from iacrisk.scanners.tfsec import TfsecAdapter, capture_scan_root
 from iacrisk.scanners.trivy import TrivyAdapter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -50,8 +50,15 @@ def _raw_results(name: str) -> list[dict[str, Any]]:
     return list(_load_fixture(name)["results"])
 
 
+def _capture_root() -> Path:
+    """The root the terraform fixture was captured under, which is where its absolute
+    paths live - not `TERRAFORM_SCAN_ROOT`, unless this checkout happens to sit there.
+    """
+    return capture_scan_root(_load_fixture("tfsec-terraform.json"), TERRAFORM_SCAN_ROOT, REPO_ROOT)
+
+
 def _terraform_result() -> Any:
-    return TfsecAdapter().parse(_load_fixture("tfsec-terraform.json"), TERRAFORM_SCAN_ROOT, None)
+    return TfsecAdapter().parse(_load_fixture("tfsec-terraform.json"), _capture_root(), None)
 
 
 # --- retention: every input finding becomes exactly one finding or one drop --------
@@ -546,10 +553,57 @@ def test_tfsec_paths_equal_the_rebase_to_scan_root_reference_computation() -> No
     retention tests apply, here applied to path handling specifically.
     """
     raw = _raw_results("tfsec-terraform.json")
-    expected = {rebase_to_scan_root(r["location"]["filename"], TERRAFORM_SCAN_ROOT) for r in raw}
+    expected = {rebase_to_scan_root(r["location"]["filename"], _capture_root()) for r in raw}
     result = _terraform_result()
     actual = {f.file_path for f in result.findings}
     assert actual == expected
+
+
+# --- replaying a recorded run: the capture root, not this checkout's ---------------
+
+
+def test_capture_scan_root_recovers_the_frame_every_fixture_filename_lies_under() -> None:
+    """The fixture's paths are absolute under the host that captured it, so the
+    root it replays against has to come from the fixture. Asserted against the
+    raw rows independently of the adapter: the recovered root ends exactly at
+    the repo-relative scan root, and every row lies under it.
+    """
+    raw = _raw_results("tfsec-terraform.json")
+    root = _capture_root().as_posix().lower()
+    relative = TERRAFORM_SCAN_ROOT.relative_to(REPO_ROOT).as_posix().lower()
+
+    assert raw
+    assert root.endswith(f"/{relative}")
+    assert all(
+        r["location"]["filename"].replace("\\", "/").lower().startswith(f"{root}/") for r in raw
+    )
+
+
+def test_capture_scan_root_recovers_a_root_from_another_host() -> None:
+    """Constructed, so the property does not depend on where the committed
+    fixture happened to be captured or on where this checkout sits.
+    """
+    foreign = "E:\\elsewhere\\checkout\\corpus\\vendor\\terragoat\\terraform\\aws\\made-up.tf"
+    raw = {"results": [{"location": {"filename": foreign}}]}
+
+    root = capture_scan_root(raw, TERRAFORM_SCAN_ROOT, REPO_ROOT)
+
+    assert root.as_posix() == "E:/elsewhere/checkout/corpus/vendor/terragoat/terraform/aws"
+    assert rebase_to_scan_root(foreign, root) == "made-up.tf"
+
+
+def test_capture_scan_root_returns_the_given_root_when_no_filename_contains_it() -> None:
+    """The fallback is what keeps a foreign path loud: with the root unchanged,
+    `rebase_to_scan_root` still raises on it. A sibling directory sharing the
+    root's name as a prefix (`aws-legacy`) is not a match - the cut is on a
+    path boundary.
+    """
+    sibling = "E:\\x\\corpus\\vendor\\terragoat\\terraform\\aws-legacy\\main.tf"
+    raw = {"results": [{"location": {"filename": sibling}}]}
+
+    assert capture_scan_root(raw, TERRAFORM_SCAN_ROOT, REPO_ROOT) == TERRAFORM_SCAN_ROOT
+    assert capture_scan_root({}, TERRAFORM_SCAN_ROOT, REPO_ROOT) == TERRAFORM_SCAN_ROOT
+    assert capture_scan_root(None, TERRAFORM_SCAN_ROOT, REPO_ROOT) == TERRAFORM_SCAN_ROOT
 
 
 def test_module_level_conformance_guard_exists() -> None:

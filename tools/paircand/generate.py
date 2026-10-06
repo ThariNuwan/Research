@@ -26,7 +26,7 @@ from iacrisk.finding import NormalizedFinding
 from iacrisk.input import discover
 from iacrisk.resources import CLUSTER_SCOPED_KINDS, build_index
 from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
+from iacrisk.scanners.tfsec import TfsecAdapter, capture_scan_root
 from iacrisk.scanners.trivy import TrivyAdapter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -159,11 +159,13 @@ def real_findings() -> list[NormalizedFinding]:
     raises on tfsec's absolute Windows paths when given a relative root.
     """
     index = build_index(discover(KUBERNETES_ROOT))
+    # Replayed against the root it was captured under, not this checkout's.
+    tfsec = _load("tfsec-terraform.json")
     findings: list[NormalizedFinding] = []
     for result in (
         CheckovAdapter().parse(_load("checkov-terraform.json"), TERRAFORM_ROOT, None),
         TrivyAdapter().parse(_load("trivy-terraform.json"), TERRAFORM_ROOT, None),
-        TfsecAdapter().parse(_load("tfsec-terraform.json"), TERRAFORM_ROOT, None),
+        TfsecAdapter().parse(tfsec, capture_scan_root(tfsec, TERRAFORM_ROOT, REPO_ROOT), None),
         CheckovAdapter().parse(_load("checkov-kubernetes.json"), KUBERNETES_ROOT, index),
         TrivyAdapter().parse(_load("trivy-kubernetes.json"), KUBERNETES_ROOT, index),
     ):

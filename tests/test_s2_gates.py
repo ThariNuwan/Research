@@ -30,7 +30,7 @@ from _corpus import all_real_findings
 from eval.ground_truth import GroundTruthError, load_and_validate, validate
 from iacrisk.finding import NormalizedFinding
 from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
+from iacrisk.scanners.tfsec import TfsecAdapter, capture_scan_root
 from iacrisk.scanners.trivy import TrivyAdapter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -247,9 +247,11 @@ def _authored_findings() -> list[NormalizedFinding]:
     def _load(name: str) -> Any:
         return json.loads((AUTHORED_FIXTURES / name).read_text(encoding="utf-8"))
 
+    # Replayed against the root it was captured under, not this checkout's.
+    tfsec = _load("tfsec-terraform.json")
     results = (
         CheckovAdapter().parse(_load("checkov-terraform.json"), AUTHORED_SCAN_ROOT, None),
-        TfsecAdapter().parse(_load("tfsec-terraform.json"), AUTHORED_SCAN_ROOT, None),
+        TfsecAdapter().parse(tfsec, capture_scan_root(tfsec, AUTHORED_SCAN_ROOT, REPO_ROOT), None),
         TrivyAdapter().parse(_load("trivy-terraform.json"), AUTHORED_SCAN_ROOT, None),
     )
     findings: list[NormalizedFinding] = []

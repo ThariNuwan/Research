@@ -39,7 +39,7 @@ from typing import Any
 
 from iacrisk.finding import NormalizedFinding
 from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
+from iacrisk.scanners.tfsec import TfsecAdapter, capture_scan_root
 from iacrisk.scanners.trivy import TrivyAdapter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -79,7 +79,9 @@ def _all_findings() -> tuple[NormalizedFinding, ...]:
     checkov_result = CheckovAdapter().parse(
         _load_fixture("checkov-terraform.json"), SCAN_ROOT, None
     )
-    tfsec_result = TfsecAdapter().parse(_load_fixture("tfsec-terraform.json"), SCAN_ROOT, None)
+    # Replayed against the root it was captured under, not this checkout's.
+    tfsec = _load_fixture("tfsec-terraform.json")
+    tfsec_result = TfsecAdapter().parse(tfsec, capture_scan_root(tfsec, SCAN_ROOT, REPO_ROOT), None)
     trivy_result = TrivyAdapter().parse(_load_fixture("trivy-terraform.json"), SCAN_ROOT, None)
     return checkov_result.findings + tfsec_result.findings + trivy_result.findings
 

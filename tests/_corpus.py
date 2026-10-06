@@ -43,7 +43,7 @@ from iacrisk.report import RetentionReport, build_report
 from iacrisk.resources import ResourceIndex, build_index
 from iacrisk.scanners.base import AdapterResult
 from iacrisk.scanners.checkov import CheckovAdapter
-from iacrisk.scanners.tfsec import TfsecAdapter
+from iacrisk.scanners.tfsec import TfsecAdapter, capture_scan_root
 from iacrisk.scanners.trivy import TrivyAdapter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -77,6 +77,9 @@ def real_results() -> dict[tuple[str, str], AdapterResult]:
     every corpus-v0 headline figure this branch reports is measured against.
     """
     index = kubernetes_index()
+    # tfsec alone reports absolute paths, so its fixture replays against the root it was
+    # captured under rather than wherever this checkout lives (`capture_scan_root`).
+    tfsec = load_fixture("tfsec-terraform.json")
     return {
         ("checkov", "terraform"): CheckovAdapter().parse(
             load_fixture("checkov-terraform.json"), TERRAFORM_SCAN_ROOT, None
@@ -91,7 +94,7 @@ def real_results() -> dict[tuple[str, str], AdapterResult]:
             load_fixture("trivy-kubernetes.json"), KUBERNETES_SCAN_ROOT, index
         ),
         ("tfsec", "terraform"): TfsecAdapter().parse(
-            load_fixture("tfsec-terraform.json"), TERRAFORM_SCAN_ROOT, None
+            tfsec, capture_scan_root(tfsec, TERRAFORM_SCAN_ROOT, REPO_ROOT), None
         ),
     }
 

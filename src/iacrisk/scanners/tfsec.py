@@ -206,6 +206,36 @@ def _build_finding(
     return finding, None
 
 
+def capture_scan_root(raw: object, scan_root: Path, repo_root: Path) -> Path:
+    """The scan root as tfsec saw it when `raw` was produced, for replaying a recorded run.
+
+    `rebase_to_scan_root` needs the frame tfsec was invoked in, and for a
+    recorded document that is the capturing host's checkout, not this one. The
+    committed fixtures spell every `location.filename` under `D:\\Research`, so
+    parsing them against a checkout anywhere else raises on all 119 findings
+    (measured: 66 tests failed for this one reason in a clone at another path).
+    Because tfsec's paths are absolute the capture frame is recoverable from
+    the document itself: cut a filename at the repo-relative scan root, on a
+    path boundary both sides - the cut `tools/harvest/run.py::normalize_target`
+    already makes for case attribution, and case-insensitive for the reason
+    `rebase_to_scan_root` is.
+
+    A document none of whose filenames contain the repo-relative root gets
+    `scan_root` back unchanged. A live run is therefore unaffected, and a
+    genuinely foreign path still raises in `rebase_to_scan_root` rather than
+    being rebased by guesswork.
+    """
+    relative = scan_root.relative_to(repo_root).as_posix().lower()
+    document = raw if isinstance(raw, dict) else {}
+    for result in document.get("results") or []:
+        location = result.get("location") if isinstance(result, dict) else None
+        filename = str((location or {}).get("filename") or "").replace("\\", "/")
+        index = filename.lower().find(f"/{relative}/")
+        if index != -1:
+            return Path(filename[: index + 1 + len(relative)])
+    return scan_root
+
+
 class TfsecAdapter:
     """Turns one tfsec run's JSON into `NormalizedFinding` values (spec §5).
 
