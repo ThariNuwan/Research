@@ -2,13 +2,13 @@
   "schema_version": 1,
   "description": "The independent harness's metrics over corpus v0's ranked findings and corpus v1's cases, graded against the pre-registered oracle.",
   "provenance": {
-    "generated_utc": "2026-10-06T11:52:34Z",
+    "generated_utc": "2026-10-06T11:53:58Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "5352c1373c676adfbafcc893ac13f288a46cc0f9",
+      "commit": "ff4f544fb7e6c6322eabfb07e6010b56750d09bd",
       "state": "ok"
     },
-    "source_clean": false,
+    "source_clean": true,
     "inputs": {
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
       "artifacts/scored-corpus-v0.json": "04cb83fa550b2f31e8e853ab0c759aec93e1ed15f2b3b6f963a17c3d0f5cf32d",
