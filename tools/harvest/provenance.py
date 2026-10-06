@@ -179,6 +179,19 @@ def _git_commit(repo_root: Path) -> dict[str, str | None]:
     return {"commit": commit, "state": "ok"}
 
 
+def worktree_clean(repo_root: Path) -> bool | None:
+    """Whether the working tree matches HEAD, or None when git could not say.
+
+    The companion `repo_commit` needs: an artifact generated before its own tool is
+    committed names a commit that does not contain the code that produced it, and without
+    this the block would state that commit as though it did.
+    """
+    stdout, failure, _ = _git_stdout(repo_root, "status", "--porcelain")
+    if failure is not None:
+        return None
+    return not (stdout or "").strip()
+
+
 def _version_display(version_output: str) -> str | None:
     """The last non-empty line of a captured `--version`, whitespace-stripped.
 

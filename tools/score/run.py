@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import json
 import platform
-import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -60,7 +59,7 @@ from iacrisk.scoring import emit
 
 # `_git_commit` is harvest's six-state HEAD probe. Imported rather than restated so every
 # committed artifact reports `repo_commit` in one shape.
-from tools.harvest.provenance import GIT_TIMEOUT_SECONDS, _git_commit, hash_file
+from tools.harvest.provenance import _git_commit, hash_file, worktree_clean
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "harvest" / "fixtures"
@@ -255,25 +254,6 @@ def score_cases(document: dict[str, Any]) -> dict[str, Any]:
     return cases
 
 
-def _worktree_clean() -> bool | None:
-    """Whether the code that ran is the code at `repo_commit`. None when git cannot say.
-
-    Without it `repo_commit` overstates: an artifact generated before its own tool is
-    committed would name a commit that does not contain the code that produced it.
-    """
-    try:
-        status = subprocess.run(
-            ["git", "-C", str(REPO_ROOT), "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return not status.stdout.strip()
-
-
 def provenance(inputs: list[Path]) -> dict[str, Any]:
     """What produced an artifact: a replay, of these bytes, at this commit.
 
@@ -286,7 +266,7 @@ def provenance(inputs: list[Path]) -> dict[str, Any]:
         "generated_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "python": platform.python_version(),
         "repo_commit": _git_commit(REPO_ROOT),
-        "worktree_clean": _worktree_clean(),
+        "worktree_clean": worktree_clean(REPO_ROOT),
         "scanner_pins": {
             name: entry["version"] for name, entry in sorted(lock["scanners"].items())
         },

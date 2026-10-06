@@ -40,6 +40,7 @@ from tools.harvest.provenance import (
     _git_commit,
     build_provenance,
     hash_file,
+    worktree_clean,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -485,3 +486,34 @@ def test_this_repository_hashes_its_real_spec_and_tidies_the_tfsec_banner() -> N
         assert entry["version_output"] == raw[name]["version_output"], "raw capture altered"
     assert "\n" in prov["scanners"]["tfsec"]["version_output"], "tfsec's banner is multi-line"
     assert "\n" not in prov["scanners"]["tfsec"]["version_display"]
+
+
+def test_worktree_clean_tracks_whether_the_tree_matches_head(tmp_path: Path) -> None:
+    """A fresh repository with one committed file is clean; an edit makes it dirty."""
+    _skip_without_git()
+    _skip_inside_a_checkout(tmp_path)
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            check=True,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+
+    git("init", "-q")
+    tracked = tmp_path / "a.txt"
+    tracked.write_text("one\n", encoding="utf-8")
+    git("add", "a.txt")
+    git("commit", "-q", "-m", "one")
+    assert worktree_clean(tmp_path) is True
+
+    tracked.write_text("two\n", encoding="utf-8")
+    assert worktree_clean(tmp_path) is False
+
+
+def test_worktree_clean_is_none_where_git_cannot_say(tmp_path: Path) -> None:
+    """Not False: outside a repository there is no tree to be dirty."""
+    _skip_without_git()
+    _skip_inside_a_checkout(tmp_path)
+    assert worktree_clean(tmp_path) is None
