@@ -70,13 +70,12 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 ## Current state
 
 S0, S1, S2, S3a, S3b and S4 complete. **S5 (the independent evaluation harness and its
-first results) and S6's sensitivity analysis are done on branch `s5-evaluation-harness`**,
-unmerged and unpushed as of 2026-10-06; both are recorded below. **What remains: S3c**
-(convention-based auto-inference of the two declared factors, split out of S3b and still
-unbuilt - the auto-inference agreement metric waits on it), **the write-up** (results and
-evaluation chapters, plus the S4 handoff and chapter 3, which still carry superseded
-figures), and the two items that need a person: supervisor review of the oracle and the
-NSA-CISA citations. S0 pinned the toolchain and
+first results), S6's sensitivity analysis and S3c (auto-inference) are done on branch
+`s5-evaluation-harness`**, unmerged and unpushed as of 2026-10-06; all three are recorded
+below. **Every sub-project that produces a result is now built.** What remains is **the
+write-up** (chapters 1, 2, 5 and 7; chapter 6 is drafted, and the S4 handoff and chapter 3
+still carry superseded figures behind dated notes) and the two items that need a person:
+supervisor review of the oracle and the NSA-CISA citations. S0 pinned the toolchain and
 harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
 the five specification artifacts the runtime and the harness are built
 against:
@@ -443,9 +442,9 @@ because the fix was made after the first results had been seen:**
   measured: 245, 271, 470). 267 of the 427 demotions and 165 of the 196 promotions are
   low-confidence. The fix removed nearly every default-driven promotion into High: 143
   before, all low-confidence, against 3 after.
-- **Ranking consistency: model sensitivity is measured (S6, below); auto-inference
-  agreement is not**, and needs S3c. `evaluation-v1.json` still states both as explicit
-  not-run states - it was written before S6 and the sensitivity record is its own artifact.
+- **Ranking consistency is two records, not part of `evaluation-v1.json`:** model
+  sensitivity (S6, below) and auto-inference agreement (S3c, below). The evaluation record
+  names where each is and restates neither.
 
 **S6's sensitivity analysis (2026-10-06).** `eval/sensitivity_plan.json` registers 63
 variants in four experiments; the project author approved it and it was committed
@@ -483,6 +482,44 @@ gate 5 fails if the plan has more than one commit. What it found splits cleanly 
   plan says so in its own text. PLAN Q10 asks for "expert-derived" alternatives, so a
   supervisor's weightings, if obtained, are a second registered round.
 
+**S3c's auto-inference mode (2026-10-06).** `src/iacrisk/context/inferred.py` reads
+sensitivity and criticality from the conventions in
+`src/iacrisk/data/inference_conventions.json` instead of from a declared-context input;
+`tools.score.run inferred` writes the two inferred runs and `eval.agreement` compares them
+with the declared ones. The conventions and the seven agreement rules were approved by the
+project author and committed (`5352c13`) before the mode was run. Five gates in
+`tests/test_s3c_gates.py`; 1,018 tests in the suite. **The conventions file is a
+registration: do not edit it**, for the reason the sensitivity plan is not edited. Adding a
+word after seeing which resources are declared would turn a measurement into a fit, and
+gate 5 fails if the file has more than one commit.
+
+- **On this corpus the conventions resolve 2 of 81 resources - 3 of 986 findings.** Both
+  are sensitivity 5 from the word `secret` in a Kubernetes Role's name and its binding's.
+  No tag, label or namespace resolved, and no criticality was inferred. TerraGoat's tags
+  are either built by `merge()` over a computed prefix or are provenance keys from a
+  tagging tool; the Kubernetes manifests carry only `app` and `name` labels, in `default`,
+  `kube-system` or application-named namespaces, or with none stated.
+- **So every agreement figure is a figure about the defaults, and the record shows that
+  directly.** Level agreement equals the all-default strawman on every row: sensitivity
+  14 of 15 exact, criticality 1 of 16. Reporting either as the conventions agreeing or
+  disagreeing with the declarations would be wrong - they resolved none of those resources.
+- **The inferred run never scores a finding lower than the declared run**: 199 higher, 787
+  equal, 0 lower. Without declared context the framework over-prioritises.
+- **What declared context was contributing:** removing it turns 8 of the 19 correctly
+  ordered scenario case pairs into ties (11 right, 10 tied, 0 inverted). Storage and
+  containers collapse into single tiers. Both modes match 2 of 5 scenarios, and not the same
+  two - the inferred run gains compute by coincidence.
+- **Four of the ten pairs are not applicable in this mode** - two declarations about one
+  resource - and are reported as such, never as failures. The other six behave identically
+  in both modes.
+- **An inferred value is recorded as `resolved`.** There is no fourth factor state, so a
+  low-confidence count is not comparable between the two modes; the difference is in the
+  evidence string and in the document's `context_mode`. The declared and inferred modes are
+  alternatives and are never merged within a run.
+- **A name may raise sensitivity but never lower it, and criticality takes no name hint.**
+  Both hold by the shape of the data - every registered name word sits above the default -
+  and a test pins that.
+
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
 are exposure 3, privilege 4, sensitivity 3, criticality 4, encryption 2 — **sum
@@ -514,8 +551,8 @@ in **both** committed states wherever the body-index fix moved them (§6.2); it 
 that **the encryption factor fails its mechanism test** by Chapter 4's own
 falsification criterion (§6.4.2, §6.9); and it concludes that the evidence supports
 the ordering claim and **not** a claim about how many alerts are saved (§6.9). Its
-§6.7 reports auto-inference agreement as unmeasured and needs revisiting if S3c is
-built. Chapters 3 and 4 carry dated status notes pointing at it rather than being
+§6.7.4 reports auto-inference as resolving two resources of 81 and says the agreement
+figures therefore describe the defaults, not the mode. Chapters 3 and 4 carry dated status notes pointing at it rather than being
 rewritten; chapter 3's §3.10 figures are still the pre-fix, pre-dedupe ones, labelled.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
@@ -561,12 +598,15 @@ uv run python -m tools.harvest.run   # regenerate artifacts/rule-inventory.json 
 uv run python -m tools.score.run corpus   # replay the captures -> artifacts/scored-corpus-v0.json
 uv run python -m tools.score.run cases    # per-case scores -> artifacts/scored-cases-v1.json
                                           # (not before the case-aggregation rule is committed)
+uv run python -m tools.score.run inferred # both again in auto-inference mode -> *-inferred.json
 uv run python -m eval.run                 # the harness -> artifacts/evaluation-v1.json
 uv run python -m eval.sensitivity         # the 63 registered variants -> artifacts/sensitivity-v1.json
+uv run python -m eval.agreement           # declared vs inferred -> artifacts/auto-inference-agreement-v1.json
 ```
 
-Regenerate in that order - corpus, cases, `eval.run`, `eval.sensitivity` - because each
-later record digests the earlier ones, and a gate fails when a digest is stale.
+Regenerate in that order - corpus, cases, inferred, then `eval.run`, `eval.sensitivity`,
+`eval.agreement` - because each later record digests the earlier ones, and a gate fails
+when a digest is stale.
 
 **Give `mypy` no path argument.** A path overrides `[tool.mypy] files` entirely:
 measured on this tree, `uv run mypy` checks 19 files and `uv run mypy src tools

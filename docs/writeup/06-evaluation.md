@@ -7,7 +7,7 @@ corpus and graded against the oracle of Chapter 4. It reports the results that
 support the framework's claim and the ones that do not, and it keeps them apart from
 the interpretation placed on them.
 
-Every figure below is read from one of four committed records, and none was
+Every figure below is read from one of seven committed records, and none was
 transcribed from an earlier draft.
 
 | Record | What it holds | Produced by |
@@ -16,6 +16,8 @@ transcribed from an earlier draft.
 | `artifacts/scored-cases-v1.json` | Each corpus v1 case scored under its own declared context, at finding level | `tools.score.run cases` |
 | `artifacts/evaluation-v1.json` | The harness's metrics over the two records above and the ground truth | `eval.run` |
 | `artifacts/sensitivity-v1.json` | The registered sensitivity analysis | `eval.sensitivity` |
+| `artifacts/scored-corpus-v0-inferred.json`, `artifacts/scored-cases-v1-inferred.json` | The first two records again, in auto-inference mode | `tools.score.run inferred` |
+| `artifacts/auto-inference-agreement-v1.json` | The declared run compared with the inferred run | `eval.agreement` |
 
 Three properties of how these were produced bear on how far they can be trusted.
 
@@ -429,9 +431,9 @@ the second.
 
 ## 6.7 Ranking consistency
 
-Chapter 4 splits this metric in two. One half is measured here. The other, agreement
-between the auto-inference mode and the declared-context ranking, is **not measured**,
-because the auto-inference mode has not been built.
+Chapter 4 splits this metric in two and requires that the halves are not averaged.
+Sections 6.7.1 to 6.7.3 report the model's sensitivity to its own parameters; Section
+6.7.4 reports how closely the auto-inference mode follows the declared-context run.
 
 The sensitivity analysis is a reported experiment, not a search. Its 63 variants were
 listed in a plan, approved, and committed before any of them was computed; all 63 are
@@ -524,6 +526,91 @@ default the rubric itself registers a sweep for. Across that sweep, from 2 to
 whose CIDR is a reference holds at 2, 3 and 4, and collapses into a shared top tier
 at 5. It is never inverted in that range. Below it, the interpolated rule ties the
 egress rule at 1 and falls beneath it at 0.
+
+### 6.7.4 Auto-inference agreement
+
+The framework's second mode replaces the declared-context input with values read from
+conventions in the code itself. Criticality is read from an environment tag or label,
+or a Kubernetes namespace. Sensitivity is read from a classification tag or label and,
+only where none resolves, from a word in the resource's name. Three rules keep the
+mode from reassuring falsely: only literal values are read; a name may raise a value
+but never lower it; and criticality is never inferred at the top level, which the
+rubric reserves for an explicit declaration. The conventions were registered as data,
+together with the rules for measuring agreement, before the mode was run, on the same
+evidence as Section 6.1.1.
+
+**On this corpus the conventions resolve almost nothing.** Of the 81 resources that
+carry a finding the framework makes a claim about, two take an inferred value — 3 of
+the 986 findings. Both are sensitivity 5, from the word *secret* in the name of a
+Kubernetes Role and of its binding. No tag, label or namespace resolved anything, and
+no criticality value was inferred at all.
+
+The reason lies in the corpus rather than in the mode. Where the vendored Terraform
+tags a resource at all, it either builds the tags with an expression over a computed
+prefix, which a literals-only reader does not evaluate, or carries only provenance
+keys written by a tagging tool — a commit, a file, an author — none of which states
+an environment or a classification. The Kubernetes manifests carry no environment or
+classification label, and their namespaces are `default`, omitted, or an application's
+own name. **Here the mode is the all-default model with two exceptions, and every
+agreement figure below has to be read as that.**
+
+Agreement is measured against corpus v1's declared values where a resource has exactly
+one. Four resources that the declared-factor pairs deliberately declare two or three
+ways have no single reference and are excluded.
+
+| Factor | Resources compared | Resolved by a convention | Inferred equals declared | Inferred above declared | Inferred below declared |
+|---|---|---|---|---|---|
+| Sensitivity | 15 | 0 | 14 | 1 | 0 |
+| Criticality | 16 | 0 | 1 | 15 | 0 |
+
+**Every row is exactly what the rubric's defaults alone would give.** Sensitivity
+agrees on 14 of 15 because corpus v1 declares most resources at 3, which is the
+default. Criticality agrees on 1 of 16 because the default is 4 and the declarations
+are mostly 3. Neither figure is evidence about the conventions, which resolved none of
+these resources.
+
+The direction of the error is the one finding here that favours the mode's design.
+**No value in the inferred run is below its declared counterpart, and no finding scores
+lower than in the declared run**: across the 986, 199 score higher, 787 the same and
+none lower. Without a declared input the framework over-prioritises; it does not
+under-prioritise. It does so by defaulting, though, not by inferring.
+
+Ranking agreement between the two runs, as Kendall's τ_b over the 986 findings, is
+0.754, and 891 keep their band. Most of that agreement is trivial: findings on
+resources that corpus v1 never declares take the defaults in both runs. On the 204
+findings whose resource is declared, 8 keep their score and 110 their band. Those 204
+include the four excluded resources above, for which the corpus-level declared run
+uses the last declaration in the ground truth — in each case the low side of a pair.
+
+What the declared input was contributing is clearest from the oracle graded in both
+modes by the same rules.
+
+| | Declared context | Auto-inference |
+|---|---|---|
+| Pairs applicable in both modes | 6 | 6 |
+| Of those, passed | 4 | 4 |
+| Scenarios matched exactly, of 5 | 2 (storage, IAM) | 2 (IAM, compute) |
+| Ordered case pairs right / tied / inverted, of 21 | 19 / 2 / 0 | 11 / 10 / 0 |
+| Findings in High, of 986 | 235 | 326 |
+
+Four of the ten pairs are not applicable in this mode: they put one resource under two
+declarations, and the conventions give a resource one value. The other six behave
+identically in both modes — the same four pass and the same two encryption pairs tie
+— because none of them depended on declared context.
+
+The scenarios show the cost. **Taking the declared input away turns eight correctly
+ordered case pairs into ties.** The storage scenario, whose order was entirely
+declared, collapses into a single tier, and so does the containers scenario. The
+compute scenario moves the other way and matches exactly: with the one-point declared
+criticality gone, scanner severity decides between the two contested cases, in the
+author's favour. That is a coincidence of this scenario, not a merit of the mode.
+
+**The conclusion is narrow and should stay narrow.** This evaluation shows that the
+declared-context input does real ordering work, and that a convention-based substitute
+cannot replace it on a corpus without literal tags. It does not show what the
+substitute would do on an estate that tags its resources: the mode's mechanism is
+established by tests on constructed resources, and this corpus gave it two names to
+read.
 
 ## 6.8 What the scores rest on
 
@@ -621,10 +708,12 @@ after the scoring engine existed, and by the author.
 **The sensitivity weightings are the author's.** Chapter 4 promises expert-derived
 alternatives; the two tested were source-motivated and author-approved.
 
-**Auto-inference is not evaluated.** One of the two ranking-consistency measures is
-absent, and with it any evidence about how the framework behaves without declared
-context — which, given how much of the corpus has none, is the condition most of
-these findings were actually scored under.
+**Auto-inference was evaluated on a corpus that gives it almost nothing to read.** The
+conventions resolved two resources of 81 (Section 6.7.4), so the agreement figures
+describe the rubric's defaults far more than they describe the mode. How the mode
+performs where tags are literal is untested. And an inferred value is recorded with
+the same state as a declared one, so the low-confidence counts of the two modes are
+not comparable as measures of evidence.
 
 **The corpus is small and unrepresentative by design.** Twenty-six cases on two
 teaching repositories support controlled validation of a mechanism. They do not

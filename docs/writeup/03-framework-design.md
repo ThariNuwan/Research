@@ -402,10 +402,10 @@ chapter.
 > boundary below has moved and the figures are updated. The chapter is written from the
 > measured record, so a figure that changes in an artifact changes here too.
 
-> **Status note, 2026-10-06.** The independent evaluation harness and the sensitivity
-> analysis have since been built and run, and Chapter 6 reports them; the suite now holds
-> 956 tests. The auto-inference mode remains unimplemented. Two things below are
-> superseded by Chapter 6. The factor-gap counts are over the 1,025 context-eligible
+> **Status note, 2026-10-06.** The independent evaluation harness, the sensitivity
+> analysis and the auto-inference mode have since been built and run, and Chapter 6
+> reports all three; the suite now holds 1,018 tests. Nothing in the five-layer design
+> remains unimplemented. Two things below are superseded by Chapter 6. The factor-gap counts are over the 1,025 context-eligible
 > findings before deduplication, whereas the evaluation ranks 986 after it, of which 420
 > (42.6%) fall in a gap class and 242 (24.5%) in a substantive one. And a defect in the
 > Kubernetes manifest reader, found by the evaluation and described in Section 6.2,
@@ -428,8 +428,8 @@ and the auto-inference mode; layer 4's scoring engine, including enforcement of 
 rubric's structural coherence rules and the exposure attribution precedence rule;
 and layer 5's full reporting.
 
-**Since built:** the independent evaluation harness and the sensitivity analysis
-(Chapter 6). **Still specified and unimplemented:** the auto-inference mode.
+**Since built:** the independent evaluation harness, the sensitivity analysis and the
+auto-inference mode (Chapter 6).
 
 One coverage gap in the factor set is known, and it belongs in this chapter rather
 than in the limitations of a later one, because it is a property of the design.
