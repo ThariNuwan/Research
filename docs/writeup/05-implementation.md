@@ -12,10 +12,10 @@ roles, kept apart on purpose.
 
 | Body of code | Role | Files | Lines |
 |---|---|---|---|
-| `src/iacrisk/` | The artifact: the five-layer pipeline | 34 | 6,156 |
+| `src/iacrisk/` | The artifact: the five-layer pipeline | 34 | 6,183 |
 | `tools/` | Research instruments that run or replay the artifact | 11 | 2,011 |
-| `eval/` | The evaluation harness that grades its output | 6 | 1,743 |
-| `tests/` | The test suite, 1,018 tests | 60 | 17,085 |
+| `eval/` | The evaluation harness that grades its output | 6 | 1,860 |
+| `tests/` | The test suite, 1,069 tests | 62 | 18,532 |
 
 The counts are of tracked Python files. Three PowerShell scripts under `tools/`, 1,701
 lines together, install the scanners, vendor the corpus and capture scanner output; they
@@ -366,7 +366,7 @@ test pins the restatement to the rubric so it cannot drift.
 
 ### 5.9.1 Tests, and the gates among them
 
-The suite holds 1,018 tests. Fifty of the properties they assert are **acceptance
+The suite holds 1,069 tests. Fifty of the properties they assert are **acceptance
 gates**: conditions stated when each part of the work was specified, which that part
 had to meet before it was accepted.
 
@@ -377,11 +377,12 @@ had to meet before it was accepted.
 | Detection and normalization | 6 | Every scanner finding is retained or counted as dropped; paths join across scanners |
 | Context extraction | 7 | Every eligible finding carries five factors; no level depends on the issue class |
 | Scoring and reporting | 8 | Every score is the sum of its contributions, in bounds and correctly banded |
-| Evaluation harness | 8 | Every figure in the record is recomputed by a second route |
-| Sensitivity analysis | 5 | Every registered variant is reported; the frozen settings reproduce the scored record |
+| Evaluation harness | 8 | Every headline figure in the record is recomputed from the scored findings by separate code |
+| Sensitivity analysis | 5 | Every registered variant is reported; every variant that moves a score is reproduced by the scoring engine |
 | Auto-inference | 5 | The two modes differ in two factors and nothing else |
 
-Two kinds of gate deserve a note because they are not ordinary assertions.
+Three things about these gates deserve a note, because they are not ordinary
+assertions — and the third because this section first described them wrongly.
 
 **Some properties can only be shown by mutation.** That no factor's contribution depends
 on a finding's issue class is a claim that a change has *no* effect, which no positive
@@ -394,8 +395,36 @@ dissertation depend on rules that had to be fixed before the results were seen: 
 case is ranked, which sensitivity variants are computed, and which conventions the
 auto-inference mode reads. For each, a gate asserts that the commit introducing the
 rule is a strict ancestor of the commit introducing the result, and, for the two that
-are data files, that the file has exactly one commit. Pre-registration is thus a
-property the suite can fail on, not a statement in the text.
+are data files, that the file has exactly one commit. For the case-ranking rule,
+whose module has changed since, a gate compares the text of the eight rules with their
+text in the registering commit. What this establishes is the order of commits and
+nothing more; Section 6.1.1 says what that order does not rule out.
+
+**Some gates were weaker than this section first claimed, and a test now checks that
+they are not.** As first written, the table above said that each evaluation-harness
+gate recomputed a figure in the record by a second route. A code review carried out
+before the evaluation branch was merged — by a separate automated reviewer, not a
+human examiner — found that several did not. They re-derived a value from the record's
+own fields, or called the function under test to produce the value they expected, and
+so passed for as long as the record was fresh, whatever it said. No gate recomputed a
+rank correlation, an ordered-pair count, a Critical/High count or a rank-change total
+at all.
+
+The gates for the harness, the sensitivity analysis and auto-inference were rewritten
+in three ways. The oracle's grading now has a second implementation in the test suite,
+written to be obviously right rather than general — a rank correlation straight from
+its definition, tiers as sorted distinct scores — which shares no code with the
+harness, and the headline figures are recomputed with it from the scored findings.
+Every sensitivity variant that moves a score, 43 of the 63, is scored again by the
+framework's own engine and compared with the analysis finding by finding; the analysis
+recomputes scores from JSON with arithmetic of its own, and until this existed nothing
+held that arithmetic to the engine's. And a further test corrupts 32 figures in the
+three evaluation records, one at a time and in memory only, and requires the gate that
+owns each to fail.
+
+The rewrite changed no figure. It is recorded because it is the lesson of Section
+5.9.2 met again in the tests of the evaluation itself: **a check that derives its
+expectation from the thing it checks cannot fail.**
 
 ### 5.9.2 Three defects that tests built on their own fixtures could not find
 
@@ -405,8 +434,8 @@ passed a green suite, and each was found only by measuring over the real corpus.
 *A container-scoped identity never matched its manifest.* When context extraction was
 first built, the reader that supplies manifest contents was keyed on workload
 identities, while findings on a container carry a container suffix. None of the 217
-container-scoped identities in the corpus matched, so every one took the unresolved
-defaults on all three code-derived factors. Seven acceptance gates and 746 tests
+findings on a container-scoped identity matched — 14 identities in all — so every one
+took the unresolved defaults on all three code-derived factors. Seven acceptance gates and 746 tests
 passed, because each Kubernetes test built its own index, keyed the way the code
 expected.
 

@@ -304,7 +304,8 @@ without being told:
   scenario's expected ordering.
 
 **One process lesson from S3b, worth more than any single figure.** A defect that left
-**0 of 217** container-scoped Kubernetes identities matching the body index was invisible
+**0 of the 217 findings** on container-scoped Kubernetes identities (14 identities - the
+217 was always a count of findings) matching the body index was invisible
 to seven gates, 746 tests, `ruff` and `mypy` — because every Kubernetes test built its
 own index keyed the way the code expected. **A test that builds its own fixture cannot
 discover that the real key shape differs.** What found it was a measurement over the real
@@ -393,8 +394,12 @@ will get wrong without being told:
   finding.** How a case's several findings become one rank decides the pair pass rate and
   the scenario agreement; the S2 handoff's item 12 says it was undefined and S4 did not
   define it. The project author chose **a case ranks where its top-scoring finding ranks**
-  before any case-level score had been generated or looked at, for the reason the oracle's
-  resolution rule was pre-registered. The rule must be committed in `eval/` **before**
+  before `artifacts/scored-cases-v1.json` was first generated, for the reason the oracle's
+  resolution rule was pre-registered. **Say no more than that.** "Before any case-level
+  score had been generated or looked at", which this entry used to say, is stronger than
+  the repository can show: a test in `tests/score/test_score_run.py` already computed the
+  per-case scores in memory, and the corpus artifact already held the finding scores of 15
+  of the 26 cases. The rule must be committed in `eval/` **before**
   `artifacts/scored-cases-v1.json` exists, so git history carries the ordering. Sum and
   mean are reported beside it as an aggregation-sensitivity check, never substituted.
   That ordering holds and is tested: `eval/harness.py` arrived in `4d21966`, the case
@@ -407,8 +412,9 @@ will get wrong without being told:
 **S5's harness and first results (2026-10-06).** `eval/harness.py` computes every metric
 from JSON and imports nothing of the framework; `uv run python -m eval.run` writes
 `artifacts/evaluation-v1.json`. Its eight rules are stated once, in the module docstring.
-Eight acceptance gates in `tests/test_s5_gates.py`, each recomputing a figure by a second
-route; 916 tests in the suite. **The results exist in two committed states - as first
+Eight acceptance gates in `tests/test_s5_gates.py`; 916 tests in the suite when it was
+built. (This entry used to say each gate recomputed a figure by a second route. Several did
+not - see the pre-merge review below, which rewrote them so that they do.) **The results exist in two committed states - as first
 measured (`9b9de59`), and after the body-index fix - and where they differ both are given,
 because the fix was made after the first results had been seen:**
 
@@ -434,10 +440,11 @@ because the fix was made after the first results had been seen:**
   ordering exactly, not the author's**. Three scenarios are now free of excluded and
   low-confidence cases, and 2 of those 3 match.
 - **Alert reduction is two numbers.** Deduplication: 39 of 1,055 (3.7%). Critical/High
-  count, over the 986 findings the framework makes a quality claim about: **649 to 235, a
-  63.8% reduction** - first measured it was 649 to 531, 18.2%. **Two caveats travel with
-  it:** 441 of the baseline's 649 reach High through an unknown severity, and 740 of the
-  1,016 ranked findings are low-confidence.
+  count, over the 986 context-eligible findings: **649 to 235, a 63.8% reduction** -
+  first measured it was 649 to 531, 18.2%. **Two caveats travel with it:** 441 of the
+  baseline's 649 reach High through an unknown severity, and 740 of the 986 are
+  low-confidence. **The 986 is not the population the rubric admits to a quality claim** -
+  the pre-merge review below gives the figure over the 246 that is.
 - **Rank changes over those 986: 196 promoted, 427 demoted, 363 unchanged** (first
   measured: 245, 271, 470). 267 of the 427 demotions and 165 of the 196 promotions are
   low-confidence. The fix removed nearly every default-driven promotion into High: 143
@@ -460,9 +467,10 @@ gate 5 fails if the plan has more than one commit. What it found splits cleanly 
   stay at 2 of 5 in 56 of 63 variants and range from 1 to 3.
 - **The band counts are not, and the 63.8% alert-reduction figure inherits that.** 199 of
   the 235 High findings score **exactly 16**, the lowest High score. Raising the High
-  boundary one point leaves 36 in High; lowering it one gives 296. Lowering any one of four
-  defaults by a single point removes most of the band: exposure 3 to 2 leaves 60,
-  sensitivity 3 to 2 leaves 46, criticality 4 to 3 leaves 46, encryption 2 to 1 leaves 64.
+  boundary one point leaves 36 in High; lowering it one gives 296. Lowering any one of five
+  defaults by a single point removes most of the band: absent severity 4 to 3 leaves 92,
+  exposure 3 to 2 leaves 60, sensitivity 3 to 2 leaves 46, criticality 4 to 3 leaves 46,
+  encryption 2 to 1 leaves 64. Only privilege is immaterial (233).
   With every default at its minimum Critical/High is 0; at its maximum, 907. **Never quote
   the Critical/High reduction without this beside it.**
 - **Dropping the encryption factor changes no pair and no scenario.** It is the same
@@ -505,8 +513,9 @@ gate 5 fails if the file has more than one commit.
   disagreeing with the declarations would be wrong - they resolved none of those resources.
 - **The inferred run never scores a finding lower than the declared run**: 199 higher, 787
   equal, 0 lower. Without declared context the framework over-prioritises.
-- **What declared context was contributing:** removing it turns 8 of the 19 correctly
-  ordered scenario case pairs into ties (11 right, 10 tied, 0 inverted). Storage and
+- **What declared context was contributing:** removing it turns 9 of the 19 correctly
+  ordered scenario case pairs into ties and resolves one compute tie (11 right, 10 tied, 0
+  inverted - a net change of 8, which is what this entry used to give as the count). Storage and
   containers collapse into single tiers. Both modes match 2 of 5 scenarios, and not the same
   two - the inferred run gains compute by coincidence.
 - **Four of the ten pairs are not applicable in this mode** - two declarations about one
@@ -519,6 +528,58 @@ gate 5 fails if the file has more than one commit.
 - **A name may raise sensitivity but never lower it, and criticality takes no name hint.**
   Both hold by the shape of the data - every registered name word sits above the default -
   and a test pins that.
+
+**The pre-merge review (2026-10-07), and what it changed.** The branch was reviewed
+before merging by a separate automated reviewer - an LLM subagent given the diff and the
+requirements, **not a human**; do not describe it as independent expert review. It found no
+defect in a result and changed no figure. It found that the evidence was described more
+strongly than it was, in six ways a future session will otherwise repeat:
+
+- **The gates were partly tautological.** Several S5, S6 and S3c gates re-derived a figure
+  from the record's own fields or called the function under test for the expectation, so
+  no wrong figure could have failed them. They are rewritten. `tests/_regrade.py` is a
+  second implementation of the oracle's grading that shares nothing with `eval.harness`;
+  the S6 gates score all 43 score-moving variants through `engine.score` and compare with
+  `sensitivity.rescore` finding by finding; and `tests/test_gates_can_fail.py` corrupts 32
+  figures in memory and requires each owning gate to fail. **1,069 tests in the suite.**
+  When adding a gate, add its corruption.
+- **`engine.score(weights=...)` has one caller, and it is that S6 gate.** The sensitivity
+  analysis never called it; it recomputes from JSON. `check_identity` now compares the six
+  contributions as well as the total, because two wrong addends can cancel. A weighted
+  total outside 1..28 raises from `rubric.band_for` - reachable only for the 30
+  context-ineligible findings with severity weighted to zero.
+- **986 is the context-eligible population, not the quality-claim population.** The
+  rubric's `unresolved_default_reporting` rule also excludes low-confidence findings, which
+  leaves **246**. Over those: Critical/High **192 to 35 (81.8%)**; bands 0 / 35 / 207 / 4;
+  **31 promoted, 160 demoted, 55 unchanged**. It is the larger reduction and not the better
+  evidence: 198 of the 246 sit on resources corpus v1 declares, 87 on the four identities
+  declared two or three ways (scored under the `-low` declaration), 103 of the baseline's
+  192 have no scanner severity, and 24 of the 35 High score exactly 16. It was computed
+  after the results were known and was not part of the registered sensitivity plan. The
+  record key is `context_eligible` (was `quality_claim_population`), with an
+  `excluding_low_confidence` twin in both `alert_reduction` and `baseline_comparison`; the
+  agreement record's is `all_context_eligible_findings`.
+- **Half the ordering evidence is declared, not derived.** Four of the eight passing pairs
+  (sensitivity x2, criticality x2) put one resource under two declarations and pass by
+  construction. Of the three mined pairs that turn on extraction, one passes
+  (`exposure-security-group`) and it would pass without exposure. **No mined pair's pass
+  depends on a factor extracted from code.** Of the 19 correctly ordered scenario pairs, 9
+  are decided by declared context alone (storage 8, containers 1), 3 are the hand-crafted
+  IAM scenario, and 7 remain (networking 5, compute 2) - of which only 2 are ordered by a
+  value read from code on both sides; the other 5 have an unresolved default on one side.
+  On those 7 the baseline gets 4.
+- **Isolation is tested on contributions, not evidence.** In 7 of the 8 isolated pairs some
+  other factor sits on the same default on both sides; `isolated_without_a_shared_default`
+  is 1. The expectation check is one-directional, and `unlisted_non_resolved` reports what
+  it does not judge (22 of 26 cases, always exposure or encryption).
+- **Pre-registration is commit order and nothing more** - see the case-aggregation entry
+  above. S5 gate 8 also now asserts the eight rules' text is word for word what was
+  registered.
+
+**Never squash-merge this history.** S5 gate 8, S6 gate 5 and S3c gate 5 read commit
+ancestry and require the two registered data files to have exactly one commit each. A
+squash or a rebase that rewrites those commits turns three gates red and destroys the only
+evidence of ordering there is.
 
 **The default-fallback washout is arithmetically live, and S3b/S4 must handle it.**
 Measured from `rubric.json`: the five context factors' `unresolved_default` values
@@ -546,8 +607,10 @@ may be quoted. Chapters 1, 2 and 7 are not drafted; 1 and 2 need the proposal an
 literature sources, which are not in this repository. The chapters are written from the measured
 record, so a figure that changes in an artifact must be changed there too.
 
-Chapter 6 was drafted on 2026-10-06 from the four `artifacts/*.json` records. Three
-things about it that a later edit could undo without noticing: it gives the results
+Chapter 6 was drafted on 2026-10-06 from the four `artifacts/*.json` records and revised
+on 2026-10-07 after the pre-merge review; its passages marked "added after review" say how
+much of the ordering evidence is declared instead of derived, and must not be softened. Three
+further things about it that a later edit could undo without noticing: it gives the results
 in **both** committed states wherever the body-index fix moved them (§6.2); it states
 that **the encryption factor fails its mechanism test** by Chapter 4's own
 falsification criterion (§6.4.2, §6.9); and it concludes that the evidence supports
@@ -558,14 +621,17 @@ status notes pointing at it rather than being rewritten; chapter 3's §3.10 figu
 still the pre-fix, pre-dedupe ones, labelled.
 
 Chapter 5 was drafted on 2026-10-07. Two things in it a later edit should not lose. Its
-§5.9.2 records the three defects a green suite passed - the container suffix (0 of 217),
+§5.9.2 records the three defects a green suite passed - the container suffix (0 of 217
+findings, on 14 identities),
 the omitted namespace (311 of 579) and the capture-host paths (66 of 825 tests) - and
 states the rule they share: **a test that constructs both sides of a comparison cannot
 discover that the real sides differ.** And its §5.11 says plainly that **no single
 command runs the framework end to end on a live directory**: every result is from
 replayed captures, the planned `cli.py` was never built, and the live invocation path
-is tested component by component but was never exercised as a whole. Its file, line,
-test and gate counts are as of `c1b47b3` and will drift.
+is tested component by component but was never exercised as a whole. Its §5.9.1 also
+records that the evaluation gates were weaker than first claimed, and how they were
+rewritten. Its file, line, test and gate counts are as of the commit that introduced
+`tests/test_gates_can_fail.py` and will drift.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

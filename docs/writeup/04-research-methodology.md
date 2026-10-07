@@ -182,13 +182,18 @@ The ground truth fixes which ordering is expected. It does not fix how a case's 
 findings become the one rank that is compared with that ordering, and when the oracle
 was authored that rule was undefined.
 
-It was fixed afterwards, but before any case-level score had been generated: **a case
-ranks where its highest-scoring finding ranks**, a contrastive pair passes only when
-the high case scores strictly above the low one, and a scenario is compared as tiers.
-Section 6.1.1 states the full set of eight rules. They were committed together with
-the evaluation harness, and the repository's history shows that commit preceding the
-one that first produced per-case scores; a test asserts the ancestry rather than
-leaving it to be taken on trust.
+It was fixed afterwards: **a case ranks where its highest-scoring finding ranks**, a
+contrastive pair passes only when the high case scores strictly above the low one, and
+a scenario is compared as tiers. Section 6.1.1 states the full set of eight rules.
+They were committed together with the evaluation harness, and the repository's history
+shows that commit preceding the one that first produced the record of per-case scores;
+a test asserts the ancestry rather than leaving it to be taken on trust.
+
+Commit order is all that history can show, and it is less than "before any case-level
+score existed". The scoring engine was already built, a test already computed per-case
+scores in memory, and the corpus-level record already held the finding scores of 15 of
+the 26 cases. Section 6.1.1 sets this out, together with how the registered rule
+compared with its alternatives on the first results.
 
 The sum and the mean of a case's finding scores are reported beside the registered
 rule, as a check on how far the results depend on it. They are not alternatives to it.

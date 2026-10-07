@@ -14,8 +14,8 @@ measurement, which on design reasoning, and which on work not yet done.
 
 Chapters 1, 2 and 7 are not drafted.
 
-**Chapter 5's counts are of the repository as it stood when the chapter was written**
-(commit `c1b47b3`), and each is re-derivable: file and line counts from `git ls-files`
+**Chapter 5's counts are of the repository as it stood on 2026-10-07**, at the commit
+that introduced `tests/test_gates_can_fail.py`, and each is re-derivable: file and line counts from `git ls-files`
 over `src/iacrisk`, `tools`, `eval` and `tests`; the test count from `uv run pytest
 --collect-only`; the gate count from the distinct `test_gate_<n>` numbers in each
 `tests/test_s*_gates.py`; and the scanner-shape figures of its Section 5.5.2 from the
@@ -27,6 +27,13 @@ python -m eval.run`, `eval.sensitivity` and `eval.agreement`; and read the figur
 the JSON.
 Where the chapter gives a figure "as first measured", that state is the record
 committed at `9b9de59`, before the Kubernetes manifest-reader defect was corrected.
+
+**Chapter 6 was revised after a pre-merge code review, and says where.** The review was
+by a separate automated reviewer. It changed no figure; it added the figures over the
+246 findings that are not low-confidence, and the passages marked "added after review"
+that say how much of the ordering evidence is declared instead of derived. Those
+passages are the ones a later edit is most likely to soften. Do not: each states
+something the records show.
 
 **Chapter numbering is provisional.** It assumes 1 Introduction, 2 Literature
 Review, 3 Design, 4 Methodology, 5 Implementation, 6 Evaluation, 7 Conclusion.

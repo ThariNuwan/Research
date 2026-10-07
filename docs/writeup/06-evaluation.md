@@ -34,15 +34,46 @@ reason.
 
 **At the frozen settings the sensitivity analysis must reproduce the scored record
 before it runs.** It recomputes scores from the per-factor contributions rather than
-by calling the framework, so it first re-derives every committed score, band and
-low-confidence flag — 1,396 findings — and refuses to continue if one differs.
+by calling the framework, so it first re-derives every committed contribution, score,
+band and low-confidence flag — 1,396 findings — and refuses to continue if one
+differs. A test closes the other half of that gap: each of the 43 variants that moves
+a score is scored again by the framework's own engine, and the two must agree finding
+by finding.
 
-### 6.1.1 Rules fixed before the case-level results existed
+**The checks on these records were strengthened after the results were known.** Before
+the evaluation branch was merged it was put through a code review by a separate
+automated reviewer, given the changes and the requirements and none of the reasoning
+behind them. It is not a human examiner's review and is not offered as one. It found
+that several acceptance tests re-derived a figure from the record they were checking,
+and so could not have failed on a wrong one. Those tests were rewritten to recompute
+each headline figure from the scored findings with separate code, and a further test
+now corrupts 32 figures in the records, one at a time, and requires the test that owns
+each to fail. **No figure in this chapter changed as a result.** The review is also
+the source of the qualifications marked as added after review in Sections 6.1.1,
+6.1.2, 6.4.1, 6.4.3, 6.5, 6.6 and 6.9.
+
+### 6.1.1 Rules committed before the case-level record was generated
 
 The ground truth of Chapter 4 fixes the expected orderings. It does not fix how the
 framework's output is compared with them, and two of those rules decide the headline
-figures. They were therefore written down and committed before the per-case scores
-were generated, and before any had been seen.
+figures. They were therefore written down and committed before the record of per-case
+scores was first generated.
+
+That sentence is deliberately no stronger than the evidence for it, and an earlier
+draft of this section was stronger. It said the rules were fixed before any case-level
+score had been generated or seen. Two facts stand in the way of that. When the rules
+were committed, a test in the repository already computed the per-case scores in
+memory, checking only that the scoring tool was wired correctly. And the corpus-level
+record committed before them already held, for 15 of the 26 cases, the same finding
+scores the per-case record would later hold. No case-level score was displayed or
+compared before the rules were fixed; but that is the author's account, and the
+repository can show only the order of the commits.
+
+What can be shown is that the registered rule was not the flattering one. On the first
+results it passed 8 pairs where ranking a case by the sum of its findings passed 9; it
+ordered 18 scenario case pairs correctly where the mean ordered 19; and it matched 2
+scenarios exactly where each alternative matched 1. Section 6.4.5 gives the same
+comparison for the corrected state.
 
 1. **A case ranks where its highest-scoring finding ranks.** The framework's output is
    a ranked list of findings, so a resource surfaces at its top finding. The number of
@@ -73,26 +104,45 @@ were generated, and before any had been seen.
    its highest baseline band.
 8. **Alert reduction is two numbers**, and nothing adds them.
 
-The ordering is evidenced by the repository's history rather than by this paragraph:
-the commit that introduced the harness is a strict ancestor of the commit that
-introduced the per-case scores, and a test asserts that ancestry. The same was done
-for the sensitivity plan (Section 6.7).
+The commit order is evidenced by the repository's history rather than by this
+paragraph: the commit that introduced the harness is a strict ancestor of the commit
+that introduced the per-case scores, and a test asserts that ancestry. A second test
+compares the text of the eight rules as they now stand with their text in that first
+commit, and they are identical. The harness around the rules has changed since — it
+reports more than it did, and the sections below say where — but no rule and no
+verdict has. The same commit-order evidence exists for the sensitivity plan (Section
+6.7), which has not been edited at all.
 
 ### 6.1.2 The populations
 
-Three counts recur, and a figure means little without knowing which it is over.
+Four counts recur, and a figure means little without knowing which it is over.
 
 - **1,055** findings leave the scanner adapters.
 - **1,016** are ranked, after the exact-match deduplication tier removes 39.
-- **986** of those are findings the framework makes a prioritization claim about. The
-  other 30 have no addressable cloud resource — a hard-coded secret, a provider block,
-  a file-level finding, or an identity that could not be resolved — so they are scored
-  on severity alone and reported as informational.
+- **986** of those are *context-eligible*: mapped to a taxonomy class and carrying a
+  context block. The other 30 have no addressable cloud resource — a hard-coded
+  secret, a provider block, a file-level finding, or an identity that could not be
+  resolved — so they are scored on severity alone and reported as informational.
+- **246** of the 986 are not low-confidence: at least three of their five contextual
+  factors were resolved from evidence.
 
-Unless stated otherwise, prioritization figures in this chapter are over the 986 and
-coverage figures over the 1,055. Chapter 3's measurements were taken over the 1,055,
-before any deduplication was applied to the scored list; where a figure here differs
-from one there for that reason, Section 6.2 gives both.
+**The first draft of this chapter conflated the last two, and the rubric says which
+of them a quality claim may be made over.** Rule 2 of Section 6.1.1 sets aside only
+unmapped and context-less findings, which gives the 986, and the draft called those
+"the findings the framework makes a prioritization claim about". But the rubric's own
+reporting rule, frozen before any score existed, says that findings above the
+defaulted-factor threshold are "flagged low-confidence and excluded from
+prioritization-quality claims". By that rule the population for a corpus-level quality
+claim is the 246. The pair and scenario figures always had a second figure over a
+clean subset; the corpus-level figures of Sections 6.5 and 6.6 did not.
+
+Both are now given. The 986 figures stay because they are what was first reported and
+what the sensitivity plan registered. The 246 figures are given beside them and are
+marked as added after the results were known. Unless stated otherwise, a
+prioritization figure in this chapter is over the 986 and a coverage figure over the
+1,055. Chapter 3's measurements were taken over the 1,055, before any deduplication
+was applied to the scored list; where a figure here differs from one there for that
+reason, Section 6.2 gives both.
 
 ## 6.2 A defect the evaluation found, and the two recorded states
 
@@ -203,6 +253,16 @@ the pair names, not a coincidental difference elsewhere. In one of the eight,
 that this pair still passes with the exposure factor removed, so it is weaker evidence
 for the exposure mechanism than its sibling.
 
+**"The only contextual factor that moved" claims less than it appears to, and this
+paragraph was added after review.** Isolation is tested on what each factor
+*contributed* to the score. Two cases whose exposure could not be resolved both
+contribute the default of 3, and so agree on exposure without either having been read.
+In seven of the eight isolated pairs at least one other factor is in that state on
+both sides — exposure, encryption, or both. Only `exposure-security-group` is isolated
+with every other contextual factor resolved from evidence on both sides. The pairs
+therefore show that nothing else *differed in the score*; they do not show that
+everything else was *established to be equal*.
+
 **The baseline cannot pass a pair that differs only in context, and that is the point
 of the comparison rather than a weakness of it.** Four pairs put the same resource
 under two declared contexts, so the scanners' findings are identical on both sides.
@@ -210,10 +270,31 @@ In five more the two cases draw different issue classes but their most severe fi
 falls in the same band. The baseline ties all nine. Its single pass is the pair where
 severity happens to differ.
 
-Two disclosures qualify the 8 of 10. **Three of the eight passes are on hand-crafted
-cases**, written by the framework's author because the vendored corpus contains no
-resource pairs that isolate privilege or a second exposure pattern (Section 4.3). On
-the seven pairs mined entirely from third-party code the framework passes five.
+Three disclosures qualify the 8 of 10. The second was added after review, and it
+is the one that changes how the figure should be read.
+
+**Three of the eight passes are on hand-crafted cases**, written by the framework's
+author because the vendored corpus contains no resource pairs that isolate privilege
+or a second exposure pattern (Section 4.3). On the seven pairs mined entirely from
+third-party code the framework passes five.
+
+**Four of the eight passes hold by construction.** The two sensitivity pairs and the
+two criticality pairs each put one resource under two declarations. The code is the
+same on both sides, so everything scanned and everything extracted is the same, and
+the only difference between the two scores is the declared number the pair's author
+supplied. These pairs establish that a declared value reaches the score with the right
+sign — that the join and the arithmetic work. They could not have failed for any
+reason to do with how the framework reads infrastructure code, and they are four of
+the five mined passes.
+
+That leaves six pairs in which the framework had to find the difference in the code.
+It passes four: the three hand-crafted pairs, and `exposure-security-group`. In that
+last pair the framework does read the difference — an exposure of 4 against 0, four
+of the five points between the two cases — but the pair would pass on its remaining
+severity point without it. **Of the three mined pairs that turn on something the
+framework must extract, it passes one, and that pass does not depend on the
+extraction.** The other two are the encryption pairs of the next section.
+
 And the pairs test the direction of a rank change only: every one compares scores
 that sit within a few points of each other in the middle of the range.
 
@@ -264,6 +345,37 @@ correctly, ties 2 and inverts none; the baseline orders 4, ties 16 and inverts 1
 
 The baseline's τ_b is undefined on three scenarios because it assigns every case the
 same band there, leaving no order to correlate.
+
+**Where the 19 correctly ordered pairs come from matters as much as their number.**
+This breakdown was added after review.
+
+| Scenario | Ordered correctly | Decided by | Baseline right / tied / inverted |
+|---|---|---|---|
+| Storage | 8 | declared sensitivity and criticality alone | 0 / 8 / 0 |
+| Containers | 1 | declared sensitivity and criticality alone | 0 / 2 / 0 |
+| IAM | 3 | privilege, read from hand-crafted policies | 0 / 3 / 0 |
+| Networking | 5 | exposure: read on both sides in two pairs, an unresolved default on one side in three | 2 / 2 / 1 |
+| Compute | 2 | exposure against an unresolved default, with declared criticality and severity | 2 / 1 / 0 |
+
+Nine of the nineteen are decided by declared context alone: the two cases score
+identically on severity and on each of the three factors read from code, and are
+separated only by the sensitivity and criticality the scenario's author declared. The
+storage scenario's exact match is therefore a statement that declared values order the
+buckets as declared, and Section 6.7.4 shows the same thing from the other side:
+without the declarations it collapses into a single tier. Three more are the IAM
+scenario, whose cases were written for the purpose.
+
+**The seven that remain are the evaluation's evidence that the framework derives a
+useful ordering from infrastructure code, and they are thinner than seven suggests.**
+In the networking scenario the framework reads an open CIDR as exposure 4 and two
+rules with no inbound reach as 0, and it places a rule whose CIDR is an unresolved
+reference between them at the conservative default of 3. Two of its five pairs are
+therefore decided by values read on both sides. The other three have that default on
+one side, and Section 6.7.3 shows how far they depend on where it sits. In the compute
+scenario both pairs involve a storage volume whose exposure is likewise the default.
+**Outside the hand-crafted IAM scenario, two scenario pairs in this evaluation are
+ordered by a contextual factor read from code on both sides.** On the seven pairs the
+baseline orders four, ties two and inverts one.
 
 The three scenarios that do not match exactly fail in three different ways, and the
 differences matter more than the count.
@@ -347,7 +459,7 @@ involve more than one scanner, and 91 are a single scanner raising findings the
 fingerprint cannot tell apart. Neither count is part of the reduction (Section 4.7.5).
 
 **Prioritization reduces the Critical/High count from 649 to 235, 63.8%**, over the 986
-findings the framework makes a claim about.
+context-eligible findings.
 
 | Band | Baseline | Framework |
 |---|---|---|
@@ -376,6 +488,35 @@ was shown.
 3. **The figure is not stable.** Section 6.7 shows that moving one band boundary by a
    single point, or one default by a single point, changes the Critical/High count
    several-fold.
+
+**Over the 246 findings that are not low-confidence the count falls from 192 to 35,
+81.8%.** This is the population the rubric's reporting rule admits to a quality claim
+(Section 6.1.2). The figure was computed after the results above were known.
+
+| Band | Baseline | Framework |
+|---|---|---|
+| Critical | 9 | 0 |
+| High | 183 | 35 |
+| Medium | 19 | 207 |
+| Low | 35 | 4 |
+
+It is the larger of the two reductions, and a figure that improves when the population
+is changed after the fact should be trusted less for that, not more. It is reported
+because the rubric requires it, not because it is better evidence, and it carries
+qualifications of its own.
+
+1. **The population is mostly the evaluation's own declarations.** The 246 findings
+   sit on 27 resources, and 198 of them are on a resource corpus v1 declares. Of
+   those, 87 are on the four resources that the contrastive pairs declare two or three
+   ways, where the corpus-level run applied the last declaration in the file — in each
+   case the low one. More than a third of this population is scored under a value
+   chosen to be the low side of a pair.
+2. **The baseline is still largely a default.** 103 of its 192 Critical/High findings
+   carry no scanner severity.
+3. **It sits on the same boundary.** 24 of the 35 High findings score exactly 16 and
+   the other 11 score 17, so raising the High boundary by one point would leave 11.
+   This population was not part of the registered sensitivity analysis, which is over
+   the 986; that count is read directly from the scores.
 
 **No finding reaches Critical.** The highest score in the corpus is 20, on two
 findings, against a Critical boundary of 22. The arithmetic is simple: the five
@@ -429,6 +570,28 @@ but for most findings the explanation names a default.** Explainability and
 evidence are different properties, and the framework has the first more securely than
 the second.
 
+**Over the 246 findings that are not low-confidence, 31 are promoted, 160 demoted and
+55 keep their band.** This too was added after the results were known, for the reason
+given in Section 6.1.2.
+
+| Movement (baseline to framework) | Findings | Baseline band from an absent severity |
+|---|---|---|
+| High to Medium | 151 | 83 |
+| High to High | 32 | 20 |
+| Low to Medium | 31 | 0 |
+| Medium to Medium | 19 | 0 |
+| Critical to Medium | 6 | 0 |
+| Low to Low | 4 | 0 |
+| Critical to High | 3 | 0 |
+
+Restricting to these findings removes the promotions into High altogether: all three
+were low-confidence. It does not remove the dependence on defaults. On the 151
+High-to-Medium findings exposure is resolved on 22% and encryption on 46%, and 83 of
+them start from a baseline band that was itself a default. What the restriction buys
+is that privilege is resolved on all of them and sensitivity and criticality on 83%.
+What it costs is that those sensitivity and criticality values are, for 198 of the 246
+findings, the evaluation's own declarations.
+
 ## 6.7 Ranking consistency
 
 Chapter 4 splits this metric in two and requires that the halves are not averaged.
@@ -438,7 +601,9 @@ Sections 6.7.1 to 6.7.3 report the model's sensitivity to its own parameters; Se
 The sensitivity analysis is a reported experiment, not a search. Its 63 variants were
 listed in a plan, approved, and committed before any of them was computed; all 63 are
 in the record and none was filtered. The frozen model is the result throughout — no
-variant replaces it. The experiment covers four things: each factor's unresolved
+variant replaces it. Every variant is computed over the 986 context-eligible findings,
+as the plan registered; the 246 of Section 6.1.2 were not swept. The experiment covers
+four things: each factor's unresolved
 default across its whole range, one at a time, plus every default at its minimum and
 at its maximum (29 variants); each band boundary moved by one and by two points, alone
 and together (16); each factor's weight dropped to zero and doubled, plus two named
@@ -540,10 +705,15 @@ together with the rules for measuring agreement, before the mode was run, on the
 evidence as Section 6.1.1.
 
 **On this corpus the conventions resolve almost nothing.** Of the 81 resources that
-carry a finding the framework makes a claim about, two take an inferred value — 3 of
-the 986 findings. Both are sensitivity 5, from the word *secret* in the name of a
-Kubernetes Role and of its binding. No tag, label or namespace resolved anything, and
-no criticality value was inferred at all.
+carry a context-eligible finding, two take an inferred value — 3 of the 986 findings.
+Both are sensitivity 5, from the word *secret* in the name of a Kubernetes Role and of
+its binding. No tag, label or namespace resolved anything, and no criticality value
+was inferred at all.
+
+The two modes differ in one respect beyond where the values come from. An inferred
+value on a Kubernetes workload is inherited by that workload's containers, whereas a
+declaration reaches a container only if it names it. Neither of the two resources
+resolved here has containers, so the difference moved nothing in this record.
 
 The reason lies in the corpus rather than in the mode. Where the vendored Terraform
 tags a resource at all, it either builds the tags with an expression over a computed
@@ -598,12 +768,14 @@ declarations, and the conventions give a resource one value. The other six behav
 identically in both modes — the same four pass and the same two encryption pairs tie
 — because none of them depended on declared context.
 
-The scenarios show the cost. **Taking the declared input away turns eight correctly
-ordered case pairs into ties.** The storage scenario, whose order was entirely
-declared, collapses into a single tier, and so does the containers scenario. The
-compute scenario moves the other way and matches exactly: with the one-point declared
-criticality gone, scanner severity decides between the two contested cases, in the
-author's favour. That is a coincidence of this scenario, not a merit of the mode.
+The scenarios show the cost. **Taking the declared input away turns nine correctly
+ordered case pairs into ties, and resolves one tie.** The nine are the pairs Section
+6.4.3 identifies as decided by declared context alone: the storage scenario, whose
+order was entirely declared, collapses into a single tier, and so does the containers
+scenario. The compute scenario moves the other way and matches exactly: with the
+one-point declared criticality gone, scanner severity decides between the two
+contested cases, in the author's favour. That is a coincidence of this scenario, not a
+merit of the mode.
 
 **The conclusion is narrow and should stay narrow.** This evaluation shows that the
 declared-context input does real ordering work, and that a convention-based substitute
@@ -639,8 +811,9 @@ where they do not**, and on this corpus they mostly do not.
 That is a statement about the corpus as much as about the framework. The mechanism
 tests of Section 6.4.1 show the factors doing what they were designed to do on the
 resources where they resolve. The corpus-wide figures show how seldom, on two
-deliberately insecure teaching repositories with twenty declared resources, they get
-the chance.
+deliberately insecure teaching repositories in which corpus v1 declares fifteen
+resources, they get the chance. (Corpus v1 declares twenty; the other five are
+hand-crafted and are not part of corpus v0.)
 
 ## 6.9 The claim against its falsification conditions
 
@@ -649,14 +822,21 @@ claim would fail. Each is answered here in its own terms.
 
 **A contrastive pair does not move in the predicted direction.** Two of ten do not
 move at all. By this condition the claim **fails for the encryption factor** and holds
-for exposure, privilege, sensitivity and criticality, with the qualification that
-three of the eight passes rest on hand-crafted cases and one of the two exposure
-passes does not depend on exposure.
+for exposure, privilege, sensitivity and criticality. What it holds *on* differs by
+factor, and Section 6.4.1 sets it out. The sensitivity and criticality pairs pass by
+construction, since each compares one resource under two declared values. The
+privilege pairs and one exposure pair are hand-crafted. The one mined pair that turns
+on extracted evidence, `exposure-security-group`, would pass without it. **No mined
+pair's pass depends on a contextual factor the framework extracted from code.**
 
 **The framework's scenario orderings diverge from the reviewed orderings more than the
 baseline's.** They diverge less: 19 of 21 ordered case pairs correct against 4, and 2
 exact matches against none. The condition is not met. The baseline's failure is that
 it cannot separate cases — it ties 16 of the 21 — more than that it mis-orders them.
+Of the framework's 19, nine are decided by declared context alone and three are on
+hand-crafted cases (Section 6.4.3). On the seven that rest on evidence read from the
+code or reported by a scanner, the framework orders all seven and the baseline four;
+five of those seven have an unresolved default on one side.
 
 **The re-ranking cannot be explained by named factors.** It can, for every finding.
 The condition is not met, but Section 6.6 shows the answer is narrower than it sounds:
@@ -665,14 +845,29 @@ for 432 of the 623 findings that change band, the named factor is a default.
 **The alert reduction is attributable to deduplication alone.** It is not:
 deduplication removes 39 findings and prioritization moves 414 out of Critical and
 High. The condition is not met. The size of the second figure, however, is the least
-robust number in this chapter.
+robust number in this chapter: it is 414 of 649 over the context-eligible findings and
+157 of 192 over those that are not low-confidence, and neither survives a one-point
+move of the High boundary.
 
-**The evidence supports a narrower claim than the one the framework set out to make.**
-It supports the claim that contextual enrichment separates findings that scanner
-severity cannot — the baseline ties what the framework orders, in pairs and scenarios
-alike, and that result survives every perturbation applied to it. It does not support
-a claim about how many alerts a practitioner would be spared, because that number
-depends on parameters this evaluation has no means of validating.
+**The evidence supports a narrower claim than the one the framework set out to make,
+and narrower again than this section said before review.** It supports the claim that
+contextual enrichment separates findings that scanner severity cannot — the baseline
+ties what the framework orders, in pairs and scenarios alike, and that result survives
+every perturbation applied to it.
+
+But most of that separation comes from context that was *declared*, by the author who
+also wrote the expected orderings: four of the eight passing pairs and nine of the
+nineteen correctly ordered scenario pairs follow from declared values alone. What
+those show is that the framework carries a stated business context into the ranking
+faithfully, which a severity-only baseline cannot do at all. That is a real property,
+and it is the one the declared-context design was built to have. The evidence that the
+framework *derives* a discriminating context from infrastructure code is thinner:
+seven scenario pairs, of which two are ordered by values read from the code on both
+sides; the hand-crafted privilege and exposure cases; and one mined pair that would
+pass without it.
+
+It does not support a claim about how many alerts a practitioner would be spared,
+because that number depends on parameters this evaluation has no means of validating.
 
 ## 6.10 Limitations of this evaluation
 
@@ -700,10 +895,30 @@ model family with the framework's design reasoning (Section 4.7.1). Where the
 framework and the author disagree, on the containers scenario, the framework agrees
 with the reviewer.
 
-**The comparison rule was fixed late.** How a case's findings become one rank was not
-defined when the oracle was authored. It was fixed before any case-level score was
-generated and the order is evidenced by the repository history, but it was fixed
-after the scoring engine existed, and by the author.
+**The comparison rule was fixed late, and the evidence for when is commit order
+alone.** How a case's findings become one rank was not defined when the oracle was
+authored. It was committed before the record of per-case scores was first generated,
+and the repository history shows that. It was fixed after the scoring engine existed,
+by the author, at a point when a test already computed those scores in memory and the
+corpus record already held the finding scores of 15 of the 26 cases (Section 6.1.1).
+
+**Much of the ordering evidence is declared, not derived.** Four of the eight passing
+pairs and nine of the nineteen correctly ordered scenario pairs follow from declared
+sensitivity and criticality alone (Sections 6.4.1 and 6.4.3), and the declarations and
+the expected orderings have one author.
+
+**Isolation was tested on contributions, not on evidence.** In seven of the eight
+isolated pairs some other factor sits on the same default on both sides (Section
+6.4.1).
+
+**The corpus-level figures were first reported over the wrong population for a quality
+claim.** The rubric excludes low-confidence findings from such claims; Sections 6.5
+and 6.6 now give both populations. The narrower one was computed after the results
+were known and is dominated by the evaluation's own declarations.
+
+**The checks on the records were weaker than first described.** Section 6.1 records
+the pre-merge review that found this and what was changed. That review was automated.
+It is no substitute for the human review of the oracle, which is still outstanding.
 
 **The sensitivity weightings are the author's.** Chapter 4 promises expert-derived
 alternatives; the two tested were source-motivated and author-approved.
