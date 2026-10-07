@@ -2,20 +2,20 @@
   "schema_version": 1,
   "description": "Auto-inference agreement: the declared-context run against the run whose sensitivity and criticality were read from the registered conventions.",
   "provenance": {
-    "generated_utc": "2026-10-06T11:50:48Z",
+    "generated_utc": "2026-10-07T08:26:26Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "5352c1373c676adfbafcc893ac13f288a46cc0f9",
+      "commit": "a05caaeacc48ba5b9cdc97f68e5fa89d227bed18",
       "state": "ok"
     },
-    "source_clean": true,
+    "source_clean": false,
     "inputs": {
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
       "eval/sensitivity_plan.json": "5ae98ad42d3ce891723a6554b06adda211f0b7d838e59440e9a236cdecbeebe1",
-      "artifacts/scored-corpus-v0.json": "04cb83fa550b2f31e8e853ab0c759aec93e1ed15f2b3b6f963a17c3d0f5cf32d",
-      "artifacts/scored-cases-v1.json": "8e151c0823e04d1ce0787bc188ec8e4999c71309676b35fd8d54740f09c6b98f",
-      "artifacts/scored-corpus-v0-inferred.json": "7dedf6378ef732bb15a2970bd119314e79f9fb011a1e6ef832dd3c38703bee3a",
-      "artifacts/scored-cases-v1-inferred.json": "cfddaf68485552f0ce246211b75610531ef2dbca1761fd63fb8cc45ff4c998b2"
+      "artifacts/scored-corpus-v0.json": "f7257ca954aeb1a30168bda1ad0157ac61c8cb018e1776be8078c5b1b5da725b",
+      "artifacts/scored-cases-v1.json": "e76fd3637c160e29252ae519fdffb13a7bef86a502a67b2832f03d272b660b5a",
+      "artifacts/scored-corpus-v0-inferred.json": "b8ff62ac279d053c303df624a93f5acb5b6442cd682ec3a9785b21957d91c7e0",
+      "artifacts/scored-cases-v1-inferred.json": "c71e4e53c8a34daa5c352b8afee59fa40b7e790d1082beb195aad607f6530e3d"
     }
   },
   "coverage": {
@@ -301,7 +301,7 @@
     }
   },
   "ranking_agreement": {
-    "all_quality_claim_findings": {
+    "all_context_eligible_findings": {
       "findings": 986,
       "kendall_tau_b": 0.7537917164595275,
       "same_score": 787,
@@ -336,6 +336,7 @@
         "encryption-s3-data",
         "encryption-s3-financials"
       ],
+      "pairs_not_evaluable": [],
       "scenarios_exact": 2,
       "ordered_pairs_concordant": 19,
       "ordered_pairs_tied": 2,
@@ -425,6 +426,7 @@
         "encryption-s3-data",
         "encryption-s3-financials"
       ],
+      "pairs_not_evaluable": [],
       "scenarios_exact": 2,
       "ordered_pairs_concordant": 11,
       "ordered_pairs_tied": 10,

@@ -32,6 +32,22 @@ Like the rest of `eval/`, it reads the scored JSON and imports nothing of the fr
    never as failures.
 7. **Pairs and scenarios are graded by `eval.harness`'s own rules**, in both modes, so the
    only thing that differs between the two columns is where the two factors came from.
+
+**Notes added on 2026-10-07, after a pre-merge code review. The seven rules are unchanged.**
+
+- Rule 7 says the two columns differ only in where the two factors came from. One thing
+  differs in *how* they are joined, and the rule does not mention it: in the inferred run
+  a container-scoped Kubernetes identity takes its enclosing workload's inferred values
+  (`join_inferred`), while a declaration is matched on the exact identity and reaches a
+  container only if a case declares that container. On this corpus the difference moved
+  nothing - the two resources the conventions resolved are a Role and a RoleBinding, and
+  neither has containers - but it is a difference between the modes and is stated here.
+- "The findings the framework makes a quality claim about" in this module means the
+  context-eligible findings: mapped, and carrying a context block. It does not exclude
+  low-confidence findings, which the rubric's `unresolved_default_reporting` rule does.
+  The record key that carried the phrase is now `all_context_eligible_findings`.
+- A pair with an unrankable side is listed under `pairs_not_evaluable`. It was previously
+  counted as failed, which `eval.harness` rule 2 forbids; none exists in either run.
 """
 
 from __future__ import annotations
@@ -132,8 +148,8 @@ def coverage(inferred_corpus: Mapping[str, Any]) -> dict[str, Any]:
     """How much of the corpus the conventions resolved anything for (rule 5).
 
     In an inferred run a `resolved` sensitivity or criticality is one a convention
-    supplied; everything else took the default. Counted over the findings the framework
-    makes a quality claim about, and over the distinct resources those findings sit on.
+    supplied; everything else took the default. Counted over the context-eligible
+    findings, and over the distinct resources those findings sit on.
     """
     findings = [f for f in inferred_corpus["findings"] if _counts(f)]
     resources = {f["resource_identity"] for f in findings}
@@ -283,7 +299,7 @@ def ranking_agreement(
         if any(d["factor_states"][factor] == "resolved" for factor in INFERRED_FACTORS)
     ]
     return {
-        "all_quality_claim_findings": _rank_tally(pairs),
+        "all_context_eligible_findings": _rank_tally(pairs),
         "on_declared_resources": _rank_tally(declared_only),
     }
 
@@ -304,9 +320,13 @@ def _grade(
     pairs = [harness.evaluate_pair(pair, cases) for pair in applicable]
     scenarios = [harness.evaluate_scenario(s, cases) for s in ground_truth["scenarios"]]
     headline = harness._summarise_scenarios(scenarios)["headline"]["framework"][rule]
+    evaluable = [p for p in pairs if p["evaluable"]]
     return {
-        "pairs_passed": sum(1 for p in pairs if p["framework"][rule]["passes"]),
-        "pairs_failed": [p["pair_id"] for p in pairs if not p["framework"][rule]["passes"]],
+        "pairs_passed": sum(1 for p in evaluable if p["framework"][rule]["passes"]),
+        "pairs_failed": [p["pair_id"] for p in evaluable if not p["framework"][rule]["passes"]],
+        # A pair with an unrankable side has no verdict. Listing it as failed would turn
+        # "could not be graded" into "graded and lost", which harness rule 2 forbids.
+        "pairs_not_evaluable": [p["pair_id"] for p in pairs if not p["evaluable"]],
         "scenarios_exact": headline["exact_tier_matches"],
         "ordered_pairs_concordant": headline["ordered_pairs_concordant"],
         "ordered_pairs_tied": headline["ordered_pairs_tied"],
@@ -404,7 +424,7 @@ def main(argv: list[str] | None = None) -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     covered = document["coverage"]
-    ranking = document["ranking_agreement"]["all_quality_claim_findings"]
+    ranking = document["ranking_agreement"]["all_context_eligible_findings"]
     print(
         f"findings={covered['findings']} inferred_sensitivity="
         f"{covered['findings_inferred']['sensitivity']} inferred_criticality="

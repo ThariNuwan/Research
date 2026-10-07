@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -101,6 +102,37 @@ def test_eval_does_not_import_the_framework() -> None:
         if leaked:
             offenders.append((path.relative_to(REPO_ROOT).as_posix(), sorted(leaked)))
     assert offenders == [], f"eval/ imports the framework it grades: {offenders}"
+
+
+def test_importing_the_harness_loads_nothing_of_the_framework() -> None:
+    """The same boundary, checked on what actually loads.
+
+    The guard above reads import statements. It cannot see an import made through
+    `importlib`, or one made by a module `eval/` imports from outside `iacrisk` -
+    `tools.harvest.provenance` is such a module, and is why this is worth running. A fresh
+    interpreter imports every module the evaluation records are computed by and reports
+    what of the framework it finds loaded. A subprocess, because this test session has
+    long since imported `iacrisk` itself.
+    """
+    modules = ["eval.ground_truth", "eval.harness", "eval.run", "eval.sensitivity"]
+    modules.append("eval.agreement")
+    probe = (
+        "import importlib, sys\n"
+        f"for name in {modules!r}:\n"
+        "    importlib.import_module(name)\n"
+        "leaked = sorted(m for m in sys.modules if m == 'iacrisk' or m.startswith('iacrisk.'))\n"
+        "print('\\n'.join(leaked))\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.split() == [], f"importing eval/ loaded: {proc.stdout.split()}"
 
 
 # (source, matches iacrisk.scoring, matches iacrisk, matches checkov)

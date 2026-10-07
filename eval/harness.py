@@ -9,10 +9,21 @@ would couple the grader to the graded.
     artifacts/scored-cases-v1.json    each case, finding level     (tools.score.run cases)
     eval/ground_truth/corpus-v1.json  the pre-registered oracle
 
-**The rules below were fixed and committed before `scored-cases-v1.json` existed and before
-any case-level score had been looked at.** Git history carries that ordering, as it does for
-the oracle itself. They are stated once, here, so the code and the registration are the
-same text.
+**The rules below were committed before `artifacts/scored-cases-v1.json` was first
+generated.** That is what git shows, and a gate checks it. It is a weaker statement than
+"before any case-level score existed", and two facts keep it from being the stronger one.
+When the rules were committed, a test in `tests/score/test_score_run.py` already computed
+the per-case scores in memory, asserting only their wiring. And the corpus artifact
+committed before them already carried, for 15 of the 26 cases, the same finding scores the
+case artifact would later hold. No case-level score was displayed or compared before the
+rules were fixed, but the repository cannot show that; it can only show the commit order.
+
+What the first results looked like under each rule is on record, so a reader can judge
+whether the choice was convenient: the chosen rule passed 8 pairs where `sum` passed 9,
+ordered 18 scenario case pairs correctly where `mean` ordered 19, and matched 2 scenarios
+exactly where each alternative matched 1.
+
+The rules are stated once, here, so the code and the registration are the same text.
 
 1. **A case ranks where its highest-scoring finding ranks** (`PRIMARY_RULE`). Ruled by the
    project author on 2026-10-06. The framework's output is a ranked list of findings, so a
@@ -42,6 +53,27 @@ same text.
    highest `baseline_band`. A framework figure without its baseline twin is not a comparison.
 8. **Alert reduction is two numbers** - deduplication, and the Critical/High band count -
    and this module never adds them.
+
+**Changes to this module since the rules were registered.** None alters a rule or a verdict;
+each is listed so that "the harness was committed before the scores" is not read as "the
+harness is unchanged since".
+
+- After S6 and S3c existed, the `ranking_consistency` block was changed to name their
+  records instead of saying they were unbuilt.
+- After a pre-merge code review of the branch (2026-10-07):
+  - The expectation check's docstring claimed a two-way comparison of states that the code
+    never made. The docstring was corrected, and the check now also reports, without
+    judging, the non-resolved factors the ground truth does not list.
+  - A case reports its top finding's factor states, and a pair reports the factors that are
+    non-resolved on both sides. Rule 4 tests isolation on contributions, so two cases whose
+    other factors sit on the same default are isolated by that default. The ground-truth
+    schema speaks of "resolved factors"; this makes the difference visible.
+  - The corpus-level figures gained an `excluding_low_confidence` twin, and the key
+    `quality_claim_population` was renamed `context_eligible`. Rule 2 sets aside only
+    unmapped and context-less findings, but the rubric's own `unresolved_default_reporting`
+    rule also excludes low-confidence findings from prioritization-quality claims. The pair
+    and scenario figures already had a `clean` twin for that; alert reduction and the
+    rank-change table did not.
 """
 
 from __future__ import annotations
@@ -97,13 +129,35 @@ def _expectation_check(
 ) -> dict[str, Any]:
     """Whether the scored output still shows what the ground truth recorded for the case.
 
-    Classes are compared as `(identity, class)` sets. `unresolved_factors` and
-    `defaulted_factors` are compared against every scored finding of that identity and
-    class - the oracle recorded them as first-class expectations (S1 design spec 4.1), so a
-    silent change of state in the framework is a mismatch here, not a pass.
+    Classes are compared as `(identity, class)` sets, in both directions.
+
+    States are compared in ONE direction, and `states_match` means only this: every factor
+    the ground truth lists as `unresolved` or `defaulted` is scored in that state. A factor
+    that is non-resolved in the scored output and that the ground truth does not list is
+    not a mismatch. It is reported under `unlisted_non_resolved` instead, because the
+    oracle lists a state only where a case turns on it and is silent elsewhere - exposure
+    is unresolved on every Kubernetes workload, and no case lists it.
+
+    An earlier version of this docstring said a silent change of state in the framework
+    would be a mismatch here. It would not have been, and was not: with the body-index
+    defect present, all three parsed factors of `k8s-kube-bench-node-workload` were
+    unresolved, the ground truth listed none of them, and `states_match` was true.
     """
     expected = {(e["resource_identity"], e["issue_class"]) for e in case["expected"]["findings"]}
     scored = {(f["resource_identity"], f["issue_class"]) for f in findings}
+
+    listed: dict[tuple[str, str], set[str]] = {}
+    for entry in case["expected"]["findings"]:
+        listed.setdefault((entry["resource_identity"], entry["issue_class"]), set()).update(
+            entry.get("unresolved_factors", []), entry.get("defaulted_factors", [])
+        )
+    unlisted: set[tuple[str, str]] = set()
+    for finding in findings:
+        named = listed.get((finding["resource_identity"], finding["issue_class"]), set())
+        for factor in CONTEXT_FACTORS:
+            state = finding["factor_states"].get(factor)
+            if state is not None and state != "resolved" and factor not in named:
+                unlisted.add((factor, state))
 
     state_mismatches: list[dict[str, Any]] = []
     for entry in case["expected"]["findings"]:
@@ -132,6 +186,9 @@ def _expectation_check(
         "not_in_ground_truth": sorted(c for _, c in scored - expected),
         "states_match": not state_mismatches,
         "state_mismatches": state_mismatches,
+        "unlisted_non_resolved": [
+            {"factor": factor, "state": state} for factor, state in sorted(unlisted)
+        ],
     }
 
 
@@ -159,6 +216,7 @@ def case_score(case: Mapping[str, Any], entry: Mapping[str, Any]) -> dict[str, A
             "baseline": None,
             "band": None,
             "contributions": None,
+            "factor_states": None,
             "low_confidence": None,
             "context_uniform": None,
         }
@@ -172,6 +230,7 @@ def case_score(case: Mapping[str, Any], entry: Mapping[str, Any]) -> dict[str, A
         "baseline": max(BAND_RANK[f["baseline_band"]] for f in counted),
         "band": top["band"],
         "contributions": dict(top["contributions"]),
+        "factor_states": dict(top["factor_states"]),
         "low_confidence": bool(top["low_confidence"]),
         # Every counted finding of one case sits on one resource under one declared context,
         # so their contextual contributions should agree. Reported rather than assumed: if
@@ -219,12 +278,10 @@ def evaluate_pair(
             "severity_delta": None,
             "mechanism": None,
             "isolated": None,
+            "non_resolved_on_both_sides": None,
         }
 
-    delta = {
-        key: high["contributions"].get(key, 0) - low["contributions"].get(key, 0)
-        for key in CONTEXT_FACTORS
-    }
+    delta = {key: high["contributions"][key] - low["contributions"][key] for key in CONTEXT_FACTORS}
     moved = {key for key, value in delta.items() if value != 0}
     return {
         **result,
@@ -233,6 +290,16 @@ def evaluate_pair(
         "severity_delta": high["contributions"]["severity"] - low["contributions"]["severity"],
         "mechanism": factor in delta and delta[factor] > 0,
         "isolated": moved == {factor},
+        # Isolation is tested on contributions. Where a factor other than the one under test
+        # is non-resolved on both sides, the two cases agree on it because both took the
+        # same default, not because both were read and found equal.
+        "non_resolved_on_both_sides": [
+            key
+            for key in CONTEXT_FACTORS
+            if key != factor
+            and high["factor_states"][key] != "resolved"
+            and low["factor_states"][key] != "resolved"
+        ],
     }
 
 
@@ -253,6 +320,9 @@ def _pair_tally(pairs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "baseline_passes": sum(1 for p in evaluable if p["baseline"]["passes"]),
         "mechanism": sum(1 for p in evaluable if p["mechanism"]),
         "isolated": sum(1 for p in evaluable if p["isolated"]),
+        "isolated_without_a_shared_default": sum(
+            1 for p in evaluable if p["isolated"] and not p["non_resolved_on_both_sides"]
+        ),
         "severity_also_moved": sum(1 for p in evaluable if p["severity_delta"] != 0),
     }
 
@@ -519,6 +589,7 @@ def alert_reduction(corpus: Mapping[str, Any]) -> dict[str, Any]:
     retention_block = corpus["retention"]
     findings: list[Mapping[str, Any]] = list(corpus["findings"])
     eligible = [f for f in findings if _counts(f)]
+    confident = [f for f in eligible if not f["low_confidence"]]
     findings_in = population["findings_in"]
     return {
         "deduplication": {
@@ -533,7 +604,10 @@ def alert_reduction(corpus: Mapping[str, Any]) -> dict[str, Any]:
         },
         "priority_band": {
             "all_ranked": _band_reduction(findings),
-            "quality_claim_population": _band_reduction(eligible),
+            "context_eligible": _band_reduction(eligible),
+            # What the rubric's `unresolved_default_reporting` rule calls a
+            # prioritization-quality claim: context-eligible AND not low-confidence.
+            "excluding_low_confidence": _band_reduction(confident),
         },
     }
 
@@ -559,15 +633,7 @@ def _movement_cell(findings: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
-def baseline_comparison(corpus: Mapping[str, Any]) -> dict[str, Any]:
-    """The rank-change table against the severity baseline (PLAN Q7).
-
-    Over the findings the framework makes a quality claim about. A cell is a
-    `baseline band -> framework band` movement; each carries the per-factor profile that
-    explains it and how much of it rests on defaults, so a movement driven by unresolved
-    factors cannot be read as one driven by evidence.
-    """
-    findings = [f for f in corpus["findings"] if _counts(f)]
+def _movement_table(findings: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     cells: dict[str, list[Mapping[str, Any]]] = {}
     for finding in findings:
         cells.setdefault(f"{finding['baseline_band']}->{finding['band']}", []).append(finding)
@@ -596,6 +662,24 @@ def baseline_comparison(corpus: Mapping[str, Any]) -> dict[str, Any]:
         "demoted": direction_summary(moved(-1)),
         "unchanged": direction_summary(moved(0)),
         "cells": {key: _movement_cell(members) for key, members in sorted(cells.items())},
+    }
+
+
+def baseline_comparison(corpus: Mapping[str, Any]) -> dict[str, Any]:
+    """The rank-change table against the severity baseline (PLAN Q7).
+
+    Over the context-eligible findings. A cell is a `baseline band -> framework band`
+    movement; each carries the per-factor profile that explains it and how much of it rests
+    on defaults, so a movement driven by unresolved factors cannot be read as one driven by
+    evidence. `excluding_low_confidence` is the same table over the findings the rubric's
+    reporting rule admits to a prioritization-quality claim.
+    """
+    eligible = [f for f in corpus["findings"] if _counts(f)]
+    return {
+        **_movement_table(eligible),
+        "excluding_low_confidence": _movement_table(
+            [f for f in eligible if not f["low_confidence"]]
+        ),
     }
 
 

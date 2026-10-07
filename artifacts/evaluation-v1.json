@@ -2,17 +2,17 @@
   "schema_version": 1,
   "description": "The independent harness's metrics over corpus v0's ranked findings and corpus v1's cases, graded against the pre-registered oracle.",
   "provenance": {
-    "generated_utc": "2026-10-06T11:53:58Z",
+    "generated_utc": "2026-10-07T08:26:24Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "ff4f544fb7e6c6322eabfb07e6010b56750d09bd",
+      "commit": "a05caaeacc48ba5b9cdc97f68e5fa89d227bed18",
       "state": "ok"
     },
-    "source_clean": true,
+    "source_clean": false,
     "inputs": {
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
-      "artifacts/scored-corpus-v0.json": "04cb83fa550b2f31e8e853ab0c759aec93e1ed15f2b3b6f963a17c3d0f5cf32d",
-      "artifacts/scored-cases-v1.json": "8e151c0823e04d1ce0787bc188ec8e4999c71309676b35fd8d54740f09c6b98f"
+      "artifacts/scored-corpus-v0.json": "f7257ca954aeb1a30168bda1ad0157ac61c8cb018e1776be8078c5b1b5da725b",
+      "artifacts/scored-cases-v1.json": "e76fd3637c160e29252ae519fdffb13a7bef86a502a67b2832f03d272b660b5a"
     }
   },
   "registered_rules": {
@@ -113,7 +113,7 @@
         "baseline_from_unknown_severity": 450,
         "baseline_critical_or_high_from_unknown_severity": 450
       },
-      "quality_claim_population": {
+      "context_eligible": {
         "findings": 986,
         "baseline": {
           "Critical": 16,
@@ -133,6 +133,27 @@
         "reduction_rate": 0.637904468412943,
         "baseline_from_unknown_severity": 441,
         "baseline_critical_or_high_from_unknown_severity": 441
+      },
+      "excluding_low_confidence": {
+        "findings": 246,
+        "baseline": {
+          "Critical": 9,
+          "High": 183,
+          "Medium": 19,
+          "Low": 35
+        },
+        "framework": {
+          "Critical": 0,
+          "High": 35,
+          "Medium": 207,
+          "Low": 4
+        },
+        "baseline_critical_or_high": 192,
+        "framework_critical_or_high": 35,
+        "reduction": 157,
+        "reduction_rate": 0.8177083333333334,
+        "baseline_from_unknown_severity": 103,
+        "baseline_critical_or_high_from_unknown_severity": 103
       }
     }
   },
@@ -325,6 +346,159 @@
           "encryption": 0.7299270072992701
         }
       }
+    },
+    "excluding_low_confidence": {
+      "findings": 246,
+      "promoted": {
+        "count": 31,
+        "low_confidence": 0,
+        "baseline_from_unknown_severity": 0
+      },
+      "demoted": {
+        "count": 160,
+        "low_confidence": 0,
+        "baseline_from_unknown_severity": 83
+      },
+      "unchanged": {
+        "count": 55,
+        "low_confidence": 0,
+        "baseline_from_unknown_severity": 20
+      },
+      "cells": {
+        "Critical->High": {
+          "count": 3,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 0,
+          "mean_contribution": {
+            "exposure": 3.6666666666666665,
+            "privilege": 0.0,
+            "sensitivity": 3.0,
+            "criticality": 3.3333333333333335,
+            "encryption": 2.0
+          },
+          "resolved_share": {
+            "exposure": 1.0,
+            "privilege": 1.0,
+            "sensitivity": 0.6666666666666666,
+            "criticality": 0.6666666666666666,
+            "encryption": 0.3333333333333333
+          }
+        },
+        "Critical->Medium": {
+          "count": 6,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 0,
+          "mean_contribution": {
+            "exposure": 2.6666666666666665,
+            "privilege": 0.0,
+            "sensitivity": 3.0,
+            "criticality": 3.0,
+            "encryption": 0.0
+          },
+          "resolved_share": {
+            "exposure": 1.0,
+            "privilege": 1.0,
+            "sensitivity": 1.0,
+            "criticality": 1.0,
+            "encryption": 1.0
+          }
+        },
+        "High->High": {
+          "count": 32,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 20,
+          "mean_contribution": {
+            "exposure": 3.5625,
+            "privilege": 0.0,
+            "sensitivity": 3.0,
+            "criticality": 3.6875,
+            "encryption": 2.0
+          },
+          "resolved_share": {
+            "exposure": 1.0,
+            "privilege": 1.0,
+            "sensitivity": 0.5625,
+            "criticality": 0.5625,
+            "encryption": 0.4375
+          }
+        },
+        "High->Medium": {
+          "count": 151,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 83,
+          "mean_contribution": {
+            "exposure": 2.9072847682119205,
+            "privilege": 0.0,
+            "sensitivity": 2.4172185430463577,
+            "criticality": 2.596026490066225,
+            "encryption": 1.086092715231788
+          },
+          "resolved_share": {
+            "exposure": 0.2185430463576159,
+            "privilege": 1.0,
+            "sensitivity": 0.8344370860927153,
+            "criticality": 0.8344370860927153,
+            "encryption": 0.45695364238410596
+          }
+        },
+        "Low->Low": {
+          "count": 4,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 0,
+          "mean_contribution": {
+            "exposure": 0.0,
+            "privilege": 0.0,
+            "sensitivity": 3.0,
+            "criticality": 3.0,
+            "encryption": 0.0
+          },
+          "resolved_share": {
+            "exposure": 1.0,
+            "privilege": 1.0,
+            "sensitivity": 1.0,
+            "criticality": 1.0,
+            "encryption": 1.0
+          }
+        },
+        "Low->Medium": {
+          "count": 31,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 0,
+          "mean_contribution": {
+            "exposure": 3.193548387096774,
+            "privilege": 0.0,
+            "sensitivity": 2.5806451612903225,
+            "criticality": 2.7096774193548385,
+            "encryption": 0.967741935483871
+          },
+          "resolved_share": {
+            "exposure": 0.25806451612903225,
+            "privilege": 1.0,
+            "sensitivity": 0.9354838709677419,
+            "criticality": 0.9354838709677419,
+            "encryption": 0.5806451612903226
+          }
+        },
+        "Medium->Medium": {
+          "count": 19,
+          "low_confidence": 0,
+          "baseline_from_unknown_severity": 0,
+          "mean_contribution": {
+            "exposure": 3.0,
+            "privilege": 0.0,
+            "sensitivity": 2.526315789473684,
+            "criticality": 2.9473684210526314,
+            "encryption": 1.368421052631579
+          },
+          "resolved_share": {
+            "exposure": 0.3157894736842105,
+            "privilege": 1.0,
+            "sensitivity": 0.6842105263157895,
+            "criticality": 0.6842105263157895,
+            "encryption": 0.631578947368421
+          }
+        }
+      }
     }
   },
   "cases": {
@@ -342,7 +516,8 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": []
       },
       "scores": {
         "max": 10,
@@ -358,6 +533,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -376,7 +559,8 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": []
       },
       "scores": {
         "max": 15,
@@ -392,6 +576,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "resolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -410,7 +602,8 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": []
       },
       "scores": {
         "max": 13,
@@ -426,6 +619,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -444,7 +645,8 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": []
       },
       "scores": {
         "max": 11,
@@ -460,6 +662,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "resolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -478,7 +688,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 15,
@@ -494,6 +714,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -512,7 +740,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 15,
@@ -528,6 +766,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -546,7 +792,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 15,
@@ -562,6 +818,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -580,7 +844,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 17,
@@ -596,6 +870,14 @@
         "sensitivity": 5,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -614,7 +896,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 13,
@@ -630,6 +922,14 @@
         "sensitivity": 1,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -648,7 +948,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 16,
@@ -664,6 +974,14 @@
         "sensitivity": 4,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -682,7 +1000,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 13,
@@ -698,6 +1026,14 @@
         "sensitivity": 1,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -716,7 +1052,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 17,
@@ -732,6 +1078,14 @@
         "sensitivity": 3,
         "criticality": 5,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -750,7 +1104,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 13,
@@ -766,6 +1130,14 @@
         "sensitivity": 3,
         "criticality": 1,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -784,7 +1156,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 16,
@@ -800,6 +1182,14 @@
         "sensitivity": 3,
         "criticality": 4,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -818,7 +1208,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 13,
@@ -834,6 +1234,14 @@
         "sensitivity": 3,
         "criticality": 1,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -852,7 +1260,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 15,
@@ -868,6 +1282,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "resolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -886,7 +1308,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 16,
@@ -902,6 +1330,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -920,7 +1356,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 18,
@@ -936,6 +1378,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -954,7 +1404,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 17,
@@ -970,6 +1426,14 @@
         "sensitivity": 3,
         "criticality": 4,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -988,7 +1452,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 17,
@@ -1004,6 +1474,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "resolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -1022,7 +1500,17 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          },
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 14,
@@ -1038,6 +1526,14 @@
         "sensitivity": 3,
         "criticality": 2,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "defaulted",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": true,
       "context_uniform": true
@@ -1056,7 +1552,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 13,
@@ -1072,6 +1574,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -1090,7 +1600,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 11,
@@ -1106,6 +1622,14 @@
         "sensitivity": 2,
         "criticality": 2,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -1124,7 +1648,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "exposure",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 13,
@@ -1140,6 +1670,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 0
+      },
+      "factor_states": {
+        "severity": "resolved",
+        "exposure": "unresolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "resolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -1158,7 +1696,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 12,
@@ -1174,6 +1718,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -1192,7 +1744,13 @@
         "missing_from_scored": [],
         "not_in_ground_truth": [],
         "states_match": true,
-        "state_mismatches": []
+        "state_mismatches": [],
+        "unlisted_non_resolved": [
+          {
+            "factor": "encryption",
+            "state": "unresolved"
+          }
+        ]
       },
       "scores": {
         "max": 17,
@@ -1208,6 +1766,14 @@
         "sensitivity": 3,
         "criticality": 3,
         "encryption": 2
+      },
+      "factor_states": {
+        "severity": "unresolved",
+        "exposure": "resolved",
+        "privilege": "resolved",
+        "sensitivity": "resolved",
+        "criticality": "resolved",
+        "encryption": "unresolved"
       },
       "low_confidence": false,
       "context_uniform": true
@@ -1227,6 +1793,7 @@
         "baseline_passes": 1,
         "mechanism": 8,
         "isolated": 8,
+        "isolated_without_a_shared_default": 1,
         "severity_also_moved": 1
       },
       "clean": {
@@ -1240,6 +1807,7 @@
         "baseline_passes": 1,
         "mechanism": 8,
         "isolated": 8,
+        "isolated_without_a_shared_default": 1,
         "severity_also_moved": 1
       },
       "by_factor": {
@@ -1254,6 +1822,7 @@
           "baseline_passes": 0,
           "mechanism": 2,
           "isolated": 2,
+          "isolated_without_a_shared_default": 0,
           "severity_also_moved": 0
         },
         "encryption": {
@@ -1267,6 +1836,7 @@
           "baseline_passes": 0,
           "mechanism": 0,
           "isolated": 0,
+          "isolated_without_a_shared_default": 0,
           "severity_also_moved": 0
         },
         "exposure": {
@@ -1280,6 +1850,7 @@
           "baseline_passes": 1,
           "mechanism": 2,
           "isolated": 2,
+          "isolated_without_a_shared_default": 1,
           "severity_also_moved": 1
         },
         "privilege": {
@@ -1293,6 +1864,7 @@
           "baseline_passes": 0,
           "mechanism": 2,
           "isolated": 2,
+          "isolated_without_a_shared_default": 0,
           "severity_also_moved": 0
         },
         "sensitivity": {
@@ -1306,6 +1878,7 @@
           "baseline_passes": 0,
           "mechanism": 2,
           "isolated": 2,
+          "isolated_without_a_shared_default": 0,
           "severity_also_moved": 0
         }
       },
@@ -1321,6 +1894,7 @@
           "baseline_passes": 1,
           "mechanism": 5,
           "isolated": 5,
+          "isolated_without_a_shared_default": 1,
           "severity_also_moved": 1
         },
         "hand_crafted": {
@@ -1334,6 +1908,7 @@
           "baseline_passes": 0,
           "mechanism": 3,
           "isolated": 3,
+          "isolated_without_a_shared_default": 0,
           "severity_also_moved": 0
         }
       }
@@ -1383,7 +1958,8 @@
         },
         "severity_delta": 1,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": []
       },
       {
         "pair_id": "encryption-s3-data",
@@ -1429,7 +2005,10 @@
         },
         "severity_delta": 0,
         "mechanism": false,
-        "isolated": false
+        "isolated": false,
+        "non_resolved_on_both_sides": [
+          "exposure"
+        ]
       },
       {
         "pair_id": "encryption-s3-financials",
@@ -1475,7 +2054,10 @@
         },
         "severity_delta": 0,
         "mechanism": false,
-        "isolated": false
+        "isolated": false,
+        "non_resolved_on_both_sides": [
+          "exposure"
+        ]
       },
       {
         "pair_id": "sensitivity-s3-financials",
@@ -1521,7 +2103,11 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "exposure",
+          "encryption"
+        ]
       },
       {
         "pair_id": "sensitivity-s3-operations",
@@ -1567,7 +2153,11 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "exposure",
+          "encryption"
+        ]
       },
       {
         "pair_id": "criticality-s3-data",
@@ -1613,7 +2203,11 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "exposure",
+          "encryption"
+        ]
       },
       {
         "pair_id": "criticality-s3-data-science",
@@ -1659,7 +2253,11 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "exposure",
+          "encryption"
+        ]
       },
       {
         "pair_id": "privilege-iam-bucket-to-account",
@@ -1705,7 +2303,10 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "exposure"
+        ]
       },
       {
         "pair_id": "privilege-iam-account-to-unrestricted",
@@ -1751,7 +2352,10 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "exposure"
+        ]
       },
       {
         "pair_id": "exposure-s3-public-access",
@@ -1797,7 +2401,10 @@
         },
         "severity_delta": 0,
         "mechanism": true,
-        "isolated": true
+        "isolated": true,
+        "non_resolved_on_both_sides": [
+          "encryption"
+        ]
       }
     ]
   },

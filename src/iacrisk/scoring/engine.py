@@ -100,10 +100,22 @@ def score(
 ) -> ScoredFinding:
     """Score one contextualized finding.
 
-    `weights` exists so S5's sensitivity analysis need not fork this engine, which would
-    risk the analysed model drifting from the scored one. It defaults to all ones - the
-    frozen primary model - and anything else sets `weighted`, which every report-producing
-    path rejects (spec section 4.4).
+    `weights` defaults to all ones - the frozen primary model - and anything else sets
+    `weighted`, which every report-producing path rejects (spec section 4.4).
+
+    It was added so the sensitivity analysis need not fork this engine. **The analysis
+    does not call it.** `eval/sensitivity.py` recomputes scores from the scored JSON with
+    arithmetic of its own, because `eval/` may import nothing of the framework. What keeps
+    that arithmetic from drifting from this function is `tests/test_s6_gates.py`, which
+    scores every score-moving variant here and requires the two to agree finding by
+    finding. So this parameter's one caller is a test, and it is the reference the
+    analysis is held to rather than the code that produced it.
+
+    A weighted total is still banded by `rubric.band_for`, which raises outside 1..28. The
+    band of a weighted score means nothing - the bands are positioned against the unweighted
+    ceiling - and the raise is reachable: with severity weighted to zero, a finding that has
+    no context block totals 0. Measured over corpus v0, that is the 30 context-ineligible
+    findings and no other finding under any registered weighting.
     """
     finding = contextualized.finding
     severity = severity_factor(finding)

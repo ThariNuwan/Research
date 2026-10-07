@@ -3,13 +3,13 @@
   "description": "Corpus v0 through pipeline layers 2-5, replayed from the committed scanner captures under corpus-v1's declared context.",
   "provenance": {
     "mode": "replay",
-    "generated_utc": "2026-10-06T07:21:13Z",
+    "generated_utc": "2026-10-07T08:21:56Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "5b127038781a4ffccbda28b3f37cd0cb52c96d77",
+      "commit": "a05caaeacc48ba5b9cdc97f68e5fa89d227bed18",
       "state": "ok"
     },
-    "source_clean": true,
+    "source_clean": false,
     "scanner_pins": {
       "checkov": "3.3.12",
       "tfsec": "1.28.14",
@@ -19,6 +19,7 @@
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
       "tools/scanners.lock.json": "b7d826dc4adb67aa0e59e9df4b488c84d75f8a99d5ea243679697041e3fbf6cd",
       "src/iacrisk/data/factor_map.json": "184bfadfdbc1f4040f277a421634654ed047766c915aec62b286b75f4bf5c8ee",
+      "src/iacrisk/data/inference_conventions.json": "0a7a48b0d7f3270fe5e508101b43fa078ccc6a20bd9900a9b685c10e4d73207a",
       "src/iacrisk/data/rubric.json": "4e6c8ff94105849a1e62756556fdfe0d79f9d3c91b890ca82cfb7e51776fef6c",
       "src/iacrisk/data/taxonomy.json": "c6ea074bd93a6ef557da8e68884a76faaaa65b237e4942cc6ac3a9577fe2115f",
       "tests/harvest/fixtures/checkov-terraform.json": "71a77c0fdbde990ac17ccce2335f62416618c76780e7f30e19bc1f66cce88ce5",

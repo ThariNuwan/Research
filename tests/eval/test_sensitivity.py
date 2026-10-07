@@ -257,7 +257,23 @@ def test_the_identity_check_catches_an_unresolved_contribution_off_its_default()
     finding = _finding(unresolved=("privilege",))
     finding["contributions"]["privilege"] = 1
     finding["score"] -= 3
-    with pytest.raises(ValueError, match="score"):
+    with pytest.raises(ValueError, match="contributions"):
+        sensitivity.check_identity([finding], _frozen())
+
+
+def test_the_identity_check_catches_two_wrong_contributions_whose_sum_is_right() -> None:
+    """Found by a pre-merge code review. Exposure and encryption are both unresolved, and are
+    committed at 4 and 1 where the defaults are 3 and 2. The total, the band and the
+    low-confidence flag are all exactly what the frozen model gives, so a check on those
+    three passed - and every default variant would then have replaced a 4 and a 1 that were
+    never the defaults. Comparing the contributions themselves is what refuses it."""
+    finding = _finding(unresolved=("exposure", "encryption"))
+    honest = dict(finding)
+    finding["contributions"] = {**finding["contributions"], "exposure": 4, "encryption": 1}
+
+    assert sum(finding["contributions"].values()) == honest["score"]
+    assert sensitivity.check_identity([honest], _frozen()) == 1
+    with pytest.raises(ValueError, match="do not reproduce the committed contributions"):
         sensitivity.check_identity([finding], _frozen())
 
 

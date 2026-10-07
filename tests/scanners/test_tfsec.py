@@ -606,6 +606,20 @@ def test_capture_scan_root_returns_the_given_root_when_no_filename_contains_it()
     assert capture_scan_root(None, TERRAFORM_SCAN_ROOT, REPO_ROOT) == TERRAFORM_SCAN_ROOT
 
 
+def test_capture_scan_root_returns_a_scan_root_outside_the_repository_unchanged(
+    tmp_path: Path,
+) -> None:
+    """Recovery works by finding the scan root's repo-relative path inside a recorded
+    filename, so it has nothing to look for when the scan root is not under the
+    repository - a live scan of some other directory. That used to raise `ValueError`
+    out of `relative_to`; it now means "nothing to recover".
+    """
+    outside = tmp_path / "some-other-project"
+    raw = {"results": [{"location": {"filename": str(outside / "main.tf")}}]}
+
+    assert capture_scan_root(raw, outside, REPO_ROOT) == outside
+
+
 def test_module_level_conformance_guard_exists() -> None:
     """`tfsec.py` declares `_conforms: ScannerAdapter = TfsecAdapter()` as a
     mypy-checked structural-conformance assertion, matching `checkov.py`'s and

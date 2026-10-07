@@ -4,6 +4,11 @@ Every input here is hand-built, and that is deliberate rather than a shortcut: t
 were written and committed before `artifacts/scored-cases-v1.json` existed, so the harness's
 rules could be pinned without any real case-level score having been seen. The gates over the
 real artifacts live in `tests/test_s5_gates.py`, added afterwards.
+
+That holds for the tests of the eight rules. The tests of what the harness only *reports* -
+unlisted non-resolved factors, a case's factor states, the factors a pair leaves to a
+default on both sides, and the figures without low-confidence findings - were added on
+2026-10-07 with those fields, after a pre-merge code review and after the results were known.
 """
 
 from __future__ import annotations
@@ -187,6 +192,41 @@ def test_the_expectation_check_holds_a_recorded_state_against_the_scored_one() -
     ]
 
 
+def test_a_listed_state_that_matches_is_not_a_mismatch_and_is_not_reported_as_unlisted() -> None:
+    finding = _finding(2, states={"exposure": "unresolved"})
+    case = _case("c", [finding])
+    case["expected"]["findings"][0]["unresolved_factors"] = ["exposure"]
+    check = harness.case_score(case, {"findings": [finding]})["expectation"]
+
+    assert check["states_match"] is True
+    assert check["unlisted_non_resolved"] == []
+
+
+def test_a_non_resolved_factor_the_oracle_does_not_list_is_reported_and_not_judged() -> None:
+    """The state check runs one way. A factor the framework left unresolved and the ground
+    truth never mentions is not a mismatch - but it is no longer invisible either."""
+    finding = _finding(2, states={"privilege": "unresolved", "sensitivity": "defaulted"})
+    check = _scored("c", [finding])["expectation"]
+
+    assert check["states_match"] is True
+    assert check["unlisted_non_resolved"] == [
+        {"factor": "privilege", "state": "unresolved"},
+        {"factor": "sensitivity", "state": "defaulted"},
+    ]
+
+
+def test_a_case_reports_the_factor_states_of_its_top_finding() -> None:
+    low = _finding(2)
+    high = _finding(
+        5, issue_class="storage-public-accessibility", states={"exposure": "unresolved"}
+    )
+    scored = _scored("c", [low, high])
+
+    assert scored["factor_states"] == high["factor_states"]
+    unrankable = _scored("u", [_finding(5, issue_class="unmapped:checkov:CKV_X", unmapped=True)])
+    assert unrankable["factor_states"] is None
+
+
 def test_a_ground_truth_exclusion_flag_reaches_the_case() -> None:
     finding = _finding(2)
     case = _case("c", [finding])
@@ -259,6 +299,21 @@ def test_severity_moving_is_reported_and_does_not_break_isolation() -> None:
     assert result["framework"]["max"]["delta"] == 4
 
 
+def test_a_pair_names_the_other_factors_both_sides_left_to_a_default() -> None:
+    """Isolation is tested on contributions, so two cases that agree on a factor because
+    both took its default are isolated by that default. The pair says which factors those
+    are; the factor under test is never among them, and a factor one side resolved is not."""
+    both = {"exposure": "unresolved", "encryption": "unresolved", "sensitivity": "defaulted"}
+    cases = {
+        "hi": _scored("hi", [_finding(3, sensitivity=5, states=both)]),
+        "lo": _scored("lo", [_finding(3, states={**both, "exposure": "resolved"})]),
+    }
+    result = harness.evaluate_pair(_pair(), cases)
+
+    assert result["isolated"] is True
+    assert result["non_resolved_on_both_sides"] == ["encryption"]
+
+
 def test_a_pair_with_an_unrankable_side_is_not_evaluable_rather_than_failed() -> None:
     unmapped = _finding(5, issue_class="unmapped:checkov:CKV_X", unmapped=True)
     cases = {"hi": _scored("hi", [unmapped]), "lo": _scored("lo", [_finding(3)])}
@@ -268,6 +323,7 @@ def test_a_pair_with_an_unrankable_side_is_not_evaluable_rather_than_failed() ->
     assert result["framework"]["max"]["passes"] is None
     assert result["baseline"]["passes"] is None
     assert result["isolated"] is None
+    assert result["non_resolved_on_both_sides"] is None
 
 
 def test_the_baseline_cannot_pass_a_pair_that_differs_only_in_declared_context() -> None:
@@ -311,6 +367,26 @@ def test_the_pair_summary_counts_clean_and_hand_crafted_pairs_separately() -> No
     assert summary["by_source"]["hand_crafted"]["pairs"] == 1
     assert summary["by_source"]["mined"]["pairs"] == 2
     assert summary["by_factor"]["sensitivity"]["baseline_passes"] == 0
+
+
+def test_the_pair_summary_counts_isolation_that_owes_nothing_to_a_shared_default() -> None:
+    shared = {"encryption": "unresolved"}
+    cases = {
+        "hi": _scored("hi", [_finding(3, sensitivity=5)]),
+        "lo": _scored("lo", [_finding(3)]),
+        "hi2": _scored("hi2", [_finding(3, sensitivity=5, states=shared)]),
+        "lo2": _scored("lo2", [_finding(3, states=shared)]),
+    }
+    pairs = [
+        harness.evaluate_pair({**_pair(), "pair_id": "read"}, cases),
+        harness.evaluate_pair(
+            {**_pair(), "pair_id": "defaulted", "case_high": "hi2", "case_low": "lo2"}, cases
+        ),
+    ]
+    tally = harness._summarise_pairs(pairs)["authored"]
+
+    assert tally["isolated"] == 2
+    assert tally["isolated_without_a_shared_default"] == 1
 
 
 # --- scenarios ------------------------------------------------------------------------
@@ -417,7 +493,9 @@ def _corpus() -> dict[str, Any]:
     findings = [
         _finding(4, baseline_band="High"),  # 19, High -> High
         _finding(4, baseline_band="High", privilege=0, encryption=0),  # 13, High -> Medium
-        _finding(2, baseline_band="Low", severity_state="unresolved"),  # 17, Low -> High
+        _finding(  # 17, Low -> High, and low-confidence
+            2, baseline_band="Low", severity_state="unresolved", low_confidence=True
+        ),
         _finding(5, baseline_band="Critical", baseline_only=True),
     ]
     run = {
@@ -456,15 +534,31 @@ def test_band_reduction_is_counted_with_and_without_the_set_aside_findings() -> 
     bands = harness.alert_reduction(_corpus())["priority_band"]
 
     assert bands["all_ranked"]["findings"] == 4
-    assert bands["quality_claim_population"]["findings"] == 3
-    assert bands["quality_claim_population"]["baseline_critical_or_high"] == 2
-    assert bands["quality_claim_population"]["framework_critical_or_high"] == 2
-    assert bands["quality_claim_population"]["reduction"] == 0
+    assert bands["context_eligible"]["findings"] == 3
+    assert bands["context_eligible"]["baseline_critical_or_high"] == 2
+    assert bands["context_eligible"]["framework_critical_or_high"] == 2
+    assert bands["context_eligible"]["reduction"] == 0
     assert bands["all_ranked"]["baseline_critical_or_high"] == 3
 
 
+def test_band_reduction_is_counted_again_without_the_low_confidence_findings() -> None:
+    """The rubric's reporting rule excludes a low-confidence finding from a
+    prioritization-quality claim, which is a narrower population than context-eligible.
+    Here the one low-confidence finding is the one that was promoted into High, so the two
+    populations give different reductions: none, and one of two."""
+    bands = harness.alert_reduction(_corpus())["priority_band"]
+
+    assert set(bands) == {"all_ranked", "context_eligible", "excluding_low_confidence"}
+    confident = bands["excluding_low_confidence"]
+    assert confident["findings"] == 2
+    assert confident["baseline_critical_or_high"] == 2
+    assert confident["framework_critical_or_high"] == 1
+    assert confident["reduction_rate"] == pytest.approx(1 / 2)
+    assert confident["baseline_from_unknown_severity"] == 0
+
+
 def test_the_baselines_unknown_severity_share_travels_with_the_band_figures() -> None:
-    eligible = harness.alert_reduction(_corpus())["priority_band"]["quality_claim_population"]
+    eligible = harness.alert_reduction(_corpus())["priority_band"]["context_eligible"]
 
     assert eligible["baseline_from_unknown_severity"] == 1
     assert eligible["baseline_critical_or_high_from_unknown_severity"] == 0
@@ -484,6 +578,20 @@ def test_the_rank_change_table_splits_movement_and_profiles_each_cell() -> None:
     assert demoted["mean_contribution"]["privilege"] == 0
     assert demoted["resolved_share"]["privilege"] == 1.0
     assert table["promoted"]["baseline_from_unknown_severity"] == 1
+    assert table["promoted"]["low_confidence"] == 1
+
+
+def test_the_rank_change_table_is_repeated_without_the_low_confidence_findings() -> None:
+    confident = harness.baseline_comparison(_corpus())["excluding_low_confidence"]
+
+    assert confident["findings"] == 2
+    assert (
+        confident["promoted"]["count"],
+        confident["demoted"]["count"],
+        confident["unchanged"]["count"],
+    ) == (0, 1, 1)
+    assert set(confident["cells"]) == {"High->High", "High->Medium"}
+    assert "excluding_low_confidence" not in confident, "the twin does not nest"
 
 
 def test_retention_sums_the_runs_and_derives_its_rates_from_findings_in() -> None:

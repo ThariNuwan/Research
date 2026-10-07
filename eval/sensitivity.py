@@ -149,7 +149,10 @@ def variants(plan: Mapping[str, Any]) -> list[Variant]:
                 f"boundary:all{shift:+d}",
                 "band_boundaries",
                 {"boundary": "all", "shift": shift},
-                band_minimums={band: base.band_minimums[band] + shift for band in _BAND_ORDER},
+                band_minimums={
+                    **base.band_minimums,
+                    **{b: base.band_minimums[b] + shift for b in boundaries["boundaries"]},
+                },
             )
 
     weights = experiments["weights"]
@@ -230,11 +233,17 @@ def check_identity(findings: Iterable[Mapping[str, Any]], frozen: Variant) -> in
     Returns how many were checked. Raises on the first that differs, naming it: a mismatch
     means this module's model of the scoring is not the scoring, and every variant computed
     from it would be a statement about something else.
+
+    `contributions` is compared as well as the total. A total can survive two wrong
+    addends that cancel - an unresolved exposure committed at 4 beside an unresolved
+    encryption committed at 1 sums as 3 and 2 do - and a variant then substitutes defaults
+    for values that were never the defaults. `tests/test_s6_gates.py` adds the other half:
+    every score-moving variant is recomputed by the framework's own engine and compared.
     """
     checked = 0
     for finding in findings:
         again = rescore(finding, frozen)
-        for field in ("score", "band", "low_confidence"):
+        for field in ("contributions", "score", "band", "low_confidence"):
             if again[field] != finding[field]:
                 raise ValueError(
                     f"the frozen settings do not reproduce the committed {field} for "
@@ -296,7 +305,11 @@ def _counts(finding: Mapping[str, Any]) -> bool:
 def _corpus_result(
     committed: Sequence[Mapping[str, Any]], variant: Variant, frozen: Variant
 ) -> dict[str, Any]:
-    """The variant over the corpus findings the framework makes a quality claim about."""
+    """The variant over the context-eligible corpus findings.
+
+    The plan calls these "the findings the framework makes a quality claim about". They are
+    the mapped findings that carry a context block; low-confidence findings are among them.
+    """
     then = [rescore(f, frozen) for f in committed]
     now = [rescore(f, variant) for f in committed]
 

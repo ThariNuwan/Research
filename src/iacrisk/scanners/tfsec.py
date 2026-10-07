@@ -223,9 +223,15 @@ def capture_scan_root(raw: object, scan_root: Path, repo_root: Path) -> Path:
     A document none of whose filenames contain the repo-relative root gets
     `scan_root` back unchanged. A live run is therefore unaffected, and a
     genuinely foreign path still raises in `rebase_to_scan_root` rather than
-    being rebased by guesswork.
+    being rebased by guesswork. So does a scan root that is not under
+    `repo_root` at all: there is no repo-relative root to look for, which is
+    the ordinary case for a live scan of someone else's directory, and it used
+    to raise here instead of returning.
     """
-    relative = scan_root.relative_to(repo_root).as_posix().lower()
+    try:
+        relative = scan_root.relative_to(repo_root).as_posix().lower()
+    except ValueError:
+        return scan_root
     document = raw if isinstance(raw, dict) else {}
     for result in document.get("results") or []:
         location = result.get("location") if isinstance(result, dict) else None

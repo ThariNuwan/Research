@@ -112,7 +112,7 @@ ROOTS: dict[str, Root] = {
     ),
     "authored": Root("terraform", REPO_ROOT / "corpus" / "authored", FIXTURES / "authored"),
 }
-"""Every scan root `tools/corpus.lock.json` declares. `tests/score/test_run.py` pins the two
+"""Every scan root `tools/corpus.lock.json` declares. `tests/score/test_score_run.py` pins the two
 against each other, so a root added to the lockfile and not here is a failing test."""
 
 CORPUS_V0 = ("terragoat", "kubernetes-goat")

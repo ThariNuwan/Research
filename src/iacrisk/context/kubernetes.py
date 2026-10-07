@@ -46,10 +46,11 @@ def lookup(
     workload alone. Without stripping that suffix every container-scoped finding misses
     the index and resolves all three parsed factors as unresolved.
 
-    Measured over corpus v0 before this fallback existed: **0 of 217** container-scoped
-    identities matched. A container's exposure, privilege and encryption are properties of
-    its enclosing workload's spec, so reading the workload's body is the correct answer
-    rather than a convenience.
+    Measured over corpus v0 before this fallback existed: **0 of the 217** findings on a
+    container-scoped identity matched - 217 findings, on 14 distinct identities. (This line
+    used to say "217 identities"; the count was always of findings.) A container's
+    exposure, privilege and encryption are properties of its enclosing workload's spec, so
+    reading the workload's body is the correct answer rather than a convenience.
     """
     direct = index.get(resource_identity)
     if direct is not None:

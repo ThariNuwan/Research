@@ -8,6 +8,14 @@ changes: the result is shaped like a declared-context input and goes through the
 join, so the IAM-governed inheritance rule applies to an inferred value exactly as it does
 to a declared one.
 
+**One thing about the join does differ, and "nothing else changes" above overstates it.**
+A container-scoped Kubernetes identity has no entry of its own in an inference, so
+`join_inferred` reads its enclosing workload's. The declared join does no such thing: it
+matches the exact identity, and a declaration reaches a container only if it names that
+container. The difference is deliberate - a label sits on the workload, not on a container
+- but it means the two modes are not the same join fed different values. On corpus v0 it
+moved nothing: the conventions resolve a Role and a RoleBinding, which have no containers.
+
 **The conventions are data, and were registered before any inferred result existed.** This
 module applies them and decides nothing: every key, value, word and rule is in the JSON.
 

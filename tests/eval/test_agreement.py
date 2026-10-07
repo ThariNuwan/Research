@@ -216,7 +216,7 @@ def test_ranking_agreement_separates_declared_resources_from_the_rest() -> None:
     inferred = {"findings": [_finding("r.a"), _finding("r.b"), _finding("r.c")]}
     result = agreement.ranking_agreement(declared, inferred)
 
-    everything = result["all_quality_claim_findings"]
+    everything = result["all_context_eligible_findings"]
     assert everything["findings"] == 3
     assert everything["same_score"] == 2
     assert everything["inferred_lower"] == 1
@@ -230,7 +230,7 @@ def test_ranking_agreement_separates_declared_resources_from_the_rest() -> None:
 def test_ranking_agreement_leaves_out_findings_the_framework_makes_no_claim_about() -> None:
     declared = {"findings": [_finding("r.a"), _finding("r.x", baseline_only=True)]}
     inferred = {"findings": [_finding("r.a"), _finding("r.x", baseline_only=True)]}
-    assert agreement.ranking_agreement(declared, inferred)["all_quality_claim_findings"][
+    assert agreement.ranking_agreement(declared, inferred)["all_context_eligible_findings"][
         "findings"
     ] == (1)
 
@@ -286,6 +286,24 @@ def test_a_pair_on_one_resource_is_not_applicable_rather_than_failed() -> None:
     assert result["pairs_not_applicable"] == ["same"]
     assert result["pairs_applicable"] == 1
     assert result["declared"]["pairs_passed"] == result["inferred"]["pairs_passed"] == 1
+
+
+def test_a_pair_with_an_unrankable_side_has_no_verdict_and_is_not_counted_as_failed() -> None:
+    """`eval.harness` rule 2: a case left with nothing to count is unrankable, and a pair
+    holding it is not evaluable. Counting it among the failures would turn "could not be
+    graded" into "graded and lost"."""
+    ground_truth = _oracle_ground_truth()
+    scored = _cases(
+        hi=[_finding("r.a", sensitivity=5, declared=("sensitivity",))],
+        lo=[_finding("r.a", sensitivity=1, declared=("sensitivity",))],
+        other=[_finding("r.b", baseline_only=True)],
+    )
+    result = agreement.oracle(ground_truth, scored, scored)
+
+    for mode in ("declared", "inferred"):
+        assert result[mode]["pairs_not_evaluable"] == ["two"]
+        assert result[mode]["pairs_failed"] == []
+        assert result[mode]["pairs_passed"] == 0
 
 
 def test_the_scenarios_are_graded_in_both_modes_by_the_same_rules() -> None:
