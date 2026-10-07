@@ -404,8 +404,9 @@ chapter.
 
 > **Status note, 2026-10-06.** The independent evaluation harness, the sensitivity
 > analysis and the auto-inference mode have since been built and run, and Chapter 6
-> reports all three; the suite now holds 1,018 tests. Nothing in the five-layer design
-> remains unimplemented. Two things below are superseded by Chapter 6. The factor-gap counts are over the 1,025 context-eligible
+> reports all three; the suite now holds 1,018 tests. Chapter 5 describes the
+> implementation, including what was not built (Section 5.11). Two things below are
+> superseded by Chapter 6. The factor-gap counts are over the 1,025 context-eligible
 > findings before deduplication, whereas the evaluation ranks 986 after it, of which 420
 > (42.6%) fall in a gap class and 242 (24.5%) in a substantive one. And a defect in the
 > Kubernetes manifest reader, found by the evaluation and described in Section 6.2,

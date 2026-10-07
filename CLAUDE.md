@@ -73,9 +73,9 @@ S0, S1, S2, S3a, S3b and S4 complete. **S5 (the independent evaluation harness a
 first results), S6's sensitivity analysis and S3c (auto-inference) are done on branch
 `s5-evaluation-harness`**, unmerged and unpushed as of 2026-10-06; all three are recorded
 below. **Every sub-project that produces a result is now built.** What remains is **the
-write-up** (chapters 1, 2, 5 and 7; chapter 6 is drafted, and the S4 handoff and chapter 3
-still carry superseded figures behind dated notes) and the two items that need a person:
-supervisor review of the oracle and the NSA-CISA citations. S0 pinned the toolchain and
+write-up** (chapters 1, 2 and 7; chapters 5 and 6 are drafted, and the S4 handoff and
+chapter 3 still carry superseded figures behind dated notes) and the two items that need
+a person: supervisor review of the oracle and the NSA-CISA citations. S0 pinned the toolchain and
 harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
 the five specification artifacts the runtime and the harness are built
 against:
@@ -539,10 +539,11 @@ on majority-of-evidence rather than arithmetic — two defaults already exceed t
 narrowest band, so the arithmetic does not single out three on its own.
 
 **Draft dissertation chapters live in `docs/writeup/`**: `03-framework-design.md`,
-`04-research-methodology.md` and `06-evaluation.md`, plus a `README.md` carrying the
-provisional chapter numbering and two standing rules — every number traces to a
-committed artifact, and no rubric `source` string resting on NSA-CISA may be quoted.
-Chapters 1, 2, 5 and 7 are not drafted. The chapters are written from the measured
+`04-research-methodology.md`, `05-implementation.md` and `06-evaluation.md`, plus a
+`README.md` carrying the provisional chapter numbering and two standing rules — every
+number traces to a committed artifact, and no rubric `source` string resting on NSA-CISA
+may be quoted. Chapters 1, 2 and 7 are not drafted; 1 and 2 need the proposal and the
+literature sources, which are not in this repository. The chapters are written from the measured
 record, so a figure that changes in an artifact must be changed there too.
 
 Chapter 6 was drafted on 2026-10-06 from the four `artifacts/*.json` records. Three
@@ -552,8 +553,19 @@ that **the encryption factor fails its mechanism test** by Chapter 4's own
 falsification criterion (§6.4.2, §6.9); and it concludes that the evidence supports
 the ordering claim and **not** a claim about how many alerts are saved (§6.9). Its
 §6.7.4 reports auto-inference as resolving two resources of 81 and says the agreement
-figures therefore describe the defaults, not the mode. Chapters 3 and 4 carry dated status notes pointing at it rather than being
-rewritten; chapter 3's §3.10 figures are still the pre-fix, pre-dedupe ones, labelled.
+figures therefore describe the defaults, not the mode. Chapters 3 and 4 carry dated
+status notes pointing at it rather than being rewritten; chapter 3's §3.10 figures are
+still the pre-fix, pre-dedupe ones, labelled.
+
+Chapter 5 was drafted on 2026-10-07. Two things in it a later edit should not lose. Its
+§5.9.2 records the three defects a green suite passed - the container suffix (0 of 217),
+the omitted namespace (311 of 579) and the capture-host paths (66 of 825 tests) - and
+states the rule they share: **a test that constructs both sides of a comparison cannot
+discover that the real sides differ.** And its §5.11 says plainly that **no single
+command runs the framework end to end on a live directory**: every result is from
+replayed captures, the planned `cli.py` was never built, and the live invocation path
+is tested component by component but was never exercised as a whole. Its file, line,
+test and gate counts are as of `c1b47b3` and will drift.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four

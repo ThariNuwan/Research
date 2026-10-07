@@ -9,9 +9,17 @@ measurement, which on design reasoning, and which on work not yet done.
 |---|---|---|
 | `03-framework-design.md` | Framework Design | `docs/PLAN.md`, the S1/S3a design specs, `src/iacrisk/data/*.json` |
 | `04-research-methodology.md` | Research Methodology | the S2 corpus design spec, `eval/ground_truth/corpus-v1.json`, `docs/PLAN.md` Q7/Q10 |
+| `05-implementation.md` | Implementation | the code under `src/iacrisk/`, `tools/` and `eval/`, the committed captures under `tests/harvest/fixtures/`, and the test suite |
 | `06-evaluation.md` | Evaluation | the seven records under `artifacts/` that its Section 6.1 lists, `eval/sensitivity_plan.json`, `src/iacrisk/data/inference_conventions.json` |
 
-Chapters 1, 2, 5 and 7 are not drafted.
+Chapters 1, 2 and 7 are not drafted.
+
+**Chapter 5's counts are of the repository as it stood when the chapter was written**
+(commit `c1b47b3`), and each is re-derivable: file and line counts from `git ls-files`
+over `src/iacrisk`, `tools`, `eval` and `tests`; the test count from `uv run pytest
+--collect-only`; the gate count from the distinct `test_gate_<n>` numbers in each
+`tests/test_s*_gates.py`; and the scanner-shape figures of its Section 5.5.2 from the
+captures. They will drift as code is added, so re-count before submission.
 
 **Chapter 6's figures are regenerable, and regenerating them is how to check one.** Run
 `uv run python -m tools.score.run corpus`, then `cases`, then `inferred`; then `uv run
