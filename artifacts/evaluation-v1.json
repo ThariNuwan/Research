@@ -2,17 +2,17 @@
   "schema_version": 1,
   "description": "The independent harness's metrics over corpus v0's ranked findings and corpus v1's cases, graded against the pre-registered oracle.",
   "provenance": {
-    "generated_utc": "2026-10-07T08:26:24Z",
+    "generated_utc": "2026-10-07T08:37:48Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "a05caaeacc48ba5b9cdc97f68e5fa89d227bed18",
+      "commit": "c9ced1b2fbcc2b5522f076b62e4cefe36475a8dd",
       "state": "ok"
     },
-    "source_clean": false,
+    "source_clean": true,
     "inputs": {
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
-      "artifacts/scored-corpus-v0.json": "f7257ca954aeb1a30168bda1ad0157ac61c8cb018e1776be8078c5b1b5da725b",
-      "artifacts/scored-cases-v1.json": "e76fd3637c160e29252ae519fdffb13a7bef86a502a67b2832f03d272b660b5a"
+      "artifacts/scored-corpus-v0.json": "06e8933530b465f7e7facc98b8249bf27e80560255e91be8bc572763824a68cc",
+      "artifacts/scored-cases-v1.json": "f3c165ef59f973c4e72d5d2bdf7b206e9d7e7029b02a701879717e97de73258d"
     }
   },
   "registered_rules": {

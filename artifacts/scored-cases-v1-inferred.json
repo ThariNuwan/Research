@@ -3,13 +3,13 @@
   "description": "Each corpus-v1 case's findings in auto-inference mode. The case's declared context selects its findings and is otherwise unused. Finding level only.",
   "provenance": {
     "mode": "replay",
-    "generated_utc": "2026-10-07T08:21:59Z",
+    "generated_utc": "2026-10-07T08:37:47Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "a05caaeacc48ba5b9cdc97f68e5fa89d227bed18",
+      "commit": "c9ced1b2fbcc2b5522f076b62e4cefe36475a8dd",
       "state": "ok"
     },
-    "source_clean": false,
+    "source_clean": true,
     "scanner_pins": {
       "checkov": "3.3.12",
       "tfsec": "1.28.14",

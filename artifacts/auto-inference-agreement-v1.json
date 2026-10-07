@@ -2,20 +2,20 @@
   "schema_version": 1,
   "description": "Auto-inference agreement: the declared-context run against the run whose sensitivity and criticality were read from the registered conventions.",
   "provenance": {
-    "generated_utc": "2026-10-07T08:26:26Z",
+    "generated_utc": "2026-10-07T08:37:52Z",
     "python": "3.12.13",
     "repo_commit": {
-      "commit": "a05caaeacc48ba5b9cdc97f68e5fa89d227bed18",
+      "commit": "c9ced1b2fbcc2b5522f076b62e4cefe36475a8dd",
       "state": "ok"
     },
-    "source_clean": false,
+    "source_clean": true,
     "inputs": {
       "eval/ground_truth/corpus-v1.json": "2e9be38544196f615abba67a923ed562ae6f2c25d7917e98420f78978ecfe321",
       "eval/sensitivity_plan.json": "5ae98ad42d3ce891723a6554b06adda211f0b7d838e59440e9a236cdecbeebe1",
-      "artifacts/scored-corpus-v0.json": "f7257ca954aeb1a30168bda1ad0157ac61c8cb018e1776be8078c5b1b5da725b",
-      "artifacts/scored-cases-v1.json": "e76fd3637c160e29252ae519fdffb13a7bef86a502a67b2832f03d272b660b5a",
-      "artifacts/scored-corpus-v0-inferred.json": "b8ff62ac279d053c303df624a93f5acb5b6442cd682ec3a9785b21957d91c7e0",
-      "artifacts/scored-cases-v1-inferred.json": "c71e4e53c8a34daa5c352b8afee59fa40b7e790d1082beb195aad607f6530e3d"
+      "artifacts/scored-corpus-v0.json": "06e8933530b465f7e7facc98b8249bf27e80560255e91be8bc572763824a68cc",
+      "artifacts/scored-cases-v1.json": "f3c165ef59f973c4e72d5d2bdf7b206e9d7e7029b02a701879717e97de73258d",
+      "artifacts/scored-corpus-v0-inferred.json": "c999cf96809248cf391c927d7f2733e56c608b0c8edb4e72ab09fa29e0a47849",
+      "artifacts/scored-cases-v1-inferred.json": "f5e49e777994db0a7422f663090def8946234377ab3902090136dbf8a4ffc1b4"
     }
   },
   "coverage": {
