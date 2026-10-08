@@ -14,8 +14,8 @@ measurement, which on design reasoning, and which on work not yet done.
 
 Chapters 1, 2 and 7 are not drafted.
 
-**Chapter 5's counts are of the repository as it stood on 2026-10-07**, at the commit
-that introduced `tests/test_gates_can_fail.py`, and each is re-derivable: file and line counts from `git ls-files`
+**Chapter 5's counts are of the repository as it stood on 2026-10-08**, at the commit
+that introduced `src/iacrisk/cli.py`, and each is re-derivable: file and line counts from `git ls-files`
 over `src/iacrisk`, `tools`, `eval` and `tests`; the test count from `uv run pytest
 --collect-only`; the gate count from the distinct `test_gate_<n>` numbers in each
 `tests/test_s*_gates.py`; and the scanner-shape figures of its Section 5.5.2 from the

@@ -202,13 +202,31 @@ mapping row per observed `(scanner, rule_id)` pair. All **255 distinct rule
 identifiers** observed across the vendored corpus map to a class.
 
 An unseen rule does not receive a guess. It takes an explicit synthetic class
-`unmapped:<scanner>:<rule_id>`, is scored on severity and default context only, and
-is labelled **baseline-only informational**: surfaced for completeness, counted
-once, never silently dropped, and **excluded from prioritization-quality claims**.
-The exclusion is a validity requirement rather than a convenience. A serious finding
-whose rule the taxonomy does not yet cover would score on severity alone and so
-appear artificially low; counting it in a prioritization-quality figure would
-depress that figure for a reason unrelated to the prioritization model's merit.
+`unmapped:<scanner>:<rule_id>`, is surfaced for completeness, counted once, never
+silently dropped, and **excluded from prioritization-quality claims**.
+
+**How such a finding is scored departs from the design, and the departure is recorded
+here instead of being smoothed over.** The design said an unmapped finding would be
+scored on severity and default context only, and gave that as the reason for the
+exclusion: a serious finding whose rule the taxonomy does not yet cover would appear
+artificially low, and counting it would depress a quality figure for a reason
+unrelated to the model's merit. As built, the five contextual factors are properties
+of the *resource* and are resolved without reference to a finding's class (Section
+3.2; an acceptance gate described in Section 5.9.1 asserts it by substituting every
+finding's class). An unmapped finding on an addressable resource therefore carries that resource's
+full context and is scored like any other. It is told apart by its class and an
+`unmapped` marker, not by its score. The label *baseline-only informational* belongs to
+a different set: findings with no addressable cloud resource, which carry no context at
+all.
+
+The exclusion from quality claims stands, and the evaluation harness applies it. Its
+original rationale no longer describes the implementation. No reported figure is
+affected: the measurement corpus contains no unmapped finding, and the three in the
+per-case record, all on one hand-crafted IAM case, are set aside by the harness. The
+disagreement was found on 2026-10-08, when the framework was first run live on a
+folder whose findings include rules outside the taxonomy. The code was left as it is,
+because changing the scoring path after the evaluation would have been the larger
+departure.
 
 ## 3.4 Canonical resource identity
 

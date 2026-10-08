@@ -12,10 +12,10 @@ roles, kept apart on purpose.
 
 | Body of code | Role | Files | Lines |
 |---|---|---|---|
-| `src/iacrisk/` | The artifact: the five-layer pipeline | 34 | 6,183 |
+| `src/iacrisk/` | The artifact: the five-layer pipeline | 35 | 6,586 |
 | `tools/` | Research instruments that run or replay the artifact | 11 | 2,011 |
 | `eval/` | The evaluation harness that grades its output | 6 | 1,860 |
-| `tests/` | The test suite, 1,069 tests | 62 | 18,532 |
+| `tests/` | The test suite, 1,108 tests | 63 | 19,190 |
 
 The counts are of tracked Python files. Three PowerShell scripts under `tools/`, 1,701
 lines together, install the scanners, vendor the corpus and capture scanner output; they
@@ -366,7 +366,7 @@ test pins the restatement to the rubric so it cannot drift.
 
 ### 5.9.1 Tests, and the gates among them
 
-The suite holds 1,069 tests. Fifty of the properties they assert are **acceptance
+The suite holds 1,108 tests. Fifty of the properties they assert are **acceptance
 gates**: conditions stated when each part of the work was specified, which that part
 had to meet before it was accepted.
 
@@ -500,13 +500,42 @@ score at the frozen settings. The third compares the declared and inferred runs.
 
 ## 5.11 What was not built
 
-**There is no end-to-end command.** The design sketched a command-line entry point that
-would take a directory and a declared-context file and produce a report. The pieces
-exist — discovery, lockfile-driven scanner invocation, the adapters, and a pipeline
-function that composes the remaining layers — and the replay instrument drives all but
-the invocation step. No single command joins live invocation to the pipeline. Every
-result in this dissertation is computed from captured scanner output, and the live
-path, though each component is tested, was not exercised as a whole.
+**The end-to-end command was built after the evaluation, and no result came from it.**
+The design sketched a command-line entry point that would take a directory and a
+declared-context file and produce a report. When the evaluation was run that command
+did not exist. Every result in this dissertation is computed from captured scanner
+output replayed through the pipeline, and at that point the live path, though each
+component was tested, had not been exercised as a whole.
+
+The command was added afterwards, on 2026-10-08, as `iacrisk <folder>`. It adds no
+layer and changes no score: it joins live scanner invocation to the composition the
+replay instrument already used. For a folder it prints one line per resource, at that
+resource's highest-scoring finding, with the six contributions and a mark on each one
+that is a default; on request it writes every finding with its explanation lines as
+JSON and Markdown.
+
+What this establishes is narrow, and worth stating exactly. Two tests launch the real
+scanners. One runs the command over the hand-crafted folder and requires the committed
+per-case scores. The other scans the two corpus folders again and requires the
+committed corpus record back, finding for finding: all 1,016 ranked findings, with the
+same resource, class, scanner, rule, score, band, contributions and factor states. On
+the machine they were run on, and at the pinned scanner versions, **the live path and
+the replayed path agree exactly.** Both tests are skipped where the scanners are not
+installed, so that agreement is checked only on a machine that has them.
+
+The command has three limits, each a refusal in place of a wrong answer. It accepts
+one platform per folder, because each adapter reads the platform off a whole scanner
+run and a folder mixing Terraform and Kubernetes files would be misattributed. It stops
+if any scanner is missing, times out or returns nothing usable, so that a folder is
+never ranked on a subset of the scanners. And it runs only from a checkout in which the
+pinned scanners have been installed. It has no option to fail a build on a priority
+band, although the top band's remediation action is to block a deployment.
+
+**Findings from an unseen rule are scored with full context, which is not what the
+design said.** Running the framework live for the first time, on a folder whose
+findings include rules outside the taxonomy, showed a disagreement between the design
+and the code that the measurement corpus could not show, because it contains no such
+finding. Section 3.3 records it. The code was left as it is.
 
 **The human-readable report is Markdown only.** The design allowed Markdown or HTML.
 
@@ -535,7 +564,8 @@ record's mode. Adding a state would have changed what every consumer of the scor
 output counts as evidence; the cost of not adding one is that low-confidence counts are
 not comparable between the two modes.
 
-None of these omissions affects the mechanism results of Chapter 6. Two of them bear on
-how those results should be read: the privilege limit explains one scenario, and the
-absence of a live end-to-end run means the claim that the framework is "automated" rests
-on tested components and a replayed pipeline, not on a demonstrated single invocation.
+None of these omissions affects the mechanism results of Chapter 6. Two points bear on
+how those results should be read. The privilege limit explains one scenario. And every
+result was computed by replay: the single live invocation now exists and reproduces
+the corpus record on a machine with the scanners installed, but it produced no figure
+reported here.

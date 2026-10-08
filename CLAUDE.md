@@ -585,6 +585,37 @@ strongly than it was, in six ways a future session will otherwise repeat:
   above. S5 gate 8 also now asserts the eight rules' text is word for word what was
   registered.
 
+**The end-to-end command (2026-10-08, `src/iacrisk/cli.py`).** `uv run iacrisk <folder>`
+runs the pinned scanners live and prints one line per resource at its highest-scoring
+finding. It was built after the evaluation, on request, for demonstration. Five things a
+future session will get wrong without being told:
+
+- **No reported figure came from it.** Everything in the dissertation is replayed
+  captures. The command adds the one step replay never took - launching the scanners.
+- **Live and replay agree exactly on this host, and a test says so.**
+  `tests/test_cli.py` has two tests that launch the real scanners: one requires the
+  committed per-case scores for `corpus/authored`, the other scans both corpus roots and
+  requires `scored-corpus-v0.json` back finding for finding (all 1,016: identity, class,
+  scanner, rule, score, band, six contributions, six states). They are **skipped where
+  `tools/resolved.json` is absent**, so on an unbootstrapped machine the agreement is not
+  checked - read the `-rs` skip line before claiming it. 1,108 tests in the suite.
+- **One platform per folder.** `checkov._platform_of` and `trivy._platform_of` read the
+  platform off a whole run, so a folder mixing `.tf` and manifests would be misread. The
+  command refuses it. Supporting it means changing the adapters, not the command.
+- **Unmapped findings are scored with full resource context - a recorded deviation.**
+  `docs/PLAN.md`, the S4 design spec (section 2.3) and chapter 3 as first drafted all say
+  an `unmapped:` finding scores on severity and default context only. It does not: the
+  five contextual factors are resolved per resource without reference to class, so an
+  unmapped finding on an addressable resource is scored like any other and marked
+  `unmapped`. Corpus v0 has none; the per-case record has 3, all on
+  `iam-unrestricted-scope`; `corpus/authored` as a whole has 8. The harness sets them
+  aside, so no figure moves. **The project author ruled on 2026-10-08 to record the
+  deviation and leave the code alone** (chapter 3, section 3.3). `baseline_only_informational`
+  is a different flag: no context block at all.
+- **A relative folder used to crash it.** tfsec reports absolute paths, so `analyse`
+  resolves the folder first. `artifacts/demo/` holds scratch reports from live runs and
+  ignores itself through its own `.gitignore`; nothing in it is a research artifact.
+
 **Never squash-merge this history.** S5 gate 8, S6 gate 5 and S3c gate 5 read commit
 ancestry and require the two registered data files to have exactly one commit each. A
 squash or a rebase that rewrites those commits turns three gates red and destroys the only
@@ -634,13 +665,12 @@ Chapter 5 was drafted on 2026-10-07. Two things in it a later edit should not lo
 findings, on 14 identities),
 the omitted namespace (311 of 579) and the capture-host paths (66 of 825 tests) - and
 states the rule they share: **a test that constructs both sides of a comparison cannot
-discover that the real sides differ.** And its §5.11 says plainly that **no single
-command runs the framework end to end on a live directory**: every result is from
-replayed captures, the planned `cli.py` was never built, and the live invocation path
-is tested component by component but was never exercised as a whole. Its §5.9.1 also
-records that the evaluation gates were weaker than first claimed, and how they were
-rewritten. Its file, line, test and gate counts are as of the commit that introduced
-`tests/test_gates_can_fail.py` and will drift.
+discover that the real sides differ.** And its §5.11 says plainly that **the end-to-end
+command was built after the evaluation and produced no result**: every figure is from
+replayed captures. Do not let a later edit present the command as how the results were
+obtained. Its §5.9.1 also records that the evaluation gates were weaker than first
+claimed, and how they were rewritten. Its file, line, test and gate counts are as of the
+commit that introduced `src/iacrisk/cli.py` and will drift.
 
 Python is pinned to **3.12** by `.python-version`, and `uv run python -V` reports
 3.12.13. The pin is Checkov 3.3.12's: its classifiers stop at 3.12. Four
@@ -689,6 +719,11 @@ uv run python -m tools.score.run inferred # both again in auto-inference mode ->
 uv run python -m eval.run                 # the harness -> artifacts/evaluation-v1.json
 uv run python -m eval.sensitivity         # the 63 registered variants -> artifacts/sensitivity-v1.json
 uv run python -m eval.agreement           # declared vs inferred -> artifacts/auto-inference-agreement-v1.json
+
+uv run iacrisk <folder>                   # LIVE: run the pinned scanners over a folder and rank
+                                          # --declared FILE | --infer, --out DIR, --top N
+                                          # needs .\tools\bootstrap.ps1 to have run; writes nothing
+                                          # without --out. Not how any reported result was produced.
 ```
 
 Regenerate in that order - corpus, cases, inferred, then `eval.run`, `eval.sensitivity`,
