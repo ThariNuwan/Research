@@ -76,8 +76,8 @@ three are recorded below. `main` is ahead of `origin/main` by everything since `
 pushed**. The work was done on branch `s5-evaluation-harness`, which no longer exists
 locally; `origin` holds a copy of it at `c1b47b3` (the remote-tracking reflog records that
 push on 2026-10-07), four commits short of what was merged. **Every sub-project that produces a result is now built.** What remains is **the
-write-up** (chapters 1 and 2, and section 7.2 of chapter 7; chapters 3 to 7 are otherwise
-drafted, and the S4 handoff and
+write-up** (chapters 1 and 2 and the reference list; chapters 3 to 7 are drafted, and the
+S4 handoff and
 chapter 3 still carry superseded figures behind dated notes) and one item that needs a
 person: the NSA-CISA citations. **Supervisor review of the oracle will not be sought** - the
 project author ruled on 2026-10-08 that it is not needed. That closes a task, not a
@@ -656,11 +656,35 @@ narrowest band, so the arithmetic does not single out three on its own.
 number traces to a committed artifact, and no rubric `source` string resting on NSA-CISA
 may be quoted. **Chapter 7 (`07-conclusion.md`) was drafted on 2026-10-08** from chapters 3
 to 6: seven conclusions stated at the strength chapter 6 supports, contributions,
-limitations, implications and future work. Its section 7.2, the answers to the research
-questions, is a dated placeholder, because **the research questions and objectives are
-written down nowhere in this repository** - only in the proposal. It adds no figure of its
-own, so a figure changed in chapters 3 to 6 must be changed there too. Chapters 1 and 2 are
-not drafted; they need the proposal and the
+limitations, implications and future work. Its section 7.2 answers the proposal's five
+research questions and six objectives in the proposal's own words and lists five departures
+from it; chapter 6 gained section 6.3.1 (findings by category) to support the answer to
+RQ1. It adds no figure of its own, so a figure changed in chapters 3 to 6 must be changed
+there too.
+
+**The proposal arrived on 2026-10-08** as `docs/UoM_PG_Dip_Project_Jayathissa E.A.T.N.
+258243J_.pdf` (32 pages, May 2026; untracked - the author has not asked for it to be
+committed). It holds the research questions and objectives, and first drafts of chapters 1
+to 3. Three things about it a future session must know:
+
+- **Its reference list cannot be reused.** 47 entries, of which 20 are never cited. Of the
+  27 that are, about ten point to a different work from the one the sentence describes:
+  the citations for Checkov, Trivy, tfsec, OPA, the NSA/CISA cloud guidance, NIST SP 800-30
+  and CVSS resolve to unrelated papers. It looks like reference-manager entries matched by
+  keyword. Chapters 1 and 2 need every source checked individually, as the rubric's
+  citations were; never carry a citation number across from the proposal.
+- **It calls itself a postgraduate diploma project in places** ("PGDip-level", "Future
+  MSc-level research"), while its title page says MSc. Keep that wording out of the
+  dissertation.
+- **The work departs from it in five recorded ways** (chapter 7, section 7.2.3) - most
+  importantly, the proposal let thresholds be adjusted during evaluation and the work froze
+  them.
+
+The Read tool cannot open PDFs on this host (no `pdftoppm`). Extract text with
+`uv run --no-project --with pypdf python -I <script> <pdf>`, which touches neither the
+project environment nor the lockfile.
+
+Chapters 1 and 2 are not drafted; they need checked sources and the
 literature sources, which are not in this repository. The chapters are written from the measured
 record, so a figure that changes in an artifact must be changed there too.
 

@@ -223,6 +223,31 @@ the count leaving it plus the count dropped, so this table shows that nothing is
 between an adapter's output and the ranked list. That the adapters read every raw
 record is established separately, by tests that count the raw records independently.
 
+### 6.3.1 What the scanners found, by category
+
+The 1,016 ranked findings fall into all 28 classes of the taxonomy. Their distribution
+across its five categories is uneven.
+
+| Category | Classes | Ranked findings | Share |
+|---|---|---|---|
+| Containers | 7 | 564 | 55.5% |
+| Storage | 7 | 301 | 29.6% |
+| Networking | 6 | 70 | 6.9% |
+| IAM | 4 | 49 | 4.8% |
+| Compute | 4 | 32 | 3.1% |
+
+Eight classes account for 705 of the 1,016 findings (69.4%): privileged or root
+container execution (133), missing security-context hardening (132), workload
+resource-limit and hygiene gaps (132), excess Linux capabilities (70), publicly
+accessible data stores (69), backup and deletion-protection gaps (67), missing
+encryption at rest (51) and image provenance (51).
+
+**This describes the corpus, not the field.** Both repositories were written to be
+insecure for teaching, so the mix reflects what their authors chose to demonstrate and
+what three scanners have rules for; the Kubernetes repository alone supplies 572 of the
+ranked findings. No claim is made here about how often these patterns occur in
+production infrastructure code.
+
 ## 6.4 Prioritization usefulness
 
 ### 6.4.1 Contrastive pairs

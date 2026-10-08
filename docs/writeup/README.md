@@ -13,12 +13,22 @@ measurement, which on design reasoning, and which on work not yet done.
 | `06-evaluation.md` | Evaluation | the seven records under `artifacts/` that its Section 6.1 lists, `eval/sensitivity_plan.json`, `src/iacrisk/data/inference_conventions.json` |
 | `07-conclusion.md` | Conclusion | Chapters 3 to 6, and through them the records under `artifacts/` |
 
-Chapters 1 and 2 are not drafted: they need the proposal and the literature sources,
-which are not in this repository. **Chapter 7 is drafted except for its Section 7.2**,
-which answers the research questions and objectives. Those are stated only in the
-proposal, so that section is a dated placeholder. Chapter 7 introduces no figure of its
-own: every number in it is one Chapters 3 to 6 already report, cited by section, so a
-figure that changes there must be changed in Chapter 7 too.
+Chapters 1 and 2 are not drafted. **Chapter 7 is drafted in full.** Its Section 7.2
+answers the five research questions and six objectives in the proposal's own words, and
+records five places where the work departed from the proposal. Chapter 7 introduces no
+figure of its own: every number in it is one Chapters 3 to 6 already report, cited by
+section, so a figure that changes there must be changed in Chapter 7 too.
+
+**The proposal is the source for the research questions, the objectives and the first
+drafts of Chapters 1 and 2, and its reference list cannot be reused as it stands.** Of
+its 47 entries, 27 are cited in the text and 20 are never cited. Among the 27, about
+ten citations point to a different work from the one the sentence describes: the
+citations given for Checkov, Trivy, tfsec, Open Policy Agent, the NSA and CISA cloud
+guidance, NIST SP 800-30 and CVSS all resolve to unrelated papers. Two table references
+are unresolved. Chapters 1 and 2 must therefore be written against sources that have
+each been checked, not by carrying the proposal's citation numbers across. The proposal
+also describes itself in places as a postgraduate diploma project; that wording must
+not reach the MSc dissertation.
 
 **Chapter 5's counts are of the repository as it stood on 2026-10-08**, at the commit
 that introduced `src/iacrisk/cli.py`, and each is re-derivable: file and line counts from `git ls-files`

@@ -28,15 +28,117 @@ The model was frozen before it was evaluated and was not adjusted afterwards. On
 defect in the implementation was corrected after the first results had been seen, and
 Section 6.2 reports both states.
 
-## 7.2 The research questions
+## 7.2 The research questions and objectives
 
-> **Status note, 2026-10-08.** This section is not yet written. The research questions
-> and objectives are stated in the project proposal, which is not in the repository
-> this chapter was drafted from, and they are not restated in Chapters 3 to 6. Section
-> 7.3 gives the conclusions in terms of the claim and the four falsification conditions
-> that Chapter 4 registered before the evaluation. When the proposal is to hand, each
-> research question and objective is to be answered here by reference to those
-> conclusions, and any objective that was not met is to be named as unmet.
+The proposal for this work posed five research questions and set six objectives. They
+are answered here in the proposal's own words, each to the extent the evidence allows
+and no further. Section 7.3 then states the conclusions that these answers rest on.
+
+### 7.2.1 The research questions
+
+**RQ1. What are the common security misconfiguration patterns found in cloud
+Infrastructure-as-Code environments?** *Answered for the corpus studied, not for the
+field.* The 255 rule identifiers that three scanners raised reduce to 28 classes of
+misconfiguration in five categories (Section 3.3). On the corpus, container workloads
+account for 55.5% of the ranked findings and storage for 29.6%; networking, IAM and
+compute are each under 7%. Eight classes make up 69.4% of the total: privileged
+container execution, missing security-context hardening, absent resource limits, excess
+Linux capabilities, publicly accessible data stores, gaps in backup and deletion
+protection, missing encryption at rest, and unverified image provenance (Section
+6.3.1). These are the patterns the literature of Chapter 2 also names. But the corpus
+is two repositories written to be insecure, so the frequencies describe those
+repositories. This work did not study how common each pattern is in production code.
+
+**RQ2. What limitations exist in conventional rule-based IaC security scanners when
+used for remediation prioritization?** *Answered, by measurement.* Four limitations were
+measured on the scanners' own output. Severity is often absent: 489 of 1,055 findings
+carry none (Section 6.3). Severity is not comparable between scanners, which use
+different vocabularies and need a normalization table before they can be merged
+(Section 3.5). Severity is too coarse to order by: alone, it ties 16 of the 21 scenario
+case pairs and nine of the ten contrastive pairs (Section 6.4). And the same problem is
+reported repeatedly: 39 findings are exact duplicates and a further 207 are candidate
+overlaps (Section 3.7). Beyond these, no scanner's output says whether the resource is
+reachable, what authority it confers, what data it holds or which environment it
+serves, which is the gap the framework was built to fill.
+
+**RQ3. Which contextual cloud security factors are most useful for prioritizing IaC
+security findings?** *Answered in part.* On this corpus the factors that did the
+ordering were declared sensitivity and criticality, which alone decided nine of the
+nineteen correctly ordered scenario pairs, and privilege and exposure wherever they
+could be read from the code. Encryption contributed nothing (Sections 6.4.2 and 6.4.3).
+The factor-removal experiment gives the same picture: removing privilege, sensitivity
+or criticality from the model loses both of that factor's pairs, removing exposure
+loses one, and removing encryption loses none (Section 6.7.1). Two cautions limit the
+answer. A factor is useful only where it resolves, and exposure resolved on 92 of the
+986 findings and sensitivity on 198 (Section 6.8). And the showing of the two declared
+factors is partly by construction (conclusion 2 below). The evidence does not support a
+general ranking of the six factors by usefulness.
+
+**RQ4. How can a risk-aware scoring model improve the practical usefulness of IaC
+scanner outputs?** *Answered as a mechanism; practical usefulness was not measured.*
+The model improves the output in three ways that the evaluation demonstrates. It
+separates findings that severity leaves tied. It attributes every point of every score
+to a named factor, so that a ranking can be questioned. And it states what it does not
+know, marking each value that is a default instead of evidence. What was not shown is
+that engineers working from the framework's ordering remediate better than engineers
+working from a scanner's. No study with practitioners was carried out, usefulness was
+measured against an oracle that no human expert reviewed (Section 4.7.1), and the
+priority bands, which are the output a practitioner would act on, are not yet reliable
+(conclusion 4 below).
+
+**RQ5. How does the proposed prioritization approach compare with conventional scanner
+severity outputs?** *Answered.* The framework passes 8 of the 10 contrastive pairs
+against severity's 1, matches 2 of the 5 scenarios exactly against none, and orders 19
+of the 21 scenario case pairs correctly against 4 (Section 6.4). Of the 986
+context-eligible findings it places 196 in a higher band than severity does, 427 in a
+lower one and 363 in the same (Section 6.6). Conclusions 2 and 6 below qualify the
+comparison: much of the framework's advantage comes from declared context, and much of
+the baseline is itself a default.
+
+### 7.2.2 The objectives
+
+| Objective, as set in the proposal | Outcome |
+|---|---|
+| 1. Investigate common security misconfigurations and policy violations in cloud IaC environments | **Met for the corpus and through the literature.** Not a study of prevalence (RQ1). |
+| 2. Analyze the limitations of existing rule-based IaC security scanning approaches | **Met**, by measurement on three scanners (RQ2). |
+| 3. Identify contextual risk factors relevant to IaC security prioritization | **Met.** Six factors, each level anchored to a published source (Section 3.8). Two shortfalls: eleven citation claims remain unverified, and fourteen of the twenty-eight classes name a risk that no factor represents (Section 3.10). |
+| 4. Design a framework that enriches scanner findings with contextual cloud security attributes | **Met** (Chapters 3 and 5). |
+| 5. Develop a transparent risk-scoring approach to classify findings into Critical, High, Medium and Low | **Met in part.** The scoring is transparent and every score is explained. The classification is not validated: no finding reaches Critical, and the band counts change several-fold with a one-point change in one parameter (Section 6.7.2). |
+| 6. Evaluate the framework using representative Terraform and Kubernetes examples and compare its output with conventional scanner severity | **Met, within stated bounds.** A controlled validation on a small corpus, not a generalizable result (Section 4.1). |
+
+### 7.2.3 Where the work departed from the proposal
+
+A reader comparing this dissertation with its proposal will find five differences. Each
+is recorded here so that none has to be inferred.
+
+**The thresholds were frozen, not adjusted.** The proposal allowed the band thresholds
+to be adjusted during evaluation in the light of observed behaviour and supervisor
+feedback. They were instead fixed before any score existed, and how the results move
+when they are changed is reported as a sensitivity analysis (Section 4.6). Adjusting
+them after seeing results would have made the evaluation circular.
+
+**"Detection coverage" is reported as normalization and retention coverage.** The
+quantity is the one the proposal defined, the share of scanner findings the framework
+processes. It was renamed because the framework detects nothing itself, and the
+original name invites a reading as detection accuracy (Section 4.5).
+
+**Prioritization usefulness was judged against a registered oracle, not by manual
+review.** The proposal planned a manual review of the ranked output against defined
+risk criteria. The work instead registered contrastive pairs and scenario orderings
+before any score existed and had them reviewed blind by an automated reviewer (Section
+4.4). This is more reproducible than a manual review and lacks what one would have
+supplied: a human expert's judgement. The supervisor review that was planned was not
+carried out.
+
+**Ranking consistency was given two definite meanings.** The proposal described it as a
+review of repeated or similar test cases. It was measured as the stability of the
+results under registered changes to the model, and as the agreement between the
+declared-context mode and the inferred one (Section 6.7).
+
+**Context is extracted and declared, not annotated.** The proposal expected contextual
+attributes to be annotated manually or semi-automatically for each finding. Three are
+extracted automatically from the code. Two are declared once per resource, and a second
+mode infers those two from conventions.
 
 ## 7.3 Conclusions
 
