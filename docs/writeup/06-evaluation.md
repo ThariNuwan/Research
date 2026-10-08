@@ -427,7 +427,7 @@ left absent.
 
 The threat of Section 4.7.1 applies to every figure in this section and is not
 reduced by any of them. The reviewer and the framework's design reasoning share a
-model family, and no human expert has yet reviewed the orderings. These results
+model family, and no human expert has reviewed the orderings. These results
 establish that the framework's orderings are consistent with a pre-registered oracle;
 they do not establish that a practitioner would agree with either.
 
@@ -890,8 +890,11 @@ behaviour at the top of its range beyond constructed examples.
 **The encryption factor is unevidenced** (Section 6.4.2), and one exposure pair is
 confounded by severity (Section 6.7.1).
 
-**The oracle has not been reviewed by a human expert**, and the reviewer shares a
-model family with the framework's design reasoning (Section 4.7.1). Where the
+**The oracle was not reviewed by a human expert, and will not be within this
+project.** The plan called for the supervisor to review the expected orderings. An
+automated blinded reviewer stood in, and it shares a model family with the framework's
+design reasoning (Section 4.7.1). Every agreement figure in this chapter is therefore a
+statement of internal consistency and not of external validity. Where the
 framework and the author disagree, on the containers scenario, the framework agrees
 with the reviewer.
 
@@ -918,7 +921,8 @@ were known and is dominated by the evaluation's own declarations.
 
 **The checks on the records were weaker than first described.** Section 6.1 records
 the pre-merge review that found this and what was changed. That review was automated.
-It is no substitute for the human review of the oracle, which is still outstanding.
+It is no substitute for a human review of the oracle, which this evaluation does not
+have.
 
 **The sensitivity weightings are the author's.** Chapter 4 promises expert-derived
 alternatives; the two tested were source-motivated and author-approved.

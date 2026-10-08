@@ -118,8 +118,12 @@ written.
 
 ### 4.4.3 Blinding by construction
 
-The expected orderings received an independent review from a blinded reviewer. The
-blinding was enforced **by construction rather than by instruction**: the reviewer
+The expected orderings were reviewed by a blinded reviewer. **That reviewer was an
+automated one, a language model, and not a person.** The project's plan called for
+independent review of the expected orderings by the supervisor. That review was not
+carried out and is not part of this work; Section 4.7.1 states what follows from its
+absence. The blinding was enforced **by construction rather than by instruction**: the
+reviewer
 was given purpose-built inputs — a case file stripped of all orderings, and a rubric
 file stripped of both the priority bands and the citation strings that had not yet
 been audited. A reviewer asked to ignore information it can see is not blinded; a
@@ -263,10 +267,11 @@ introducing a second automated reviewer would reproduce the same problem.
 The consequence is specific: the agreement figures in Section 4.4.4 may overstate
 how well an independent human expert would agree with the framework's orderings, and
 nothing in the data would signal that this is happening. **The figures therefore
-support a claim of internal consistency, not of external validity.** A supervisor
-review of a sample by a human domain expert would bound this threat; it has not been
-carried out, and the agreement figures should not be presented as validating
-anything beyond internal consistency until it has.
+support a claim of internal consistency, not of external validity.** A review of a
+sample by a human domain expert would bound this threat. The plan assigned that review
+to the supervisor; it was not carried out and will not be within this project. The
+agreement figures are therefore not presented as validating anything beyond internal
+consistency, and the threat stands unbounded.
 
 ### 4.7.2 Severity has no contrastive pair, by measurement rather than oversight
 

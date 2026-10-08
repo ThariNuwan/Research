@@ -70,12 +70,20 @@ Evaluation metrics: **normalization/retention coverage** (not detection accuracy
 ## Current state
 
 S0, S1, S2, S3a, S3b and S4 complete. **S5 (the independent evaluation harness and its
-first results), S6's sensitivity analysis and S3c (auto-inference) are done on branch
-`s5-evaluation-harness`**, unmerged and unpushed as of 2026-10-06; all three are recorded
-below. **Every sub-project that produces a result is now built.** What remains is **the
+first results), S6's sensitivity analysis and S3c (auto-inference) are done, and were merged
+into `main` by fast-forward on 2026-10-07** after the pre-merge review recorded below; all
+three are recorded below. `main` is ahead of `origin/main` by everything since `e5bdd63` and **has not been
+pushed**. The work was done on branch `s5-evaluation-harness`, which no longer exists
+locally; `origin` holds a copy of it at `c1b47b3` (the remote-tracking reflog records that
+push on 2026-10-07), four commits short of what was merged. **Every sub-project that produces a result is now built.** What remains is **the
 write-up** (chapters 1, 2 and 7; chapters 5 and 6 are drafted, and the S4 handoff and
-chapter 3 still carry superseded figures behind dated notes) and the two items that need
-a person: supervisor review of the oracle and the NSA-CISA citations. S0 pinned the toolchain and
+chapter 3 still carry superseded figures behind dated notes) and one item that needs a
+person: the NSA-CISA citations. **Supervisor review of the oracle will not be sought** - the
+project author ruled on 2026-10-08 that it is not needed. That closes a task, not a
+limitation: `docs/PLAN.md` Q7 and `docs/supervisor-brief.md` both say the expected-ordering
+labels get independent supervisor review, and a blinded LLM reviewer stood in. Chapters 4
+(4.4.3, 4.7.1) and 6 (6.4.4, 6.10) now state that as a permanent threat to validity, not as
+pending work. Do not write "not yet reviewed", and do not drop the statement either. S0 pinned the toolchain and
 harvested an empirical rule-ID inventory over a vendored corpus. S1 authored
 the five specification artifacts the runtime and the harness are built
 against:
@@ -487,8 +495,9 @@ gate 5 fails if the plan has more than one commit. What it found splits cleanly 
 - **The two named weightings are not independently expert-derived.** Likelihood-weighted
   (exposure and privilege doubled) and impact-weighted (sensitivity and criticality
   doubled) were proposed from sources the rubric cites and approved by the author; the
-  plan says so in its own text. PLAN Q10 asks for "expert-derived" alternatives, so a
-  supervisor's weightings, if obtained, are a second registered round.
+  plan says so in its own text. PLAN Q10 asks for "expert-derived" alternatives. None will
+  be sought (the author's ruling of 2026-10-08), so this stays a stated shortfall against
+  Q10; a weighting obtained later would still be a second registered round.
 
 **S3c's auto-inference mode (2026-10-06).** `src/iacrisk/context/inferred.py` reads
 sensitivity and criticality from the conventions in
