@@ -11,8 +11,14 @@ measurement, which on design reasoning, and which on work not yet done.
 | `04-research-methodology.md` | Research Methodology | the S2 corpus design spec, `eval/ground_truth/corpus-v1.json`, `docs/PLAN.md` Q7/Q10 |
 | `05-implementation.md` | Implementation | the code under `src/iacrisk/`, `tools/` and `eval/`, the committed captures under `tests/harvest/fixtures/`, and the test suite |
 | `06-evaluation.md` | Evaluation | the seven records under `artifacts/` that its Section 6.1 lists, `eval/sensitivity_plan.json`, `src/iacrisk/data/inference_conventions.json` |
+| `07-conclusion.md` | Conclusion | Chapters 3 to 6, and through them the records under `artifacts/` |
 
-Chapters 1, 2 and 7 are not drafted.
+Chapters 1 and 2 are not drafted: they need the proposal and the literature sources,
+which are not in this repository. **Chapter 7 is drafted except for its Section 7.2**,
+which answers the research questions and objectives. Those are stated only in the
+proposal, so that section is a dated placeholder. Chapter 7 introduces no figure of its
+own: every number in it is one Chapters 3 to 6 already report, cited by section, so a
+figure that changes there must be changed in Chapter 7 too.
 
 **Chapter 5's counts are of the repository as it stood on 2026-10-08**, at the commit
 that introduced `src/iacrisk/cli.py`, and each is re-derivable: file and line counts from `git ls-files`

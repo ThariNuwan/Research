@@ -617,7 +617,8 @@ under test is weighted to zero, where the two pairs built on that factor must fa
 and do: privilege, sensitivity and criticality each lose both. Two exceptions are
 informative. Dropping exposure loses only one of its two pairs, because
 `exposure-security-group` passes on its one-point severity difference. And dropping
-encryption loses nothing, because nothing depended on it.
+encryption loses nothing, because nothing depended on it. In all, 59 of the 63
+variants leave the pair result unchanged.
 
 The scenario result is 2 of 5 exact matches in 56 of the 63 variants, and ranges from
 1 to 3 across the rest. Agreement between each variant's ranking of the 986 findings
