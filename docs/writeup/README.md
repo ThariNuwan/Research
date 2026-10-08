@@ -7,13 +7,19 @@ measurement, which on design reasoning, and which on work not yet done.
 
 | File | Chapter | Depends on |
 |---|---|---|
+| `01-introduction.md` | Introduction | the proposal (problem, objectives, research questions, scope), `references.md` |
+| `02-literature-review.md` | Literature Review | `references.md`, and only the sources listed there |
 | `03-framework-design.md` | Framework Design | `docs/PLAN.md`, the S1/S3a design specs, `src/iacrisk/data/*.json` |
 | `04-research-methodology.md` | Research Methodology | the S2 corpus design spec, `eval/ground_truth/corpus-v1.json`, `docs/PLAN.md` Q7/Q10 |
 | `05-implementation.md` | Implementation | the code under `src/iacrisk/`, `tools/` and `eval/`, the committed captures under `tests/harvest/fixtures/`, and the test suite |
 | `06-evaluation.md` | Evaluation | the seven records under `artifacts/` that its Section 6.1 lists, `eval/sensitivity_plan.json`, `src/iacrisk/data/inference_conventions.json` |
 | `07-conclusion.md` | Conclusion | Chapters 3 to 6, and through them the records under `artifacts/` |
+| `references.md` | References | 35 sources, each with how far it was checked |
 
-Chapters 1 and 2 are not drafted. **Chapter 7 is drafted in full.** Its Section 7.2
+**All seven chapters are drafted.** Chapters 1 and 2 were drafted on 2026-10-08 from the
+proposal's text and a reference list rebuilt source by source. Chapters 3 to 7 do not yet
+use the citation keys: they name their standards in prose, and bringing them onto
+`references.md` is a pass still to do. **Chapter 7 is drafted in full.** Its Section 7.2
 answers the five research questions and six objectives in the proposal's own words, and
 records five places where the work departed from the proposal. Chapter 7 introduces no
 figure of its own: every number in it is one Chapters 3 to 6 already report, cited by
@@ -29,6 +35,15 @@ are unresolved. Chapters 1 and 2 must therefore be written against sources that 
 each been checked, not by carrying the proposal's citation numbers across. The proposal
 also describes itself in places as a postgraduate diploma project; that wording must
 not reach the MSc dissertation.
+
+**Three rules for the reference list.** `references.md` records, for every source, how
+far it was checked: primary text read, abstract read, or bibliographic record confirmed.
+No paper's full text was read in building it, so every sentence about a paper in
+Chapters 1 and 2 claims only what the paper's abstract supports, and the author must
+read each cited work before submission. A source is added by checking it and recording
+the level, never by copying an entry from a search result or a reference manager. And a
+source that cannot be checked is listed as such and not cited: two are, both NSA
+documents this host cannot retrieve.
 
 **Chapter 5's counts are of the repository as it stood on 2026-10-08**, at the commit
 that introduced `src/iacrisk/cli.py`, and each is re-derivable: file and line counts from `git ls-files`

@@ -76,8 +76,9 @@ three are recorded below. `main` is ahead of `origin/main` by everything since `
 pushed**. The work was done on branch `s5-evaluation-harness`, which no longer exists
 locally; `origin` holds a copy of it at `c1b47b3` (the remote-tracking reflog records that
 push on 2026-10-07), four commits short of what was merged. **Every sub-project that produces a result is now built.** What remains is **the
-write-up** (chapters 1 and 2 and the reference list; chapters 3 to 7 are drafted, and the
-S4 handoff and
+write-up** - all seven chapters are now drafted, so what is left is the author reading
+every cited source, citations for chapters 3 to 7, figures, front matter and assembly into
+the university template; the S4 handoff and
 chapter 3 still carry superseded figures behind dated notes) and one item that needs a
 person: the NSA-CISA citations. **Supervisor review of the oracle will not be sought** - the
 project author ruled on 2026-10-08 that it is not needed. That closes a task, not a
@@ -684,8 +685,29 @@ The Read tool cannot open PDFs on this host (no `pdftoppm`). Extract text with
 `uv run --no-project --with pypdf python -I <script> <pdf>`, which touches neither the
 project environment nor the lockfile.
 
-Chapters 1 and 2 are not drafted; they need checked sources and the
-literature sources, which are not in this repository. The chapters are written from the measured
+**Chapters 1 and 2 were drafted on 2026-10-08** (`01-introduction.md`,
+`02-literature-review.md`) with a reference list rebuilt source by source in
+`docs/writeup/references.md`: 35 sources, 9 kept from the proposal and 26 new, cited by
+stable key (`[Rahman2023]`) for conversion to IEEE numbers at assembly. Four things a
+future session must not get wrong:
+
+- **Each source carries a check level, and none is "full text read".** A = primary page
+  read, B = abstract read, C = bibliographic record confirmed from search results only.
+  Chapters 1 and 2 claim about a paper only what its abstract supports. **The author must
+  read every cited work before submission**, level C first - 16 entries are level C.
+- **Never add a source without checking it and recording the level.** The proposal's list
+  is what happens otherwise.
+- **Two closely related studies were found that the proposal did not have**:
+  Krieger et al. 2026 (arXiv 2606.24438; ten Kubernetes scanners score and rank
+  inconsistently) and Hu et al., SecDev 2023 (491 Terraform alerts). The research gap in
+  section 2.10 is worded as what a bounded search did not find, not as a proof of absence.
+  Four sources are preprints and are labelled so.
+- **Two NSA documents could not be opened and are therefore not cited** (`media.defense.gov`
+  returns 403 here): "Mitigating Cloud Vulnerabilities" (2020, NSA alone - the proposal
+  calls it NSA and CISA) and the Kubernetes Hardening Guidance.
+
+Chapters 3 to 7 still name their standards in prose and do not use the keys. The papers
+themselves are not in this repository. Chapters 3 to 7 are written from the measured
 record, so a figure that changes in an artifact must be changed there too.
 
 Chapter 6 was drafted on 2026-10-06 from the four `artifacts/*.json` records and revised
