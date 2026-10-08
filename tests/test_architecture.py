@@ -135,6 +135,51 @@ def test_importing_the_harness_loads_nothing_of_the_framework() -> None:
     assert proc.stdout.split() == [], f"importing eval/ loaded: {proc.stdout.split()}"
 
 
+def test_the_framework_imports_neither_its_instruments_nor_its_grader() -> None:
+    """`src/iacrisk` is the artifact. `tools/` runs or replays it and `eval/` grades it, so
+    the dependency runs one way: an import of either from inside the artifact would make
+    the thing being measured depend on what measures it, and would stop the package from
+    working when installed without the repository around it.
+
+    Nothing enforced this until the end-to-end command was added, which is the module
+    most tempted to break it - the replay instrument in `tools/score/` already holds the
+    same composition, one import away.
+    """
+    offenders: list[tuple[str, list[str]]] = []
+    for path in (REPO_ROOT / "src" / "iacrisk").rglob("*.py"):
+        leaked = {
+            module
+            for module in _imported_modules(path)
+            if _matches(module, "tools") or _matches(module, "eval")
+        }
+        if leaked:
+            offenders.append((path.relative_to(REPO_ROOT).as_posix(), sorted(leaked)))
+    assert offenders == [], f"the framework imports its instruments or its grader: {offenders}"
+
+
+@pytest.mark.parametrize(
+    ("source", "caught"),
+    [
+        ("from tools.score import run", True),
+        ("import tools.harvest.provenance", True),
+        ("from eval import harness", True),
+        ("import eval.ground_truth", True),
+        ("import toolshed", False),
+        ("from evaluate import metric", False),
+    ],
+)
+def test_the_instrument_and_grader_guard_matches_what_it_should(
+    source: str, caught: bool, tmp_path: Path
+) -> None:
+    """Guard the guard, as for the two import guards above: the roots `tools` and `eval`
+    are matched on a module boundary, so a package merely named like one is not."""
+    probe = tmp_path / "probe.py"
+    probe.write_text(f"{source}\n", encoding="utf-8")
+    modules = _imported_modules(probe)
+
+    assert any(_matches(m, "tools") or _matches(m, "eval") for m in modules) is caught
+
+
 # (source, matches iacrisk.scoring, matches iacrisk, matches checkov)
 #
 # The middle column is what `test_eval_does_not_import_the_framework` rests on.

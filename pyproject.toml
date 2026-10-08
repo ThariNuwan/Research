@@ -11,6 +11,10 @@ dependencies = [
     "python-hcl2>=8.1.4",
 ]
 
+# The end-to-end command: `uv run iacrisk <folder>`.
+[project.scripts]
+iacrisk = "iacrisk.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3.0",
