@@ -616,6 +616,16 @@ future session will get wrong without being told:
   resolves the folder first. `artifacts/demo/` holds scratch reports from live runs and
   ignores itself through its own `.gitignore`; nothing in it is a research artifact.
 
+**The results overview page (2026-10-08, `docs/results-overview.html`).** One self-contained
+HTML page of the headline results, each beside its qualification, for the author, a
+supervisor or a viva. It is **generated** by `tools/overview/build.py` from the committed
+records and holds no number of its own; `tests/overview/test_build.py` holds its figures to
+Chapter 6's tables and fails if the committed page is not what the records render to. So
+after regenerating any artifact, rebuild the page. Do not edit the HTML by hand, and do not
+add a figure to the prose in `render` - add it to `figures`, with a test. It loads nothing
+from a network. `docs/research-overview.html` is a different, older page: the August design
+overview, written by hand before any result existed.
+
 **Never squash-merge this history.** S5 gate 8, S6 gate 5 and S3c gate 5 read commit
 ancestry and require the two registered data files to have exactly one commit each. A
 squash or a rebase that rewrites those commits turns three gates red and destroys the only
@@ -719,6 +729,9 @@ uv run python -m tools.score.run inferred # both again in auto-inference mode ->
 uv run python -m eval.run                 # the harness -> artifacts/evaluation-v1.json
 uv run python -m eval.sensitivity         # the 63 registered variants -> artifacts/sensitivity-v1.json
 uv run python -m eval.agreement           # declared vs inferred -> artifacts/auto-inference-agreement-v1.json
+
+uv run python -m tools.overview.build     # the results page -> docs/results-overview.html
+                                          # regenerate LAST: a test fails if the page is stale
 
 uv run iacrisk <folder>                   # LIVE: run the pinned scanners over a folder and rank
                                           # --declared FILE | --infer, --out DIR, --top N

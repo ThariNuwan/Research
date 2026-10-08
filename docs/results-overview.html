@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Risk-aware IaC prioritization - results overview</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --surface: #fcfcfb; --plane: #f6f6f3;
+  --ink-1: #0b0b0b; --ink-2: #52514e; --ink-3: #85837c;
+  --grid: #e1e0d9; --border: rgba(11, 11, 11, .12);
+  --framework: #2a78d6; --baseline: #8d8b83;
+  --right: #1b9e6f; --tied: #d9a521; --inverted: #cf4a3c;
+  --critical: #cf3b3b; --high: #e8825a; --medium: #f2b632; --low: #3aa655;
+  --warn: #c98a00;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1b1b1a; --plane: #0e0e0d;
+    --ink-1: #ffffff; --ink-2: #c6c5ba; --ink-3: #8d8b83;
+    --grid: #2d2d2a; --border: rgba(255, 255, 255, .13);
+    --framework: #4a94ea; --baseline: #77756e;
+    --right: #23b27e; --tied: #d9a521; --inverted: #e0604f;
+    --warn: #e2a61a;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--plane); color: var(--ink-1);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1060px; margin: 0 auto; padding: 32px 20px 72px; }
+h1, h2, h3 { line-height: 1.25; margin: 0; }
+h1 { font-size: 29px; letter-spacing: -.02em; }
+h2 { font-size: 20px; letter-spacing: -.01em; }
+h3 { font-size: 14.5px; }
+p { margin: 0; }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .92em; }
+.muted { color: var(--ink-2); }
+.tiny { font-size: 12.5px; color: var(--ink-3); }
+.num { font-variant-numeric: tabular-nums; }
+
+header p.lede { font-size: 16px; color: var(--ink-2); max-width: 76ch; margin-top: 10px; }
+header p.who { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px; margin-top: 18px;
+}
+.step { font-size: 12px; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
+.sub { color: var(--ink-2); font-size: 14.5px; margin: 6px 0 18px; max-width: 80ch; }
+
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+.tile { border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: var(--surface); }
+.tile .big { font-size: 27px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tile .lbl { font-size: 13px; color: var(--ink-2); }
+.tile .vs { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+
+.pipe { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.stage { border: 1px solid var(--border); border-radius: 8px; padding: 12px; border-top: 3px solid var(--framework); }
+.stage.given { border-top-color: var(--baseline); }
+.stage .n { font-size: 11px; color: var(--ink-3); }
+.stage h3 { margin: 2px 0 5px; }
+.stage p { font-size: 12.5px; color: var(--ink-2); }
+
+.formula { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.formula .eq { font-size: 14px; color: var(--ink-2); font-weight: 600; }
+.chip { display: inline-flex; align-items: baseline; gap: 7px; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 13px; }
+.chip .rng { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.scale { display: flex; gap: 2px; margin-top: 18px; }
+.scale .band { border-radius: 4px; padding: 9px 11px; color: #0b0b0b; min-width: 0; }
+.scale .band b { font-size: 13.5px; display: block; }
+.scale .band span { font-size: 11.5px; opacity: .9; display: block; }
+.band.critical, .seg.critical, .dot.critical { background: var(--critical); color: #fff; }
+.band.high, .seg.high, .dot.high { background: var(--high); }
+.band.medium, .seg.medium, .dot.medium { background: var(--medium); }
+.band.low, .seg.low, .dot.low { background: var(--low); }
+
+.row { display: grid; grid-template-columns: 190px 1fr; gap: 14px; align-items: center; margin-top: 10px; }
+.row .name { font-size: 13.5px; }
+.row .name small { display: block; color: var(--ink-3); font-size: 12px; }
+.track { background: var(--grid); border-radius: 5px; height: 30px; display: flex; overflow: hidden; }
+.fill { height: 30px; display: flex; align-items: center; padding: 0 9px; font-size: 13px; color: #fff; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fill.framework { background: var(--framework); }
+.fill.baseline { background: var(--baseline); }
+.rest { display: flex; align-items: center; padding: 0 9px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.bar { display: flex; gap: 2px; height: 30px; border-radius: 5px; overflow: hidden; }
+.seg { display: flex; align-items: center; justify-content: center; min-width: 3px; font-size: 12.5px; color: #0b0b0b; font-variant-numeric: tabular-nums; overflow: hidden; white-space: nowrap; }
+.seg.right { background: var(--right); color: #fff; }
+.seg.tied { background: var(--tied); }
+.seg.inverted { background: var(--inverted); color: #fff; }
+.seg.empty { display: none; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 12px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.dot.framework { background: var(--framework); } .dot.baseline { background: var(--baseline); }
+.dot.right { background: var(--right); } .dot.tied { background: var(--tied); } .dot.inverted { background: var(--inverted); }
+
+.cols { display: flex; gap: 14px; align-items: flex-end; height: 170px; border-bottom: 2px solid var(--grid); margin-top: 16px; }
+.col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; height: 100%; }
+.col .v { font-size: 13px; font-variant-numeric: tabular-nums; }
+.col .rect { width: 100%; max-width: 92px; background: var(--baseline); border-radius: 4px 4px 0 0; min-height: 2px; }
+.col.frozen .rect { background: var(--framework); }
+.xaxis { display: flex; gap: 14px; margin-top: 7px; }
+.xaxis div { flex: 1; text-align: center; font-size: 12.5px; color: var(--ink-2); }
+.xaxis .frozen { color: var(--ink-1); font-weight: 600; }
+
+.funnel .row { grid-template-columns: 250px 1fr; }
+
+table { border-collapse: collapse; width: 100%; margin-top: 14px; font-size: 13px; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+td.frozen { font-weight: 700; color: var(--framework); }
+.tag { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); white-space: nowrap; }
+.tag.pass { border-color: transparent; background: color-mix(in srgb, var(--right) 18%, transparent); color: var(--ink-1); }
+.tag.tie { border-color: transparent; background: color-mix(in srgb, var(--tied) 24%, transparent); color: var(--ink-1); }
+.tag.fail { border-color: transparent; background: color-mix(in srgb, var(--inverted) 20%, transparent); color: var(--ink-1); }
+.pill { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; color: #0b0b0b; white-space: nowrap; }
+.pill.critical { background: var(--critical); color: #fff; } .pill.high { background: var(--high); }
+.pill.medium { background: var(--medium); } .pill.low { background: var(--low); }
+
+.notice { margin-top: 18px; border: 1px solid var(--border); border-left: 3px solid var(--warn); border-radius: 0 6px 6px 0; padding: 13px 16px; }
+.notice strong { font-size: 13.5px; }
+.notice ul { margin: 6px 0 0; padding-left: 18px; }
+.notice li, .notice p { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+.card { border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
+.card.yes { border-top: 3px solid var(--right); } .card.no { border-top: 3px solid var(--inverted); }
+.card ul { margin: 8px 0 0; padding-left: 18px; }
+.card li { font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
+
+.explain { margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+.explain ul { margin: 8px 0 0; padding: 0; list-style: none; }
+.explain li { font-size: 12.5px; color: var(--ink-2); margin-top: 5px; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.factors { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+footer { margin-top: 22px; padding: 0 4px; }
+
+@media (max-width: 780px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .pipe { grid-template-columns: 1fr; }
+  .two { grid-template-columns: 1fr; }
+  .row, .funnel .row { grid-template-columns: 1fr; gap: 4px; }
+  section { padding: 18px; }
+  table { font-size: 12px; }
+}
+@media print {
+  body { background: #fff; }
+  section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="step">Results overview</p>
+  <h1>Risk-aware prioritization of IaC security misconfigurations</h1>
+  <p class="lede">Rule-based scanners report many misconfigurations with a flat severity
+  label. This framework sits on top of three of them and re-ranks what they find, using six
+  inspectable factors about the affected resource. This page shows what the evaluation
+  found, with the qualification that belongs to each result.</p>
+  <p class="who">Jayathissa E.A.T.N. (258243J) &middot; MSc in Computer Science (Cloud
+  Computing), University of Moratuwa</p>
+  <div class="tiles">
+    <div class="tile"><div class="big">8 of 10</div>
+      <div class="lbl">contrastive pairs ranked in the predicted direction</div>
+      <div class="vs">scanner severity alone: 1 of 10</div></div>
+    <div class="tile"><div class="big">19 of 21</div>
+      <div class="lbl">scenario case pairs ordered correctly</div>
+      <div class="vs">scanner severity alone: 4, with
+      16 tied</div></div>
+    <div class="tile"><div class="big">2 of 5</div>
+      <div class="lbl">scenarios matched tier for tier</div>
+      <div class="vs">scanner severity alone: 0</div></div>
+    <div class="tile"><div class="big">1,016</div>
+      <div class="lbl">findings ranked</div>
+      <div class="vs">from 1,055 reported by three scanners</div></div>
+  </div>
+</header>
+<section>
+  <p class="step">The framework</p>
+  <h2>What it does</h2>
+  <p class="sub">A five-layer pipeline. Detection is left to the existing scanners; the
+  contribution is the prioritization layer on top of them.</p>
+  <div class="pipe">
+    <div class="stage given"><div class="n">1</div><h3>IaC input</h3>
+      <p>Terraform files and Kubernetes manifests.</p></div>
+    <div class="stage given"><div class="n">2</div><h3>Security scanning</h3>
+      <p>Checkov, tfsec and Trivy run unchanged. Their findings are normalized and exact
+      duplicates merged.</p></div>
+    <div class="stage"><div class="n">3</div><h3>Context extraction</h3>
+      <p>Exposure, privilege and encryption are read from the code. Sensitivity and
+      criticality are declared.</p></div>
+    <div class="stage"><div class="n">4</div><h3>Risk scoring</h3>
+      <p>A transparent additive score. No machine learning: every point is attributable.</p></div>
+    <div class="stage"><div class="n">5</div><h3>Reporting</h3>
+      <p>A ranked list in four priority bands, with one explanation line per factor.</p></div>
+  </div>
+  <div class="formula"><span class="eq">Score =</span><span class="chip">Severity<span class="rng">1&ndash;5</span></span><span class="eq">+</span><span class="chip">Exposure<span class="rng">0&ndash;5</span></span><span class="eq">+</span><span class="chip">Privilege<span class="rng">0&ndash;5</span></span><span class="eq">+</span><span class="chip">Sensitivity<span class="rng">0&ndash;5</span></span><span class="eq">+</span><span class="chip">Criticality<span class="rng">0&ndash;5</span></span><span class="eq">+</span><span class="chip">Encryption<span class="rng">0&ndash;3</span></span>
+    <span class="eq">from 1 to 28</span></div>
+  <div class="scale"><div class="band low" style="flex:8 1 0"><b>Low</b><span class="num">1&ndash;8</span><span>Monitor / document / fix when convenient</span></div><div class="band medium" style="flex:7 1 0"><b>Medium</b><span class="num">9&ndash;15</span><span>Schedule in normal sprint/backlog</span></div><div class="band high" style="flex:6 1 0"><b>High</b><span class="num">16&ndash;21</span><span>Fix before production / require approval</span></div><div class="band critical" style="flex:7 1 0"><b>Critical</b><span class="num">22&ndash;28</span><span>Block deployment, remediate immediately</span></div></div>
+  <p class="sub" style="margin-top:16px">A factor that cannot be read from the code is never
+  treated as low. It takes a stated default (severity 4, exposure 3, privilege 4, sensitivity 3, criticality 4, encryption 2) and is marked as a default wherever
+  it is shown.</p>
+</section>
+<section>
+  <p class="step">The evaluation</p>
+  <h2>What was measured</h2>
+  <p class="sub">Two deliberately insecure teaching repositories, TerraGoat and Kubernetes
+  Goat, plus 5 hand-written cases: 26 cases,
+  10 contrastive pairs and 5 scenarios, with expected
+  orderings registered before any score existed. Four populations recur, and a figure means
+  little without knowing which it is over.</p>
+  <div class="funnel"><div class="row"><div class="name">Reported by the scanners<small>Checkov 489, Trivy 447, tfsec 119</small></div><div class="track"><div class="fill framework" style="width:100.0%"></div><div class="rest num">1,055 of 1,055</div></div></div><div class="row"><div class="name">Ranked<small>after merging 39 exact duplicates</small></div><div class="track"><div class="fill framework" style="width:96.3%"></div><div class="rest num">1,016 of 1,055</div></div></div><div class="row"><div class="name">Context-eligible<small>attached to a cloud resource the framework can describe</small></div><div class="track"><div class="fill framework" style="width:93.5%"></div><div class="rest num">986 of 1,055</div></div></div><div class="row"><div class="name">Not low-confidence<small>at least three of five contextual factors read from evidence</small></div><div class="track"><div class="fill framework" style="width:23.3%"></div><div class="rest num">246 of 1,055</div></div></div></div>
+  <div class="notice"><strong>The baseline is weaker than it looks.</strong>
+    <p>489 of the 1,055 findings (46.4%) arrive with
+    no severity at all, every one of them from Checkov. For those findings the "scanner
+    severity" the framework is compared against is itself a default.</p></div>
+</section>
+<section>
+  <p class="step">Result 1</p>
+  <h2>Does context rank better than scanner severity alone?</h2>
+  <p class="sub">Two tests. A <em>contrastive pair</em> is two cases that should differ in
+  one factor only: the riskier one must score strictly higher. A <em>scenario</em> is three
+  to five cases with an expected order. Both are graded for the framework and, by the same
+  rules, for scanner severity alone.</p>
+  <div class="row"><div class="name">Framework<small>pairs passed</small></div><div class="track"><div class="fill framework" style="width:80.0%"></div><div class="rest num">8 of 10</div></div></div>
+  <div class="row"><div class="name">Scanner severity<small>pairs passed</small></div><div class="track"><div class="fill baseline" style="width:10.0%"></div><div class="rest num">1 of 10</div></div></div>
+  <div class="row"><div class="name">Framework<small>scenarios matched exactly</small></div><div class="track"><div class="fill framework" style="width:40.0%"></div><div class="rest num">2 of 5</div></div></div>
+  <div class="row"><div class="name">Scanner severity<small>scenarios matched exactly</small></div><div class="track"><div class="fill baseline" style="width:0.0%"></div><div class="rest num">0 of 5</div></div></div>
+  <div class="row"><div class="name">Framework<small>21 scenario case pairs</small></div><div class="bar"><div class="seg right" style="flex:19 1 0" title="Right: 19">19</div><div class="seg tied" style="flex:2 1 0" title="Tied: 2">2</div><div class="seg inverted empty" style="flex:0 1 0" title="Inverted: 0"></div></div></div>
+  <div class="row"><div class="name">Scanner severity<small>21 scenario case pairs</small></div><div class="bar"><div class="seg right" style="flex:4 1 0" title="Right: 4">4</div><div class="seg tied" style="flex:16 1 0" title="Tied: 16">16</div><div class="seg inverted" style="flex:1 1 0" title="Inverted: 1">1</div></div></div>
+  <div class="legend"><span><i class="dot framework"></i>Framework</span><span><i class="dot baseline"></i>Baseline (scanner severity)</span><span><i class="dot right"></i>Right order</span><span><i class="dot tied"></i>Tied</span><span><i class="dot inverted"></i>Inverted</span></div>
+
+  <div class="notice"><strong>Read these with what qualifies them.</strong>
+    <ul>
+      <li><strong>4 of the 8 passing pairs hold by
+      construction.</strong> Each puts one resource under two declared contexts, so the only
+      difference between the two scores is the number that was declared.</li>
+      <li><strong>3 more are on hand-crafted cases</strong>,
+      written by the author because the corpus offered no pair for those factors.</li>
+      <li><strong>Of the 3 mined pairs that need something read from the
+      code, 1 passes</strong> and scanner severity alone passes it too. The other 2 are the encryption pairs, which tie: the encryption factor is not shown to work.</li>
+      <li><strong>Of the 19 correctly ordered scenario pairs,
+      9 are decided by declared context alone</strong> and
+      3 are on hand-crafted cases. Of the remaining 7,
+      2 are ordered by a value read from the code on both
+      sides.</li>
+    </ul></div>
+
+  <table>
+    <tr><th>Contrastive pair</th><th>Factor tested</th><th>Source</th><th class="n">High case</th>
+    <th class="n">Low case</th><th>Framework</th><th>Scanner severity</th></tr>
+    <tr><td><code>exposure-security-group</code></td><td>exposure</td><td>mined</td><td class='n'>15</td><td class='n'>10</td><td><span class="tag pass">pass</span></td><td><span class="tag pass">pass</span></td></tr><tr><td><code>encryption-s3-data</code></td><td>encryption</td><td>mined</td><td class='n'>15</td><td class='n'>15</td><td><span class="tag tie">tie</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>encryption-s3-financials</code></td><td>encryption</td><td>mined</td><td class='n'>15</td><td class='n'>15</td><td><span class="tag tie">tie</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>sensitivity-s3-financials</code></td><td>sensitivity</td><td>by construction</td><td class='n'>17</td><td class='n'>13</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>sensitivity-s3-operations</code></td><td>sensitivity</td><td>by construction</td><td class='n'>16</td><td class='n'>13</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>criticality-s3-data</code></td><td>criticality</td><td>by construction</td><td class='n'>17</td><td class='n'>13</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>criticality-s3-data-science</code></td><td>criticality</td><td>by construction</td><td class='n'>16</td><td class='n'>13</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>privilege-iam-bucket-to-account</code></td><td>privilege</td><td>hand-crafted</td><td class='n'>16</td><td class='n'>15</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>privilege-iam-account-to-unrestricted</code></td><td>privilege</td><td>hand-crafted</td><td class='n'>18</td><td class='n'>16</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr><tr><td><code>exposure-s3-public-access</code></td><td>exposure</td><td>hand-crafted</td><td class='n'>17</td><td class='n'>12</td><td><span class="tag pass">pass</span></td><td><span class="tag tie">tie</span></td></tr>
+  </table>
+  <table>
+    <tr><th>Scenario</th><th class="n">Framework right / tied / inverted</th><th>Exact match</th>
+    <th class="n">Scanner severity right / tied / inverted</th><th>Correct pairs decided</th></tr>
+    <tr><td>Networking</td><td class='n'>5 / 0 / 0</td><td>no</td><td class='n'>2 / 2 / 1</td><td>5 by code or scanner evidence</td></tr><tr><td>Storage</td><td class='n'>8 / 0 / 0</td><td>yes</td><td class='n'>0 / 8 / 0</td><td>8 by declared context alone</td></tr><tr><td>IAM</td><td class='n'>3 / 0 / 0</td><td>yes</td><td class='n'>0 / 3 / 0</td><td>3 by hand-crafted cases</td></tr><tr><td>Compute</td><td class='n'>2 / 1 / 0</td><td>no</td><td class='n'>2 / 1 / 0</td><td>2 by code or scanner evidence</td></tr><tr><td>Containers</td><td class='n'>1 / 1 / 0</td><td>no</td><td class='n'>0 / 2 / 0</td><td>1 by declared context alone</td></tr>
+  </table>
+</section>
+<section>
+  <p class="step">Result 2</p>
+  <h2>What happens to the priority bands?</h2>
+  <p class="sub">The framework moves most findings into the middle. Critical and High
+  together fall from 649 to 235
+  (<strong>63.8%</strong>) over the 986
+  context-eligible findings, and from 192 to 35
+  (<strong>81.8%</strong>) over the 246
+  that are not low-confidence.</p>
+  <h3 style="margin-top:20px">All 986 context-eligible findings</h3><div class="row"><div class="name">Scanner severity<small>986 findings</small></div><div class="bar"><div class="seg critical" style="flex:16 1 0" title="Critical: 16"></div><div class="seg high" style="flex:633 1 0" title="High: 633">633</div><div class="seg medium" style="flex:138 1 0" title="Medium: 138">138</div><div class="seg low" style="flex:199 1 0" title="Low: 199">199</div></div></div><div class="row"><div class="name">Framework<small>986 findings</small></div><div class="bar"><div class="seg critical empty" style="flex:0 1 0" title="Critical: 0"></div><div class="seg high" style="flex:235 1 0" title="High: 235">235</div><div class="seg medium" style="flex:747 1 0" title="Medium: 747">747</div><div class="seg low" style="flex:4 1 0" title="Low: 4"></div></div></div>
+  <h3 style="margin-top:20px">The 246 that are not low-confidence</h3><div class="row"><div class="name">Scanner severity<small>246 findings</small></div><div class="bar"><div class="seg critical" style="flex:9 1 0" title="Critical: 9">9</div><div class="seg high" style="flex:183 1 0" title="High: 183">183</div><div class="seg medium" style="flex:19 1 0" title="Medium: 19">19</div><div class="seg low" style="flex:35 1 0" title="Low: 35">35</div></div></div><div class="row"><div class="name">Framework<small>246 findings</small></div><div class="bar"><div class="seg critical empty" style="flex:0 1 0" title="Critical: 0"></div><div class="seg high" style="flex:35 1 0" title="High: 35">35</div><div class="seg medium" style="flex:207 1 0" title="Medium: 207">207</div><div class="seg low" style="flex:4 1 0" title="Low: 4"></div></div></div>
+  <div class="legend"><span><i class="dot critical"></i>Critical</span><span><i class="dot high"></i>High</span><span><i class="dot medium"></i>Medium</span><span><i class="dot low"></i>Low</span></div>
+  <table>
+    <tr><th>Band</th><th class="n">Scanner severity, of 986</th>
+    <th class="n">Framework, of 986</th>
+    <th class="n">Scanner severity, of 246</th>
+    <th class="n">Framework, of 246</th></tr>
+    <tr><td><span class="pill critical">Critical</span></td><td class='n'>16</td><td class='n'>0</td><td class='n'>9</td><td class='n'>0</td></tr><tr><td><span class="pill high">High</span></td><td class='n'>633</td><td class='n'>235</td><td class='n'>183</td><td class='n'>35</td></tr><tr><td><span class="pill medium">Medium</span></td><td class='n'>138</td><td class='n'>747</td><td class='n'>19</td><td class='n'>207</td></tr><tr><td><span class="pill low">Low</span></td><td class='n'>199</td><td class='n'>4</td><td class='n'>35</td><td class='n'>4</td></tr>
+  </table>
+  <div class="notice">
+    <strong>These percentages are the least reliable numbers on this page.</strong>
+    <ul>
+      <li>441 of the baseline's
+      649 Critical or High findings carry no scanner severity. Their
+      baseline band is a default the framework chose itself.</li>
+      <li>740 of the 986 findings
+      are low-confidence: three or more of their five contextual factors are defaults.</li>
+      <li>199 of the 235 High
+      findings score exactly on the High boundary, so a one-point change moves most of the
+      band (next section).</li>
+      <li>No finding reaches Critical. The highest score in the corpus is
+      20, against a boundary of 22.</li>
+    </ul></div>
+</section>
+<section>
+  <p class="step">Result 3</p>
+  <h2>How stable are the results?</h2>
+  <p class="sub">63 variants of the model were registered before any was
+  computed: every unresolved default across its range, every band boundary moved by one and
+  two points, every factor dropped and doubled. All 63 are reported.</p>
+  <div class="two">
+    <div class="card yes"><h3>The ordering results hold</h3>
+      <ul>
+        <li>The pair result is unchanged in <strong>59 of
+        63</strong> variants. It moves only when the factor a pair tests is
+        removed altogether.</li>
+        <li>The number of exactly matched scenarios is unchanged in
+        <strong>56 of 63</strong>.</li>
+      </ul></div>
+    <div class="card no"><h3>The band counts do not</h3>
+      <ul>
+        <li>Moving the High boundary one point changes the Critical/High count from
+        <strong>235</strong> to <strong>36</strong> or
+        <strong>296</strong>.</li>
+        <li>With every default at its minimum the count is
+        0; at its maximum, 907.</li>
+      </ul></div>
+  </div>
+  <h3 style="margin-top:22px">Findings in Critical or High, by where the High band starts</h3>
+  <div class="cols"><div class="col"><div class="v">581</div><div class="rect" style="height:100.0%"></div></div><div class="col"><div class="v">296</div><div class="rect" style="height:50.9%"></div></div><div class="col frozen"><div class="v">235</div><div class="rect" style="height:40.4%"></div></div><div class="col"><div class="v">36</div><div class="rect" style="height:6.2%"></div></div><div class="col"><div class="v">19</div><div class="rect" style="height:3.3%"></div></div></div>
+  <div class="xaxis"><div class="">High starts at 14</div><div class="">High starts at 15</div><div class="frozen">High starts at 16 (frozen)</div><div class="">High starts at 17</div><div class="">High starts at 18</div></div>
+  <h3 style="margin-top:24px">Findings in Critical or High, by the default given to one
+  unresolved factor</h3>
+  <table>
+    <tr><th>Default for</th><th class="n">0</th><th class="n">1</th><th class="n">2</th><th class="n">3</th><th class="n">4</th><th class="n">5</th></tr>
+    <tr><td>Severity</td><td class="n">&ndash;</td><td class="n">82</td><td class="n">88</td><td class="n">92</td><td class="n frozen">235</td><td class="n">244</td></tr><tr><td>Exposure</td><td class="n">37</td><td class="n">54</td><td class="n">60</td><td class="n frozen">235</td><td class="n">281</td><td class="n">547</td></tr><tr><td>Privilege</td><td class="n">231</td><td class="n">231</td><td class="n">233</td><td class="n">233</td><td class="n frozen">235</td><td class="n">235</td></tr><tr><td>Sensitivity</td><td class="n">22</td><td class="n">39</td><td class="n">46</td><td class="n frozen">235</td><td class="n">279</td><td class="n">559</td></tr><tr><td>Criticality</td><td class="n">22</td><td class="n">22</td><td class="n">39</td><td class="n">46</td><td class="n frozen">235</td><td class="n">279</td></tr><tr><td>Encryption</td><td class="n">48</td><td class="n">64</td><td class="n frozen">235</td><td class="n">278</td><td class="n">&ndash;</td><td class="n">&ndash;</td></tr>
+  </table>
+  <p class="tiny" style="margin-top:8px">The frozen value of each default is highlighted.
+  All counts are of the 986 context-eligible findings.</p>
+</section>
+<section>
+  <p class="step">Result 4</p>
+  <h2>What if nobody declares the context?</h2>
+  <p class="sub">A second mode reads sensitivity and criticality from tags, labels and
+  resource names instead. On this corpus it resolved <strong>2 of
+  81 resources</strong> (3 findings): the
+  teaching repositories carry almost no literal tags. So this result shows what declared
+  context was contributing, more than it tests the mode.</p>
+  <div class="row"><div class="name">Declared context<small>21 scenario case pairs</small></div><div class="bar"><div class="seg right" style="flex:19 1 0" title="Right: 19">19</div><div class="seg tied" style="flex:2 1 0" title="Tied: 2">2</div><div class="seg inverted empty" style="flex:0 1 0" title="Inverted: 0"></div></div></div>
+  <div class="row"><div class="name">Inferred instead<small>21 scenario case pairs</small></div><div class="bar"><div class="seg right" style="flex:11 1 0" title="Right: 11">11</div><div class="seg tied" style="flex:10 1 0" title="Tied: 10">10</div><div class="seg inverted empty" style="flex:0 1 0" title="Inverted: 0"></div></div></div>
+  <div class="legend"><span><i class="dot right"></i>Right order</span><span><i class="dot tied"></i>Tied</span><span><i class="dot inverted"></i>Inverted</span></div>
+  <p class="sub" style="margin-top:14px">Without declarations
+  199 findings score higher, 787
+  the same and 0 lower, so
+  326 land in High against
+  235 with declared context. Missing context makes the
+  framework more cautious, never less.</p>
+</section>
+<section>
+  <p class="step">The tool</p>
+  <h2>What it reports for one small folder</h2>
+  <p class="sub">The five hand-written resources, each at its highest-scoring finding.
+  Scanner severity alone puts all 5 in High. The framework spreads them from 18 down to 12,
+  and says why.</p>
+  <table>
+    <tr><th>Resource, and its six factor values</th><th>Scanner severity</th>
+    <th class="n">Score</th><th>Framework</th><th class="n">Ranked findings</th></tr>
+    <tr><td><code>aws_iam_policy.unrestricted_scope</code><div class='factors'>severity 4* &nbsp; exposure 3* &nbsp; privilege 5 &nbsp; sensitivity 3 &nbsp; criticality 3 &nbsp; encryption 0</div></td><td><span class="pill high">High</span></td><td class='n'><strong>18</strong></td><td><span class="pill high">High</span></td><td class='n'>4</td></tr><tr><td><code>aws_s3_bucket.public_exposed</code><div class='factors'>severity 4* &nbsp; exposure 5 &nbsp; privilege 0 &nbsp; sensitivity 3 &nbsp; criticality 3 &nbsp; encryption 2*</div></td><td><span class="pill high">High</span></td><td class='n'><strong>17</strong></td><td><span class="pill high">High</span></td><td class='n'>14</td></tr><tr><td><code>aws_iam_policy.s3_account_scope</code><div class='factors'>severity 4* &nbsp; exposure 3* &nbsp; privilege 3 &nbsp; sensitivity 3 &nbsp; criticality 3 &nbsp; encryption 0</div></td><td><span class="pill high">High</span></td><td class='n'><strong>16</strong></td><td><span class="pill high">High</span></td><td class='n'>5</td></tr><tr><td><code>aws_iam_policy.s3_bucket_scope</code><div class='factors'>severity 4 &nbsp; exposure 3* &nbsp; privilege 2 &nbsp; sensitivity 3 &nbsp; criticality 3 &nbsp; encryption 0</div></td><td><span class="pill high">High</span></td><td class='n'><strong>15</strong></td><td><span class="pill medium">Medium</span></td><td class='n'>2</td></tr><tr><td><code>aws_s3_bucket.private_baseline</code><div class='factors'>severity 4* &nbsp; exposure 0 &nbsp; privilege 0 &nbsp; sensitivity 3 &nbsp; criticality 3 &nbsp; encryption 2*</div></td><td><span class="pill high">High</span></td><td class='n'><strong>12</strong></td><td><span class="pill medium">Medium</span></td><td class='n'>13</td></tr>
+  </table>
+  <p class="tiny" style="margin-top:8px">* a default: not read from the code, or not declared.</p>
+  <div class="explain"><h3>Why <code>aws_iam_policy.unrestricted_scope</code> scores 18</h3>
+    <ul><li>severity: 4 (unresolved, the rubric default) - checkov supplied no severity (&#x27;unknown&#x27;); scored at the rubric default</li><li>exposure: 3 (unresolved, the rubric default) - aws_iam_policy matches no supported exposure pattern (security-group ingress, public flag, bucket publicness, K8s Service/Ingress)</li><li>privilege: 5 (resolved) - aws_iam_policy.unrestricted_scope.policy: highest Allow statement scores 5</li><li>sensitivity: 3 (resolved) - declared context for aws_iam_policy.unrestricted_scope</li><li>criticality: 3 (resolved) - declared context for aws_iam_policy.unrestricted_scope</li><li>encryption: 0 (resolved) - aws_iam_policy holds no data at rest within this framework&#x27;s scope</li></ul></div>
+  <p class="sub" style="margin-top:16px">Produced by
+  <code>uv run iacrisk &lt;folder&gt; --declared context.json</code>, which runs the three
+  scanners live. Where the scanners are installed, a test scans both corpus folders again
+  and requires the recorded scores back, finding for finding.</p>
+</section>
+<section>
+  <p class="step">Conclusion</p>
+  <h2>What the evidence supports, and what it does not</h2>
+  <div class="two">
+    <div class="card yes"><h3>Supported</h3>
+      <ul>
+        <li><strong>Context separates findings that scanner severity cannot.</strong> The
+        baseline ties 16 of the 21 scenario pairs;
+        the framework orders 19 and inverts
+        0.</li>
+        <li><strong>A declared business context reaches the ranking faithfully</strong>, and
+        every point of every score is attributable to a named factor.</li>
+        <li><strong>The ordering results are stable</strong> across the registered
+        perturbations (59 of 63 for the pairs).</li>
+        <li><strong>Exposure and privilege move the ranking in the predicted
+        direction</strong> where they resolve: on the hand-crafted cases and in the
+        networking scenario.</li>
+      </ul></div>
+    <div class="card no"><h3>Not supported</h3>
+      <ul>
+        <li><strong>Any claim about how many alerts are saved.</strong> The Critical/High
+        count ranges from 19 to 581 as one boundary moves two
+        points either way.</li>
+        <li><strong>That the encryption factor works.</strong> Both of its pairs tie.</li>
+        <li><strong>That most of the ordering is derived from code.</strong>
+        9 of 19 correct
+        scenario pairs and 4 of 8 passing pairs
+        rest on declared context alone.</li>
+        <li><strong>External validity.</strong> The expected orderings were reviewed by an
+        automated reviewer, not a human expert, and the corpus is two teaching
+        repositories.</li>
+        <li><strong>Behaviour at the top of the range.</strong> No finding reaches Critical.</li>
+      </ul></div>
+  </div>
+</section>
+<footer>
+  <p class="tiny">Generated by <code>tools/overview/build.py</code> from the committed
+  records under <code>artifacts/</code>; every number on this page is read from them. The
+  full account, with both recorded states of each result, is Chapter 6
+  (<code>docs/writeup/06-evaluation.md</code>).</p>
+</footer>
+</div>
+</body>
+</html>
